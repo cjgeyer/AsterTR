@@ -1,0 +1,3628 @@
+\documentclass[11pt,notitlepage]{article}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{tikz-cd}
+\usepackage[utf8]{inputenc}
+\usepackage{xspace}
+
+% remove room for headers, add to textheight
+
+  %\addtolength{\textheight}{\headheight}
+  %\addtolength{\textheight}{\headsep}
+  %\setlength{\headheight}{0 pt}
+  %\setlength{\headsep}{0 pt}
+
+% adjust so right and left hand pages have different margins
+% not sure why these particular numbers were picked or if they
+% still make sense
+
+  % \showthe\evensidemargin
+  % \showthe\oddsidemargin
+  % \showthe\textwidth
+
+  % \evensidemargin  15 pt
+  % \oddsidemargin 61.5 pt
+  % \textwidth 392.5 pt
+
+ %\evensidemargin 28.75 pt
+ %\oddsidemargin 75.25 pt
+ %\textwidth 365 pt
+
+%%%%% NEW go with 1.25 inch margin on all sides
+
+%\setlength{\textheight}{\paperheight}
+
+
+%\addtolength{\textheight}{- 2 in}
+%\setlength{\topmargin}{0.25 pt}
+%\setlength{\headheight}{0 pt}
+%\setlength{\headsep}{0 pt}
+%\addtolength{\textheight}{- \topmargin}
+%\addtolength{\textheight}{- \topmargin}
+%\addtolength{\textheight}{- \footskip}
+
+%\setlength{\oddsidemargin}{0.25 in}
+%\setlength{\evensidemargin}{0.25 in}
+%\addtolength{\textwidth}{- \oddsidemargin}
+%\addtolength{\textwidth}{- \evensidemargin}
+
+
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\text{E}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\Fi}{\Sigma^{-1}}
+\newcommand{\eFi}{\hat{\Sigma}^{-1}}
+\newcommand{\Rsoft}{\texttt{R}\;}
+\newcommand{\astertwo}{\texttt{aster2}\xspace}
+\newcommand{\asterone}{\texttt{aster}\xspace}
+\newcommand{\betahat}{\hat{\beta}}
+\newcommand{\tauhat}{\hat{\tau}}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Supporting Data Analysis for ``An Integrated Analysis \\
+    of Phenotypic Selection on Insect Body Size  \\
+    and Development Time''} \\
+    By \\
+    Daniel J. Eck, Ruth G. Shaw, \\
+    Charles J. Geyer, and Joel G. Kingsolver \\
+    Technical Report No.~698 \\
+    School of Statistics \\
+    University of Minnesota \\
+    May 13, 2015 \\
+    % Revised \today
+    % only change from file downloaded from conservancy.umn.edu
+    Revised July 2, 2015
+
+  \end{center}
+
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+This technical report (TR) gives details of the data analysis backing
+up a paper having the same authors as this TR and having the title that
+is quoted in the title of this TR.  It uses the R package \texttt{knitr}
+to process its source file (Rnw file) containing \LaTeX\ and R,
+so that all R that
+appears in this document is not cut-and-pasted but actually run and
+actually produces the results that it appears to produce.  This document
+reproduces all tables and figures from the paper and hence the entire data
+analysis reported in the paper.  The data for the analysis are in the
+R object \texttt{hornworm} in the R package \texttt{aster2}, which is a
+CRAN package.  An appendix of this technical report shows how this R
+object of class \texttt{"asterdata"} was created from the raw data,
+a comma separated values (CSV) file.
+\end{abstract}
+
+\section{Introduction}
+
+In the paper that this technical report supplements, we describe
+a new generation of aster models \citep*{aster1} that incorporate age of 
+first reproduction in the model for fitness.
+Aster models are implemented in the R statistical computing language
+\citep{rcore} via the CRAN package \asterone \citep[originally
+available in 2005]{aster-package}.  This package does not allow
+accounting for variation in generation time in the expression of fitness.
+To allow for this component of fitness, the CRAN package \astertwo
+\citep{aster2-package} has
+the added capability of specifying
+``dependence groups,'' such that 
+life history stages, e.~g., insect larval instars, pupa, and adult, 
+and, in particular, variation in the age at which individuals reach these stages, are included in the model for fitness.
+Here we use \texttt{aster2} to take these stages into account
+in conducting selection analyses for
+a dataset from a previous study of phenotypic selection on body size
+and age at different developmental stages in \emph{Manduca sexta}
+\citep{kingsolver-et-al}.
+That study estimated selection on each fitness component separately,
+and therefore could not quantify how selection operates over the lifecycle,
+nor identify potential trade-offs in selection among fitness components.
+Our aster analyses of these data provide an integrated view of phenotypic
+selection on size and age across development and fitness components in
+this study system.  We discuss how these methods can be applied to
+selection analyses in other systems.
+
+\section{R}
+
+<<R,echo=FALSE,message=FALSE>>=
+foo <- getRversion()
+bar <- packageVersion("aster2")
+qux <- packageVersion("knitr")
+@
+This document was processed with R, version \Sexpr{foo}, using the CRAN
+packages \texttt{aster2}, version \Sexpr{bar},
+and \texttt{knitr}, version \Sexpr{qux}.
+<<library>>=
+library(aster2)
+@
+
+\section{Data}
+
+Data are in the R object \texttt{hornworm} in the \texttt{aster2} package.
+We are also going to use \texttt{data} as a synonym of this data object
+(because that was what we called it when we started this analysis,
+the name \texttt{hornworm} came later).
+<<hornworm>>=
+data(hornworm)
+data <- hornworm
+@
+
+We show how this data set, an R object of class \texttt{"asterdata"},
+was created in the appendix.
+
+\section{Graph}
+
+The aster graph for females in these data is shown below.
+\label{graph}
+\begin{center}
+\setlength{\unitlength}{0.25 cm}
+\begin{picture}(47,15)(10,0)
+\scriptsize
+\put(10,5){\makebox(0,0){$1$}}
+\put(15,5){\makebox(0,0){$P$}}
+\put(11.25,5){\vector(1,0){2.5}}
+
+\put(20,0){\makebox(0,0){$T_{33_0}$}}
+\put(20,5){\makebox(0,0){$T_{33_1}$}}
+\put(20,10){\makebox(0,0){$T_{33_2}$}}
+\put(20,6.25){\line(0,1){2.5}}
+\put(20,3.75){\line(0,-1){2.5}}
+\put(16.25,3.75){\vector(1,-1){2.5}}
+\put(16.25,5){\vector(1,0){2.5}}
+\put(16.25,6.25){\vector(1,1){2.5}}
+
+\put(20,15){\makebox(0,0){$B_{33}$}}
+\put(20,11.25){\vector(0,1){2.5}}
+ 
+\put(25,5){\makebox(0,0){$T_{34_1}$}}
+\put(25,10){\makebox(0,0){$T_{34_2}$}}
+\put(25,6.25){\line(0,1){2.5}}
+\put(21.25,5){\vector(1,0){2.5}}
+\put(21.25,6.25){\vector(1,1){2.5}}
+\put(25,15){\makebox(0,0){$B_{34}$}}
+\put(25,11.25){\vector(0,1){2.5}}
+
+\put(30,5){\makebox(0,0){$T_{35_1}$}}
+\put(30,10){\makebox(0,0){$T_{35_2}$}}
+\put(30,6.25){\line(0,1){2.5}}
+\put(26.25,5){\vector(1,0){2.5}}
+\put(26.25,6.25){\vector(1,1){2.5}}
+\put(30,15){\makebox(0,0){$B_{35}$}}
+\put(30,11.25){\vector(0,1){2.5}}
+
+\put(35,5){\makebox(0,0){$T_{36_1}$}}
+\put(35,10){\makebox(0,0){$T_{36_2}$}}
+\put(35,6.25){\line(0,1){2.5}}
+\put(31.25,5){\vector(1,0){2.5}}
+\put(31.25,6.25){\vector(1,1){2.5}}
+\put(35,15){\makebox(0,0){$B_{36}$}}
+\put(35,11.25){\vector(0,1){2.5}}
+
+\put(40,5){\makebox(0,0){$T_{37_1}$}}
+\put(40,10){\makebox(0,0){$T_{37_2}$}}
+\put(40,6.25){\line(0,1){2.5}}
+\put(36.25,5){\vector(1,0){2.5}}
+\put(36.25,6.25){\vector(1,1){2.5}}
+\put(40,15){\makebox(0,0){$B_{37}$}}
+\put(40,11.25){\vector(0,1){2.5}}
+
+\put(45,5){\makebox(0,0){$T_{38_1}$}}
+\put(45,10){\makebox(0,0){$T_{38_2}$}}
+\put(45,6.25){\line(0,1){2.5}}
+\put(41.25,5){\vector(1,0){2.5}}
+\put(41.25,6.25){\vector(1,1){2.5}}
+\put(45,15){\makebox(0,0){$B_{38}$}}
+\put(45,11.25){\vector(0,1){2.5}}
+
+\put(50,5){\makebox(0,0){$T_{39_1}$}}
+\put(50,10){\makebox(0,0){$T_{39_2}$}}
+\put(50,6.25){\line(0,1){2.5}}
+\put(46.25,5){\vector(1,0){2.5}}
+\put(46.25,6.25){\vector(1,1){2.5}}
+\put(50,15){\makebox(0,0){$B_{39}$}}
+\put(50,11.25){\vector(0,1){2.5}}
+
+\put(55,5){\makebox(0,0){$T_{40_1}$}}
+\put(55,10){\makebox(0,0){$T_{40_2}$}}
+\put(55,6.25){\line(0,1){2.5}}
+\put(51.25,5){\vector(1,0){2.5}}
+\put(51.25,6.25){\vector(1,1){2.5}}
+\put(55,15){\makebox(0,0){$B_{40}$}}
+\put(55,11.5){\vector(0,1){2.5}}
+\end{picture}
+\end{center}
+The aster graph for males and unknown (sex not determined because died
+before pupation) is the same except there are no $B_x$ nodes.
+
+Arrows go from predecessor nodes to successor nodes.
+Lines (that are not arrows) link dependence groups.
+Nodes are labeled by their associated variables.
+$P$ node is pupation indicator, $T$ nodes are survival and eclosion indicators,
+$B$ nodes are ovariole counts.
+Subscripts indicate age (in days), subsubscripts indicate
+variables in the same dependence group (0 = death,
+1 = surviving but pre-eclosion, 2 = eclosion at this time).
+All deaths before reproduction were modeled as occurring on day 33
+because the day of death for individuals who died after pupation but
+before eclosion was not recorded.
+
+As in all aster graphs, predecessor equals zero implies successor equals zero.
+If the variable at any node is zero, then the variables at all downstream
+nodes are also zero (all nodes one gets to by following arrows from a node
+where the variable is zero).  Thus at most one variable of any $T_x$ dependence
+group is nonzero, and the nonzero $T_{x_y}$ variables indicate the path
+the life history for an individual takes.  Similarly, at most one $B_x$
+variable is nonzero (because at most one $T_{x_2}$ variable is nonzero),
+the one where $x$ is the day the individual actually eclosed (if it did).
+
+Our measure of Darwinian fitness for this graph is at first
+(Section~\ref{sec:selection} below) total ovariole
+count, the sum of all the $B_x$ nodes.  Since at most one of these
+nodes is nonzero (as explained above), this is just the number of
+ovarioles the individual had if it survived to eclosion (and zero otherwise).
+Later (Section~\ref{sec:grow} below) our measure of Darwinian fitness
+is a weighted sum of ovariole counts, weighted according to
+age and population growth rate, with weights given by
+\eqref{eq:lambda-weights}.  This is fitness adjusted for
+population growth rate.
+
+\section{A Digression on Aster Model Theory}
+
+Because a referee of the paper this technical report accompanies asked for it,
+we give a brief explanation of aster models and their theory.
+This section can be skipped by readers who want to get on to the analysis.
+
+The full aster graph has a node for every measured component of fitness
+for every individual and also a constant node for every individual.
+The figure on p.~\pageref{graph} is only the part of the full graph for
+one female individual.  The node marked 1 indicates that this part of
+the graph is for one individual (in some data sets data on multiple
+individuals is lumped together and then the constant node says how many
+individuals that is).
+
+The \emph{response vector} $y$ of an aster model
+contains every measured component of fitness for every individual,
+one component for every node in the full graph except for constant nodes.
+Every component of $y$ belongs to exactly one dependence group $G$.
+Some components are in dependence groups by themselves.
+For example, in the figure on p.~\pageref{graph} the nodes
+$T_{33_0}$, $T_{33_1}$, and $T_{33_2}$ form a dependence group of size 3,
+the nodes $T_{34_0}$ and $T_{34_1}$ form a dependence group of size 2,
+the node $B_{35}$ forms a dependence group of size 1 (a group by
+itself), and the node $P$ is another group by itself.
+Each dependence group $G$ has exactly one predecessor node $q(G)$.
+In the figure on p.~\pageref{graph}
+the predecessor of $\{ T_{33_0}, T_{33_1}, T_{33_2} \}$ is $P$,
+the predecessor of $\{ T_{34_0}, T_{34_1} \}$ is $T_{33_1}$,
+the predecessor of $B_{35}$ is $T_{35_2}$, and
+the predecessor of $P$ is the constant node.
+
+The \emph{saturated aster model} has one parameter for every component
+of the response vector.
+The part of the response vector $y_G$ containing the components in dependence
+group $G$ is exponential family with sample size $q(G)$ and hence makes
+contribution to the log likelihood
+$$
+   y_G^T \theta_G - y_{q(G)} c_G(\theta_G)
+$$
+(\citealp[equation~(2),]{aster1} and \citealp[Section~2.4]{phil}).
+The vector $\theta$ whose parts are $\theta_G$ is the
+\emph{conditional canonical parameter vector}.  The function $c_G$ is
+the \emph{cumulant function} for dependence group $G$.  The whole aster
+model is also an exponential family (not just the conditional distributions
+of its dependence groups).  The whole log likelihood is the sum over
+all dependence groups for all individuals
+$$
+   l(\theta) = \sum_{G \in \mathcal{G}} \bigl[
+   y_G^T \theta_G - y_{q(G)} c_G(\theta_G) \bigr]
+$$
+where $\mathcal{G}$ is the family of all dependence groups.  To see that
+this has exponential family form, we rewrite it as
+$$
+   l(\theta)
+   =
+   \sum_{j \in J} y_j \left[ \theta_j
+   -
+   \sum_{\substack{G \in \mathcal{G} \\ q(G) = j}} c_G(\theta_G) \right]
+   -
+   \sum_{\substack{G \in \mathcal{G} \\ j \notin J}} y_{q(G)} c_G(\theta_G)
+$$
+where $J = \bigcup \mathcal{G}$ the set of all nonconstant nodes of the
+full graph, and match it to the exponential family form
+$$
+   l(\varphi) = y^T \varphi - c(\varphi)
+$$
+seeing that this works with
+\begin{equation} \label{eq:aster-transform}
+   \varphi_j = \theta_j -
+   \sum_{\substack{G \in \mathcal{G} \\ q(G) = j}} c_G(\theta_G)
+\end{equation}
+and
+\begin{equation} \label{eq:cumulant-function}
+   c(\varphi) =
+   \sum_{\substack{G \in \mathcal{G} \\ j \notin J}} y_{q(G)} c_G(\theta_G)
+\end{equation}
+The vector $\varphi$ having components $\varphi_j$ is the \emph{unconditional
+canonical parameter vector}, and the function $c$ is the cumulant function
+of the saturated model.  Equation~\eqref{eq:aster-transform} is called the
+\emph{aster transform}.  It defines an invertible infinitely differentiable
+change of parameter \citep[Section~2.3]{aster1}.  It may seem odd that
+\eqref{eq:cumulant-function} purports to define a function of $\varphi$ by
+giving it as a function of $\theta$, but this is valid because of the
+invertibility of the aster transform.
+
+Neither $\theta$ nor $\varphi$ has a simple connection with the components
+of $y$.  For that we want mean value parameters.
+The \emph{unconditional mean value parameter} is the
+vector $\mu$ having components
+$$
+   \mu_j = E(y_j)
+$$
+and the \emph{conditional canonical parameter} is the vector $\xi$ having
+components
+$$
+   \xi_j = E(y_j | y_{p(j)} = 1)
+$$
+where $p(j) = q(G)$ for the unique $G$ that contains $j$, so $y_{p(j)}$ is
+the predecessor of $y_j$ like $y_{q(G)}$ is the predecessor of $y_G$.
+It is a fundamental property of aster models that means multiply
+\begin{equation} \label{eq:fundamental}
+   \mu_j = \xi_j \mu_{p(j)}
+\end{equation}
+\citep[eq.~(12)]{aster1}, so applying \eqref{eq:fundamental} recursively
+we have
+\begin{align*}
+   \mu_j & = \xi_j \xi_{p(j)} \mu_{p(p(j))}
+   \\
+   \mu_j & = \xi_j \xi_{p(j)} \xi_{p(p(j))} \mu_{p(p(p(j)))}
+   \\
+   \mu_j & = \xi_j \xi_{p(j)} \xi_{p(p(j))} \xi_{p(p(p(j)))} \mu_{p(p(p(p(j))))}
+\end{align*}
+and so forth going all the way back to when the $\mu$ on the right-hand side
+is at a constant node and hence is just the constant (the expectation of a
+constant is that constant).  In short, unconditional means are products
+of conditional means.
+
+We now have four parameterizations of the saturated model $\theta$, $\varphi$,
+$\xi$, and $\mu$.  All have their purposes.  Any may be needed in some
+application.  In most aster models all of the transformations between any
+of these parameters are invertible and infinitely differentiable and can
+be calculated by the computer.  For models having multinomial dependence
+groups like our hornworm data, the $\theta$ and $\varphi$ parameterizations
+are not identifiable because each part of the response vector $y_G$ for
+a multinomial dependence group satisfies the linear constraint
+$$
+   \sum_{j \in G} y_j = y_{q(G)}
+$$
+and any linear constraint satisfied by the canonical statistic of
+an exponential family causes nonidentifiability
+\citep[Theorem~1 and the following discussion]{geyer-gdor}.
+This nonidentifiability is broken by fixing one component of $\theta_G$
+for each multinomial dependence group $G$ if we are using the $\theta$
+parameterization and similarly for $\varphi$.  With that proviso
+all of the parameter transformations are invertible and infinitely
+differentiable.
+
+Of course, saturated models are uninteresting for data analysis because
+they have too many parameters.  They are just the largest model within
+which we seek parsimonious submodels.  Modeling mean values as linear
+functions of means, like linear models (LM) do, is nonsense because of the
+constraints on means (conditional means for both Bernoulli and multinomial
+are between zero and one, those for zero-truncated Poisson are nonnegative).
+Even generalized linear models (GLM) don't do that.  Instead GLM that are
+exponential families (logistic regression and Poisson regression with log
+link) model canonical parameters linearly.  Aster models do the same.
+The question is which canonical parameter vector $\theta$ or $\varphi$?
+The best answer is $\varphi$ because that is the parameter that makes
+the whole aster model an exponential family.  An \emph{unconditional
+canonical affine submodel} has
+$$
+   \varphi = a + M \beta
+$$
+where $a$ is a known vector and $M$ a known matrix, called
+the \emph{offset vector} and \emph{model matrix} in the terminology
+of the R functions \texttt{lm} which fits LM and \texttt{glm} which fits GLM
+and of the R package \texttt{aster2} (the R package \texttt{aster}
+says ``origin'' instead of ``offset''), and where $\beta$ is the submodel
+parameter vector.  This makes the submodel
+a full exponential family.  The submodel log likelihood is
+$$
+   l(\beta) = y^T (a + M \beta) - c(a + M \beta)
+   = y^T a + y^T M \beta - c(a + M \beta)
+$$
+and the term not containing the parameter $\beta$ can be dropped giving
+$$
+   l(\beta) = y^T M \beta - c(a + M \beta)
+   = (M^T y)^T \beta - c_\text{sub}(\beta)
+$$
+and this shows we have another exponential family with canonical statistic
+$M^T y$, canonical parameter $\beta$ and cumulant function $c_\text{sub}$.
+The submodel mean value parameter is the expectation of the canonical statistic
+$$
+   \tau = E(M^T y) = M^T \mu
+$$
+With the proviso about fixing one component of $\varphi$ or $\theta$ in
+each multinomial dependence group and with the additional proviso that
+$M$ is full rank, we have six identifiable parameterizations
+$\theta$, $\varphi$, $\xi$, $\mu$, $\beta$, and $\tau$ and all of the
+transformations between them are invertible and infinitely differentiable.
+
+The following diagram shows these parameters and some of their transformations.
+\begin{center}
+\begin{tikzpicture}[descr/.style={fill=white},text height=1.5ex, text depth=0.25ex]
+\node (a) at (0,0) {$\theta$};
+\node (b) at (4,0) {$\varphi$};
+\node (c) at (8,0) {$\beta$};
+\node (d) at (0,-3) {$\xi$};
+\node (e) at (4,-3) {$\mu$};
+\node (f) at (8,-3) {$\tau$};
+\path[->,font=\scriptsize]
+([yshift= 5pt]a.east) edge node[above] {\text{aster transform}} ([yshift= 5pt]b.west)
+([yshift= -5pt]b.west) edge node[below] {\text{inverse aster transform}} ([yshift= -5pt]a.east)
+([yshift= 5pt]b.east) edge node[above] {} ([yshift= 5pt]c.west)
+([yshift= -5pt]c.west) edge node[below] {$\varphi = M\beta$} ([yshift= -5pt]b.east)
+([xshift= 5pt]a.south) edge node[right] {$\xi_G = \nabla c_G(\theta_G)$} ([xshift= 5pt]d.north)
+([xshift= -5pt]d.north) edge node[right] {} ([xshift= -5pt]a.south)
+([xshift= 5pt]b.south) edge node[right] {$\mu = \nabla c(\varphi)$} ([xshift= 5pt]e.north)
+([xshift= -5pt]e.north) edge node[right] {} ([xshift= -5pt]b.south)
+([xshift= 5pt]c.south) edge node[right] {$\tau = \nabla c_\text{sub}(\beta)$} ([xshift= 5pt]f.north)
+([xshift= -5pt]f.north) edge node[right] {} ([xshift= -5pt]c.south)
+([yshift= 5pt]e.east) edge node[above] {$\tau = M^T\mu$} ([yshift= 5pt]f.west)
+([yshift= -5pt]f.west) edge node[below] {} ([yshift= -5pt]e.east)
+([yshift= 5pt]d.east) edge node[above] {\text{multiplication}} ([yshift= 5pt]e.west)
+([yshift= -5pt]e.west) edge node[below] {\text{division}} ([yshift= -5pt]d.east);
+\end{tikzpicture}
+\label{diagram}
+\end{center}
+As the diagram shows, transformations from canonical to mean value parameters
+are given by differentiating cumulant functions.  The inverses of these
+transformations have no closed form expression but can be done by solving
+optimization problems, they are essentially equivalent to doing maximum
+likelihood.
+
+Maximum likelihood estimation for the submodel differentiates
+the submodel log likelihood
+$$
+   \nabla l(\beta) = M^T y - \nabla c_\text{sub}(\beta)
+   = M^T y - M^T E_\beta(y)
+$$
+sets the derivative equal to zero and solves for $\beta$.  Thus the
+maximum likelihood estimate (MLE) for $\beta$ satisfies
+$$
+   M^T y = \nabla c_\text{sub}(\hat{\beta}) = M^T E_{\hat{\beta}}(y)
+$$
+By invariance of maximum likelihood the MLE for $\tau$ is what the MLE
+for $\beta$ maps to under the parameter transformation
+$$
+   \hat{\tau} = \nabla c_\text{sub}(\hat{\beta}) = M^T y
+$$
+Everything in this paragraph holds for every full exponential family
+(nothing special about aster models here).  MLE for them satisfy
+the ``observed equals expected'' property (the MLE of the mean value parameter
+is the observed value of the canonical statistic, in this case
+$\hat{\tau} = M^T y$).
+
+Exponential families give aster unconditional canonical affine submodels
+many more good properties: the multivariate monotonicity property of maps
+from canonical to mean value parameters (\citealp[sec.~2.9]{phil} and
+\citealp[appendix]{aster3}), the sufficient dimension reduction property
+(all MLE are sufficient statistics, \citealp[sec.~2.10]{phil}), and the
+maximum entropy property \citep[sec.~2.12]{phil}.  In particular, the
+multivariate monotonicity property of the maps
+$\varphi \longleftrightarrow \mu$ enables much important theory
+\citep[appendix]{aster3}.  All of these properties and more
+\citep[discussion]{phil} make unconditional canonical affine submodels
+by far the most useful.
+
+Conditional canonical affine submodels model $\theta$ affinely
+$$
+   \theta = a + M \beta
+$$
+These are not full exponential families.  They are, of course curved
+exponential families because they are smooth submodels of the saturated model.
+But that doesn't give them any of the desirable properties of the unconditional
+canonical affine submodels.  Generally, conditional submodels are a lot less
+parsimonious than unconditional submodels \citep{aster1,phil}.  As far as
+we know there are only two published examples of conditional submodels:
+Example~1 in \citet{aster2}, which arguably could have been done with
+an unconditional submodel, and \citet{aster-aphid}, which had to use
+a conditional submodel because of time-dependent covariates (the
+first essential use of such models).  We ignore conditional submodels for the
+rest of this technical report because the R package \texttt{aster2}
+currently has no way to fit them.
+
+\section{Model Fitting}
+
+Fitting an aster model using the \astertwo package is not as easy as using
+the \asterone package.  The \astertwo package has no model fitting
+function that takes a formula and fits a model, like the \texttt{aster}
+function in the \asterone package.  Nor does it have generic
+\texttt{summary}, \texttt{anova}, and \texttt{predict} functions that support
+doing hypothesis tests and confidence intervals.
+% The reason is that when the \astertwo package was considered about half done,
+% a new line of research (random effects aster models) opened up, and support
+% for it was added to the \asterone package (because it was more advanced).
+% So now the \astertwo package is less than a third done (it does not
+% have random effects and needs them too).  But research on random effects aster
+% models continues, still delaying the completion of the \astertwo package.
+The \astertwo package is the only way to do aster models with dependence
+groups.  Currently, for everything else, use the \asterone package.
+
+The \astertwo package has parameter
+transformation functions that do all transformations between
+all parameterizations of aster models shown in the diagram
+on p.~\pageref{diagram}.
+In being able to do all of these transformations, the \texttt{aster2} package
+is superior to the \texttt{aster} package, which only does some of them
+(using the functions \texttt{predict} and \texttt{astertransform}).
+
+But it does require more work to do maximum likelihood using the \astertwo
+package than the \asterone package.  The observed equals expected property
+applied to aster models says that the MLE of the submodel mean value
+parameter $\hat{\tau}$ is equal to the submodel sufficient statistic $M^T y$.
+Then by invariance of maximum likelihood, the MLE of the submodel canonical
+parameter $\hat{\beta}$ is the transformation of $\hat{\tau}$.
+Thus maximum likelihood in the \astertwo package is done as follows.
+\begin{enumerate}
+\item Make the model matrix $M$.
+    The R function \texttt{model.matrix} can be used to do this.
+\item Make the submodel sufficient statistic $M^T y = \hat{\tau}$.
+\item Transform $\hat{\tau}$ to $\hat{\beta}$ using the R function
+    \texttt{transformUnconditional}.
+\end{enumerate}
+
+Then, the MLE having been obtained, there is no support for hypothesis
+tests or confidence intervals.  But the \astertwo package can calculate Fisher
+information for any of these parameters.  The Fisher information matrix
+for $\beta$ is
+$$
+   I(\beta) = \nabla^2 c_\text{sub}(\beta) = \nabla h(\beta)
+$$
+where $h$ is the transformation $\beta \longrightarrow \tau$.
+The Fisher information matrix for $\tau$ is
+$$
+   I(\tau) = \bigl[ \nabla^2 c_\text{sub}(\beta) \bigr]^{-1}
+   = \nabla h^{-1}(\tau)
+$$
+And the Jacobian matrices $\nabla h(\beta)$ and $\nabla h^{- 1}(\tau)$
+are computed by the R function \texttt{jacobian}.
+
+Then from Fisher information one can compute various hypothesis tests and
+confidence intervals.  In this document we only do Rao tests.
+The \astertwo package does not have a function that calculates log likelihoods
+(in the \asterone package both R functions \texttt{aster} and \texttt{mlogl}
+do this), so we have no easy way to calculate likelihood ratios and likelihood
+ratio test statistics.  That is why we do not do likelihood ratio tests.
+
+\section{Model selection} \label{sec:selection}
+
+Our analysis selects a best model via backwards selection.
+We start with a model that is full quadratic in all three covariates
+(age at second instar, mass at second instar, and mass at eclosion).
+We then show by doing a Rao test of model comparison that we can
+drop quadratic terms involving age.
+We then show by doing more Rao tests of model comparison that we cannot
+drop any other terms.
+
+To conduct such a test, the score function and inverse observed Fisher
+information need to be calculated under the null model. The score function is 
+\begin{equation} \label{score}
+M_\text{alter}^TY - \nabla c(M_\text{alter}\betahat_\text{null})
+\end{equation} 
+where $M_\text{alter}$ and $\betahat_\text{null}$ are the model matrix for
+the full quadratic model and the MLE for $\beta$ using the null model,
+respectively (we do not have an offset vector in any of our models).
+We first calculate the term on the left in \eqref{score}.
+
+<<>>=
+offspring <- as.numeric(grepl("B",data$redata$varb))
+modmat.alt <- model.matrix(resp ~ varb + 
+  offspring:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd + I(Time_2nd^2) + I(Mass_2nd*Time_2nd) + 
+  I(Time_2nd*Mass_Repro)), data = data$redata)
+tau.alt <- crossprod(modmat.alt, data$redata$resp)
+@
+
+We now calculate $\betahat_\text{null}$ by mapping $\hat{\tau}_\text{null}$
+to the $\beta$ parameterization using the \texttt{transformUnconditional}
+function, this null hypothesis being the one in which \verb@Time_Repro@
+is linear and the other two covariates are quadratic.
+
+%The model matrix constructed here corresponds to an aster model with two linear terms for mass at the second instar larval stage and reproductive stage. The maximum likelihood estimate $\tauhat$ is $M^TY$. We obtain $\betahat$ by using the \texttt{transformUnconditional} function in the \astertwo package. $\betahat$ is needed indirectly for model comparison.
+<<dofit1,cache=TRUE>>=
+modmat.null <- model.matrix(resp ~ varb + 
+  offspring:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data$redata)
+tau <- crossprod(modmat.null, data$redata$resp)
+beta <- beta.null <- transformUnconditional(tau, modmat.null, 
+  data, from = "tau", to = "beta", tolerance = 1e-100)
+@
+
+
+The term on the right in (\ref{score}) is calculated using the
+\texttt{transformUnconditional} function.
+
+
+<<dofit2,cache=TRUE>>=
+tau.null <- transformUnconditional(c(beta.null,rep(0,3)), 
+  modmat.alt, data, from = "beta", to = "tau")
+score <- tau.alt - tau.null
+@
+
+
+Observed Fisher information is calculated using the \texttt{jacobian} function. Three zeros are added to $\hat{\beta}_\text{null}$ in order to calculate
+observed Fisher information for the alternative model at the MLE for the
+null model.  The three zeros are for the terms
+(the quadratic term for age at second instar and the two crossproduct terms
+of age at second instar with one of the mass covariates) that are present
+in the alternative but absent in the null (which is the same as being
+set to zero).
+
+<<>>=
+Fisher.null <- jacobian(c(beta.null,rep(0,3)), data, 
+  transform = "unconditional", from = "beta", 
+  to = "tau", modmat = modmat.alt)
+@
+
+
+We now construct the Rao test statistic. The reference distribution for this test is $\chi^2_3$ and the p-value suggests that we fail to reject the null hypothesis when testing at the 0.05 significance level.
+
+
+<<>>=
+Rao <- t(score) %*% solve(Fisher.null, tol = 1e-100) %*% score
+pchisq(Rao, df = 3, lower = FALSE)
+@
+
+
+All less complicated models are found to be insignificant when testing at the 0.05 significance level. Our final model includes the full quadratic structure between the two mass terms and a linear term for the age at which an individual \emph{M. sexta} reaches its second instar larval stage as useful predictors of unconditional expected ovariole counts. First, we consider removing the quadratic terms for mass at second instar. The p-value is small enough to reject this smaller model at any reasonable significance level. The steps to conduct this test are similar to those that conducted our first hypothesis test.
+
+
+<<dofit3,cache=TRUE>>=
+modmat.null <- model.matrix(resp ~ varb + 
+  offspring:(Mass_Repro + I(Mass_Repro^2) + Time_2nd + 
+    Mass_2nd), 
+  data = data$redata)
+tau <- crossprod(modmat.null, data$redata$resp)
+beta.null <- transformUnconditional(tau, modmat.null, 
+  data, from = "tau", to = "beta", tolerance = 1e-100)
+
+modmat.alt <- model.matrix(resp ~ varb + 
+  offspring:(Mass_Repro + I(Mass_Repro^2) + Time_2nd + 
+  Mass_2nd + I(Mass_Repro*Mass_2nd) + I(Mass_2nd^2)), 
+  data = data$redata)  
+tau.alt <- crossprod(modmat.alt, data$redata$resp)
+
+tau.null <- transformUnconditional(c(beta.null,rep(0,2)), 
+  modmat.alt, data, from = "beta", to = "tau")
+score <- tau.alt - tau.null
+
+Fisher.null <- jacobian(c(beta.null,rep(0,2)), data, 
+  transform = "unconditional", from = "beta", 
+  to = "tau", modmat = modmat.alt)
+Rao <- t(score) %*% solve(Fisher.null, tol = 1e-100) %*% score
+pchisq(Rao, df = 2, lower = FALSE)
+@
+
+
+We now consider removing the quadratic terms for mass at eclosion. The p-value is small enough to reject this smaller model at any reasonable significance level.
+
+
+<<dofit4,cache=TRUE>>=
+modmat.null <- model.matrix(resp ~ varb + 
+  offspring:(Mass_2nd + I(Mass_2nd^2) + Time_2nd + 
+    Mass_Repro), 
+  data = data$redata)
+tau <- crossprod(modmat.null, data$redata$resp)
+beta.null <- transformUnconditional(tau, modmat.null, 
+  data, from = "tau", to = "beta", tolerance = 1e-100)
+
+modmat.alt <- model.matrix(resp ~ varb + 
+  offspring:(Mass_2nd + I(Mass_2nd^2) + Time_2nd + 
+    Mass_Repro + I(Mass_Repro^2) + I(Mass_Repro*Mass_2nd)), 
+  data = data$redata)  
+tau.alt <- crossprod(modmat.alt, data$redata$resp)
+
+tau.null <- transformUnconditional(c(beta.null,rep(0,2)), 
+  modmat.alt, data, from = "beta", to = "tau")
+score <- tau.alt - tau.null
+
+Fisher.null <- jacobian(c(beta.null,rep(0,2)), data, 
+  transform = "unconditional", from = "beta", 
+  to = "tau", modmat = modmat.alt)
+Rao <- t(score) %*% solve(Fisher.null, tol = 1e-100) %*% score
+pchisq(Rao, df = 2, lower = FALSE)
+@
+
+
+Finally, we consider removing the linear term for age that individuals reach their second instar stage. The p-value is small enough to reject this smaller model at any reasonable significance level.
+
+
+<<dofit5,cache=TRUE>>=
+modmat.null <- model.matrix(resp ~ varb + 
+  offspring:(Mass_2nd + I(Mass_2nd^2) + Mass_Repro + 
+  I(Mass_Repro^2) + I(Mass_Repro*Mass_2nd)), 
+  data = data$redata)
+tau <- crossprod(modmat.null, data$redata$resp)
+beta.null <- transformUnconditional(tau, modmat.null, 
+  data, from = "tau", to = "beta", tolerance = 1e-100)
+
+modmat.alt <- model.matrix(resp ~ varb + 
+  offspring:(Mass_2nd + I(Mass_2nd^2) + Mass_Repro + 
+  I(Mass_Repro^2) + I(Mass_Repro*Mass_2nd) + Time_2nd), 
+  data = data$redata)  
+tau.alt <- crossprod(modmat.alt, data$redata$resp)
+
+tau.null <- transformUnconditional(c(beta.null,0), 
+  modmat.alt, data, from = "beta", to = "tau")
+score <- tau.alt - tau.null
+
+Fisher.null <- jacobian(c(beta.null,0), data, 
+  transform = "unconditional", from = "beta", 
+  to = "tau", modmat = modmat.alt)
+Rao <- t(score) %*% solve(Fisher.null, tol = 1e-100) %*% score
+pchisq(Rao, df = 1, lower = FALSE)
+@
+
+
+
+
+
+
+
+
+%<<echo = FALSE>>=
+%mymu.full <- transformUnconditional(beta.full, 
+%  modmat.full, data, from = "beta", to = "mu")
+%mytau.full <- crossprod(modmat.full, mymu.full)
+%#all.equal(mytau.full, tau.full)
+%names(mymu.full) <- rownames(modmat.full)
+%@
+
+
+
+
+
+%<<>>=
+%offspring <- as.numeric(grepl("B",data$redata$varb))
+%modmat <- model.matrix(resp ~ varb + offspring:(Mass_2nd + 
+%  Mass_Repro), data = data$redata)
+%tau <- crossprod(modmat, data$redata$resp)
+%beta <- transformUnconditional(tau, modmat, 
+%  data, from = "tau", to = "beta")
+%@
+
+
+%We now consider a full quadratic model in both mass traits. There is no conventional software in the \astertwo software to compare models. The likelihood ratio test, which is used in \texttt{anova.aster}, can not be implemented since no \texttt{mlogl} function exists in the \astertwo package. Thus, a Rao test is conducted ``by hand" to see if either the linear model or the quadratic model is preferred. To conduct this test, the score function and inverse observed Fisher information need to be calculated under the null model, in this case the linear model. The score function is $M_{quad}^TY - \nabla c_{sub}(M_{quad}\betahat_\text{null})$ where $M_{quad}$ and $\betahat_\text{null}$ are the model matrix for the quadratic model and the MLE for $\beta$ using the linear model respectively. The score is calculated using the \texttt{transformUnconditional} function. This function maps $\beta$ to $\tau$ where $\tau$ is the aster submodel mean-value parameter. Observed Fisher information is calculated using the \texttt{jacobian} function. Three zeros are added to the null model estimate of $\beta$ in order to calculate observed Fisher information. This is result of constraining the two quadratic terms and the single interaction term to be zero when maximizing the likelihood of the null model. These steps are explained in more detail below.
+
+%We first calculate the MLE of the submodel mean-value parameter from the full quadratic model.
+
+
+%<<>>=
+%modmat.quad <- model.matrix(resp ~ varb + 
+%  offspring:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro)), 
+%  data = data$redata)
+%tau.quad <- crossprod(modmat.quad, data$redata$resp)
+%@
+
+
+%The MLE of the submodel mean-value parameter from the linear model in both mass traits is now calculated. We transform our MLE for the submodel canonical parameter to the mean-value parameterization under the null hypothesis that the quadratic terms are not present in our model. The quadratic terms are the last three elements of our submodel canonical parameter vector for the full model. Therefore we add three zeros to the end of \texttt{beta} before calling \texttt{transformUnconditional}. The score function needed for the Rao test is then calculated.
+
+
+%<<>>=
+%tau.null <- transformUnconditional(c(beta,rep(0,3)), 
+%  modmat.quad, data, from = "beta", to = "tau")
+%score <- tau.quad - tau.null  
+%@
+
+
+%The \texttt{jacobian} function is then used to find the Jacobian of the map from $\beta$ to $\tau$ under the null hypothesis.
+
+
+%<<>>=
+%Fisher.null <- jacobian(c(beta,rep(0,3)), data, 
+%  transform = "unconditional", from = "beta", 
+%  to = "tau", modmat = modmat.quad)
+%@
+
+%<<eval = FALSE, echo = FALSE>>=
+%foot <- crossprod(modmat.quad, data$redata$resp)
+%foot[c(29:31)] <- 0
+%blah <- transformUnconditional(foot, tolerance = 1e-30,
+%  modmat.quad, data, from = "tau", to = "beta")
+%Fisher.null2 <- jacobian(blah, data, 
+%  transform = "unconditional", from = "beta", 
+%  to = "tau", modmat = modmat.quad)
+%score2 <- foot - tau.quad
+
+%Rao2 <- t(score2) %*% Fisher.null2 %*% score2
+%@
+
+
+%We build the Rao test statistic and then calculated the p-value where the reference distribution for this test is $\chi^2$ with three degrees of freedom. The p-value from the Rao test is lower than any reasonable significance level. The full quadratic model is preferred over the simpler linear model.
+
+
+%<<>>=
+%Rao <- t(score) %*% solve(Fisher.null, tol = 1e-50) %*% score
+%Rao
+%df <- 3
+%pval <- pchisq(Rao, df = df, lower.tail = FALSE)
+%pval
+%@
+
+
+%We now wish to compare the full quadratic model to the model that is full quadratic in the two mass terms and has a linear term for the time it takes individuals to reach their second instar life stage. The MLE of the submodel canonical parameter vector for the full quadratic model is obtained using the \texttt{transformUnconditional} function. This is now an estimator of the submodel canonical parameter vector corresponding to the null hypothesis of our model selection procedure.
+
+
+%<<>>=
+%beta.quad <- transformUnconditional(tau.quad, 
+%  modmat.quad, data, from = "tau", to = "beta")
+%@
+
+
+%The exact same steps are executed to perform the Rao test that compares the two models of interest. The p-value from the Rao test indicates that the larger model is preferred at any reasonable choice of significance level. This model includes a linear term for the time it takes individuals to reach their second instar life stage to the full quadratic model selected in the previous test.
+
+
+%<<>>=
+%modmat.full <- model.matrix(resp ~ varb + 
+%  offspring:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd), 
+%  data = data$redata)
+%tau.full <- crossprod(modmat.full, data$redata$resp)
+%beta.full <- transformUnconditional(tau.full, 
+%  modmat.full, data, from = "tau", to = "beta")
+
+%tau.null <- transformUnconditional(c(beta.quad,0), 
+%  modmat.full, data, from = "beta", to = "tau")
+%Fisher.null <- jacobian(c(beta.quad,0), data, transform = 
+%  "unconditional", from = "beta", to = "tau", 
+%  modmat = modmat.full)
+%score <- tau.full - tau.null
+%Rao <- t(score) %*% solve(Fisher.null, tol = 1e-50) %*% score
+%Rao
+
+%df <- length(beta.full) - length(beta.quad)
+%pval <- pchisq(Rao, df = df, lower.tail = FALSE)
+%pval
+%@
+
+
+
+%<<echo = FALSE>>=
+%mymu.full <- transformUnconditional(beta.full, 
+% modmat.full, data, from = "beta", to = "mu")
+%mytau.full <- crossprod(modmat.full, mymu.full)
+%#all.equal(mytau.full, tau.full)
+%names(mymu.full) <- rownames(modmat.full)
+%@
+
+
+
+%<<>>=
+%modmat.bigger <- model.matrix(resp ~ varb + 
+%  offspring:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd + 
+%  I(Time_2nd*Mass_Repro)), 
+%  data = data$redata)
+%canonical.bigger <- crossprod(modmat.bigger, 
+%  data$redata$resp)
+%beta.bigger <- transformUnconditional(canonical.bigger, 
+%  modmat.bigger, data, from = "tau", to = "beta")
+
+%tau.null <- transformUnconditional(c(beta.full,0), 
+%  modmat.bigger, data, from = "beta", to = "tau")
+%Fisher.null <- jacobian(c(beta.full,0), data, 
+%  transform = "unconditional", from = "beta", 
+%  to = "tau", modmat = modmat.bigger)
+%score <- canonical.bigger - tau.null
+%Rao <- t(score) %*% solve(Fisher.null, tol = 1e-50) %*% score
+%Rao
+
+%df <- length(beta.bigger) - length(beta.full)
+%pval <- pchisq(Rao, df = df, lower.tail = FALSE)
+%pval
+%@
+
+
+The results of the tests that compare our final model to smaller models are concisely summarized in Table~\ref{tab:one}.
+
+
+
+\begin{table}
+\begin{tabular}{lcc}
+\hline
+\hline
+%\hline
+%\multicolumn{3}{c}{Rao tests for smaller models} \\
+null model & df & $P$-value \\
+\hline
+ removes quadratic terms for mass at second instar & 2 & $3.37 \times 10^{-8}$ \\
+ removes quadratic terms for mass at eclosion & 2 & $< 10^{-10}$\\
+ removes linear term for age at second instar & 1 & $7.88 \times 10^{-5}$\\
+\hline
+\end{tabular}
+\caption{Rao tests for smaller models. $P$-values and degrees of freedom
+for Rao tests of three smaller models against the larger model that
+includes linear, quadratic, and interaction term for the two mass traits and
+a linear term for age at second larval instar stage.}
+\label{tab:one}
+\end{table}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Fitness landscapes}
+
+Now that we have selected the best model, we want to plot fitness landscape,
+unconditional expected fitness as a function of covariates.  We do this by
+predicting, on the basis of the model, values for fitness for all observed
+values of age at second instar and samples of 101 values
+of mass at second instar and 101 values of mass at eclosion.  Since this is
+a four-dimensional graph (fitness versus three covariates), it cannot be
+visualized, and we make one three-dimensional graph for each age at
+2nd instar using
+the R function \texttt{contour}.
+Covariate values that maximize expected fitness are also of interest.
+
+
+Before we
+do this we need to extract some useful information from the \texttt{hornworm}
+dataset.
+<<extract>>=
+vars <- levels(hornworm$redata$varb)
+pred <- hornworm$pred
+group <- hornworm$group
+code <- hornworm$code
+families <- hornworm$families
+@
+
+Now the $101^2$ hypothetical individuals with unique mass traits reaching
+their second instar larval stage at age 2 are generated
+
+<<>>=
+x <- seq(from = 0, to = 0.016, by = 0.016/100)
+y <- seq(from = 0, to = 2.3, by = 2.3/100)
+days <- 2:6 / 7
+long.sex <- factor(rep("F", 101^2), levels = c("F", "M", "U"))
+mnew <- data.frame(long.sex, rep(days[1], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+@
+
+
+We then make the object of class \texttt{asterdata} for this new data
+and the model matrix for our best model and these new data.
+
+<<makedata1,cache=TRUE>>=
+data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+  group = group, code = code, families = families)
+foo <- as.character(data.mnew$redata$varb)
+offspring.mnew <- as.numeric(grepl("B", foo))
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+ 
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)  
+@
+
+
+This model matrix is then used to find the MLE of the saturated model
+unconditional canonical parameter $\varphi$.
+
+<<>>=
+phi <- modmat.mnew %*% beta
+@
+
+Estimates on the canonical scale are not directly interpretable. We need estimates for the mean-value parameters of the unconditional model ($\mu$). These are found using the \texttt{transformSaturated} function. Only the estimates corresponding to ovariole count nodes are of interest. For every hypothetical individual there are eight predictions of ovariole count, one for every age that the individual can reach its reproduction stage. These predictions are summed to arrive at an estimate of expected ovariole count for each of the $101^2$ hypothetical individuals.
+
+Of course, in this biological system observed fitness for a single individual is nonzero at only one
+age, the age at which the individual reproduces (at most one $Bx$ variable
+in the graph on p.~\pageref{graph} is nonzero).  But expected fitness is
+nonzero at all ages (all components of the unconditional mean value parameter
+vector $\mu$ are nonzero).  Adding the components of $\mu$ for all the $Bx$
+nodes of the graph adds the contribution to expected fitness of reproduction
+at all ages.
+
+<<dotrans1,cache=TRUE>>=
+mus2 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+ind <- which(grepl("B",rownames(data.frame(modmat.mnew))))
+qux2 <- matrix(mus2[ind], nrow = 101^2, ncol = 8)
+colnames(qux2) <- paste("c", 1:8, sep = "")
+rownames(qux2) <- c(1:101^2)
+sums2 <- as.numeric(apply(qux2, 1, sum))
+zday2 <- matrix(sums2, nrow = 101)
+@
+
+The \texttt{maximum} function, defined below,
+is used to find the two mass values yielding the highest expected fitness.
+<<>>=
+maximum <- function(sums){
+  max.ind <- which(sums == max(sums))
+  column <- floor(max.ind / 101)
+  row <- max.ind - 101 * column
+  point <- c(x[row], y[column])
+  return(point)
+}
+@
+
+To make the plot we need to pull more things out of the \texttt{hornworm}
+dataset.
+The data are in the \texttt{redata} component of the \texttt{asterdata} object.
+We pull it out.  This is an object in so-called long format (in the terminology
+of the R function \texttt{reshape}) so all of the covariates are repeated
+as many times as there are nodes in the graph.  We get rid of this repetition
+because we are only interested in covariates here.  And then we keep the
+data for females only.
+<<makecovariates>>=
+mass.second <- hornworm$redata$Mass_2nd
+mass.reprod <- hornworm$redata$Mass_Repro
+sex <- as.character(hornworm$redata$Sex)
+unique(sex)
+time.second <- hornworm$redata$Time_2nd
+id <- data$redata$id
+u <- unique(id)
+idx <- match(u, id)
+mass.second <- mass.second[idx]
+mass.reprod <- mass.reprod[idx]
+sex <- sex[idx]
+time.second <- time.second[idx]
+mass.second <- mass.second[sex == "F"]
+mass.reprod <- mass.reprod[sex == "F"]
+@
+
+The fitness landscape for these $101^2$ hypothetical individuals
+reaching the second instar stage at age 2 is plotted in Figure~\ref{fig:day2}.
+\begin{figure}
+\begin{center}
+<<>>=
+plot(mass.second, pch = 20,
+  mass.reprod, xlab = "Mass at 
+  2nd instar", ylab = "Mass at Reproduction", 
+  main = "Fitness Landscape for Ovariole Counts vs. Mass")
+points(maximum(sums2)[1], maximum(sums2)[2], col = "red",
+  pch = 19)
+contour(x,y,zday2, add = TRUE, nlevels = 8, levels = 
+  c(100,150,200,250,300,325,350,360) )
+@
+\end{center}
+\caption{Fitness Landscape for Those Reaching Second Instar at Day 2.}
+\label{fig:day2}
+\end{figure}
+  
+The code below constructs the fitness landscape plots for hypothetical
+individuals reaching the second instar larval stage at ages 3, 4, and 5.
+
+
+<<dotrans2,cache=TRUE>>=  
+mnew <- data.frame(long.sex, rep(days[2], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+  group = group, code = code, families = families)
+foo <- as.character(data.mnew$redata$varb)
+offspring.mnew <- as.numeric(grepl("B", foo))
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)
+phi <- crossprod(t(modmat.mnew), beta)
+mus3 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+
+ind <- which(grepl("B",rownames(data.frame(modmat.mnew))))
+qux3 <- matrix(mus3[ind], nrow = 10201, ncol = 8)
+colnames(qux3) <- paste("c", 1:8, sep = "")
+rownames(qux3) <- c(1:10201)
+sums3 <- as.numeric(apply(qux3, 1, sum))
+zday3 <- matrix(sums3, nrow = 101)
+
+mnew <- data.frame(long.sex, rep(days[3], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+  group = group, code = code, families = families)
+foo <- as.character(data.mnew$redata$varb)
+offspring.mnew <- as.numeric(grepl("B", foo))
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+ 
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)
+phi <- crossprod(t(modmat.mnew), beta)
+mus4 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+
+ind <- which(grepl("B",rownames(data.frame(modmat.mnew))))
+qux4 <- matrix(mus4[ind], nrow = 10201, ncol = 8)
+colnames(qux4) <- paste("c", 1:8, sep = "")
+rownames(qux4) <- c(1:10201)
+sums4 <- as.numeric(apply(qux4, 1, sum))
+zday4 <- matrix(sums4, nrow = 101)
+
+mnew <- data.frame(long.sex, rep(days[4], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+data.mnew <- asterdata(mnew, vars = vars, pred = pred,
+  group = group, code = code, families = families)
+foo <- as.character(data.mnew$redata$varb)
+offspring.mnew <- as.numeric(grepl("B", foo))
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+ 
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)
+phi <- crossprod(t(modmat.mnew), beta)
+mus5 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+
+ind <- which(grepl("B",rownames(data.frame(modmat.mnew))))
+qux5 <- matrix(mus5[ind], nrow = 10201, ncol = 8)
+colnames(qux5) <- paste("c", 1:8, sep = "")
+rownames(qux5) <- c(1:10201)
+sums5 <- as.numeric(apply(qux5, 1, sum))
+zday5 <- matrix(sums5, nrow = 101)
+@
+
+
+
+%\begin{figure}[h!]
+%\begin{center}
+%<<>>=
+%plot(mass.second, mass.reprod, pch = 20,
+%  xlab = "Mass at 2nd instar", ylab = "Mass at Reproduction", 
+%  main = "Fitness Landscape for ovariole counts vs. Mass")
+%points(maximum(sums3)[1], maximum(sums3)[2], col = "red", pch = 19)
+%contour(x,y,zday3, add = TRUE, nlevels = 8, levels = 
+%  c(50,100,150,200,250,300,350,400) )
+%@
+%\end{center}
+%\end{figure}
+
+
+%\begin{figure}[h!]
+%\begin{center}
+%<<>>=
+%plot(mass.second, mass.reprod, pch = 20, 
+%  xlab = "Mass at 2nd instar", ylab = "Mass at Reproduction", 
+%  main = "Fitness Landscape for ovariole counts vs. Mass")
+%points(maximum(sums4)[1], maximum(sums4)[2], col = "red", pch = 19)
+%contour(x,y,zday4, add = TRUE, nlevels = 8, levels = 
+%  c(50,100,150,200,250,300,350,400) )
+%@
+%\end{center}
+%\end{figure}
+
+
+%<<>>=
+%plot(mass.second, mass.reprod, pch = 20, 
+%  xlab = "Mass at 2nd instar", ylab = "Mass at Reproduction", 
+%  main = "Fitness Landscape for ovariole counts vs. Mass")
+%points(maximum(sums5)[1], maximum(sums5)[2], col = "red", pch = 19)  
+%contour(x,y,zday5, add = TRUE, nlevels = 8, levels = 
+%  c(50,100,150,200,250,300,350,400) )
+%@
+
+
+
+<<echo = FALSE>>=
+ind.max <- which(zday2 == max(zday2))
+col.max <- ceiling(ind.max / 101)
+mass2nd.max3 <- zday3[, col.max]
+mass2nd.max2 <- zday2[, col.max]
+mass2nd.max4 <- zday4[, col.max]
+mass2nd.max5 <- zday5[, col.max]
+@
+
+
+
+The code below builds the fitness landscapes. These fitness landscapes appear in the left hand column of Figure 2 in the paper, which is called Figure~\ref{fig:paper} in this technical report. In the paper, the fitness landscapes appear smaller than those on display in Figure~\ref{fig:two}.
+
+
+
+<<fitnesslandscape,eval=FALSE>>=
+par(mfrow = c(2, 2), mar = rep(0.5, 4), 
+  oma = c(4, 4, 0, 0) + 0.1)
+# day 2
+plot(mass.second, 
+  mass.reprod,
+  axes = FALSE, xlab = "", ylab = "", pch = 20)
+box()
+axis(side = 2, outer = TRUE)
+mtext("mass at eclosion", outer = TRUE, line = 3, 
+  side = 2, at = 0.50)
+mtext("mass at 2nd instar stage", outer = TRUE, line = 3, 
+  side = 1, at = 0.50)
+points(maximum(sums2)[1], maximum(sums2)[2], pch = 0)
+levels <- seq(50, 350, by = 50)
+contour(x, y, zday2, add = TRUE, levels = levels)
+# day 3
+plot(mass.second, 
+  mass.reprod,
+  axes = FALSE, xlab = "", ylab = "", pch = 20)
+box()
+points(maximum(sums3)[1], maximum(sums3)[2], pch = 0)
+contour(x, y, zday3, add = TRUE, levels = levels)
+# day 4
+plot(mass.second, 
+  mass.reprod,
+  axes = FALSE, xlab = "", ylab = "", pch = 20)
+box()
+axis(side = 1, outer = TRUE)
+axis(side = 2, outer = TRUE)
+points(maximum(sums4)[1], maximum(sums4)[2], pch = 0)
+contour(x, y, zday4, add = TRUE, levels = levels)
+# day 5
+plot(mass.second, 
+  mass.reprod,
+  axes = FALSE, xlab = "", ylab = "", pch = 20)
+box()
+axis(side = 1, outer = TRUE)
+points(maximum(sums5)[1], maximum(sums5)[2], pch = 0)
+contour(x, y, zday5, add = TRUE, levels = levels)
+@
+
+
+
+
+
+
+\begin{figure}
+\begin{center}
+%%%%% DON'T REPEAT YOURSELF (the DRY rule)
+%%%%% Quote chunks, don't repeat chunks.
+<<echo=FALSE>>=
+<<fitnesslandscape>>
+@
+\end{center}
+\caption{Fitness landscapes for expected unconditional ovariole counts vs.\ mass
+at eclosion and mass at 2nd instar stage.  Different panels are for different
+ages (in days since hatching) at which individuals reached the second instar
+larval stage (age 2 is top left, age 3 is top right, age 4 is bottom left,
+and age 5 is bottom right). Mass at second instar stage is on the $x$-axis,
+and mass at eclosion is on the $y$-axis. The boxes denote the maxima. 
+%%%Plots are for individuals reaching the second instar stage at
+%%day 2 (top left), day 3 (top right), day 4 (bottom left), and day 5 (bottom
+%%right).  Squares denote locations of maxima.  
+The maximum values are
+\Sexpr{round(max(zday2),1)} (top left),
+\Sexpr{round(max(zday3),1)} (top right),
+\Sexpr{round(max(zday4),1)} (bottom left),
+and \Sexpr{round(max(zday5),1)} (bottom-right). }
+\label{fig:two}
+\end{figure}
+
+
+
+
+
+
+
+Figure~\ref{fig:two} displays the entire fitness landscape for all hypothetical individuals. The fitness landscapes generated show that expected unconditional ovariole count is predominantly explained by an individual's mass at eclosion. 
+%%%fitness holding age at eclosion constant is predominantly explained by an individual's mass at eclosion. 
+As mass at eclosion increases, expected fitness increases with a maximum fitness found for female \emph{M. sexta} weighing roughly 2 grams at eclosion. Expected fitness is also influenced by age at which individuals reach the second instar larval stage. The contours show that individuals reaching the second instar larval stage earlier have higher expected numbers of offspring. The contours suggest that fitness depends only weakly on mass at the second instar stage. However, the formal hypothesis test shows that this relationship is highly significant. 
+In addition, expected unconditional ovariole count declines with increasing age to 2nd instar (Fig.~\ref{fig:two}).  For example, maximum expected ovariole count declines by $16 \%$ as age to 2nd instar increases from 2 (upper left panel) to 5 (lower right panel) days. This effect is largely due to the effects of age at 2nd instar on survival to eclosion: slower development (later age at 2nd instar) is associated with lower survival. 
+
+
+
+
+
+
+
+
+
+\section{Population growth rate} \label{sec:grow}
+
+The preceding analysis accounts for survival and ovariole count as components of fitness, but does not take into account the role of variation in timing of reproduction in fitness variation. To incorporate this effect we must consider the expected population growth rate. The population growth rate parameter ($\lambda$) for the observed population of \emph{M. sexta} is estimated from the stable age equation discussed in \citep*[p.~26]{fisher}, as the basis of accounting for individuals' age at reproduction in its lifetime fitness. In our context, this is
+\begin{equation} \label{eq:stable}
+   1 = \frac{1}{n} \sum_{i = 1}^n \sum_{x = 33}^{40} \mu_{i x} e^{-\lambda x}
+\end{equation}
+where $\mu_{i x}$ is the unconditional expected ovariole count for individual $i$ at day $x$ which is given below. 
+
+
+<<>>=
+mu.star <- tau.alt[grepl("varbB", rownames(tau.alt))]
+@
+
+
+Having $e^{-\lambda x}$ instead of $\rho^x$ in \eqref{eq:stable} follows \citet{charles}. The population growth rate parameter $\lambda$ is calculated here using the \texttt{uniroot} function.
+
+
+<<>>=
+nind <- length(unique(hornworm$redata$id))
+nind
+n <- nind
+gr <- function(lam){
+  n - sum(mu.star * exp(-(lam * (32 + seq(along = mu.star)))))
+}
+lout <- uniroot(gr, lower = -105, upper = 105)
+lambda.hat <- lout$root
+lambda.hat
+@
+
+In most treatments of the stable age equation,
+starting with Fisher, the term $\mu_{i x}$ in \eqref{eq:stable}
+is written as the product of probability
+of survival to age $x$ and the conditional expectation of number of offspring
+at age $x$ given survival to age $x$, but we do not do that because
+$\mu_{i x}$ is calculated directly by the aster software.
+Most treatments of the stable age equation,
+starting with Fisher, do not average over all individuals in the data,
+the $(1 / n) \sum_{i = 1}^n$ in \eqref{eq:stable}.  That is because those
+treatments do not allow for variation among individuals. Consequently, they
+use the same model for all individuals and apply the stable age
+equation to one individual (and hence to all because all are the same according
+to the model).  Here, where $\mu_{i x}$ is different for different individuals
+because of the covariates in the model (mass at second instar,
+mass at eclosion, and age at second instar), we replace the means
+for a typical individual with the average over all individuals in the data.
+
+
+% this is not used anywhere
+%<<>>=
+%mean.mu.star <- mean(mu.star * exp(-(lambda.hat * 
+%  (32 + seq(along = mu.star)))))
+%blah <- mu.star * exp(-(lambda.hat * (32 + 
+%  seq(along = mu.star)))) / mean.mu.star
+%@
+
+
+From the $\hat{\mu}_{i x}$ produced by the aster model and \eqref{eq:stable} we obtain the estimate $\hat{\lambda} = \Sexpr{round(lambda.hat, 3)}$. The positive value of $\lambda$ indicates a growing population. This very large value of $\hat{\lambda}$, indicating that the population grows by a factor of $\exp(\hat{\lambda}) = \Sexpr{round(exp(lambda.hat), 3)}$ per day, results from the fact that many sources of mortality in natural populations were excluded from the experiment (e.~g., low densities of larvae, the netting to exclude predation by birds, and lack of predation before larvae were moved from the lab to the field garden). Such overestimates of population growth rate are typical of experiments that do not have all sources of natural mortality and all sources of failure to reproduce.
+
+We examine the effects that $\lambda$ has on expected fitness by reweighting the fitness landscape according to 
+\begin{equation} \label{eq:stable-reweight}
+   w(z) = \sum_{x = 33}^{40} \mu_x(z) e^{-\lambda x},
+\end{equation}
+where $\mu_x(z)$ is now expected reproduction at age $x$ for a hypothetical individual having trait values given by $z$ \citep[p. 134]{charles}. The weights according to the population growth rate used are
+
+
+<<>>=
+weight <- function(t) exp(-lambda.hat * (32 + t))
+weight(c(1:8))
+@
+
+
+%\section{Under construction from here on out}
+Fitness is now reweighted to incorporate the population growth rate.
+% After the population growth rate $\lambda$ has been determined
+We refit the model using weights
+\begin{equation} \label{eq:lambda-weights}
+   w_j = f_j e^{- \lambda t_j}
+\end{equation}
+where $f_j$ are the zero or one weights indicating nodes that contribute directly to fitness and $t_j$ is the age of the individual at node $j$. This weighting accounts for population growth rate \citep[p.~134]{charles}. We incorporate the weights using the code below.
+
+% changes (re weight fitness)
+<<>>=
+foo <- data$redata$varb
+offspring <- as.numeric(grepl("B", foo))
+bar <- grepl("B", foo)
+baz <- offspring
+baz[bar] <- sub("B", "", foo)[bar]
+baz <- as.numeric(baz)
+baz[bar] <- weight(baz[bar] - 32)
+offspring <- baz
+offspring <- offspring * 100
+@
+
+
+A new model matrix is created that incorporates reweighted fitness.
+
+
+<<>>=
+modmat.full <- model.matrix(resp ~ varb + 
+  offspring:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data$redata)
+@
+
+
+We now obtain the new aster submodel mean-value parameter $\tau$ associated with reweighted fitness. The \texttt{transformUnconditional} function is used to find the corresponding submodel canonical parameter vector $\beta$.
+
+
+<<dofit6,cache=TRUE>>=
+tau.full <- crossprod(modmat.full, data$redata$resp)
+beta.full <- transformUnconditional(tau.full, 
+  modmat.full, data, from = "tau", to = "beta")
+@
+
+
+The same hypothetical individuals used to build the fitness landscape before adjusting for the population growth rate are used to build the fitness landscape after we adjust for the population growth rate.
+% create the same hypothetical individuals to
+% generate a fitness landscape for individuals reaching
+% their second instar life stage at age 2
+<<>>=
+x <- seq(from = 0, to = 0.016, by = 0.016/100)
+y <- seq(from = 0, to = 2.3, by = 2.3/100)
+days <- 2:6 / 7
+mnew <- data.frame(long.sex, rep(days[1], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+@
+
+
+This model matrix is converted into an \texttt{asterdata} object in order to find estimates of fitness using the \texttt{aster2} package.
+
+
+<<makedata2,cache=TRUE>>=
+data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+  group = group, code = code, families = families)
+@
+
+
+The population growth rate is now incorporated into the model matrix for the hypothetical individuals.
+
+
+<<>>=
+foo <- as.character(data.mnew$redata$varb)
+bar <- grepl("B", foo)
+offspring.mnew <- as.numeric(bar)
+
+baz <- offspring.mnew
+baz[bar] <- sub("B", "", foo)[bar]
+baz <- as.numeric(baz)
+baz[bar] <- weight(baz[bar] - 32)
+offspring.mnew <- baz
+offspring.mnew <- 100 * offspring.mnew
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+@ 
+
+
+$\mu_x(z)$ is calculated in two steps. We first transform from $\beta$ to $\varphi$ manually and then use the \texttt{transformSaturated} function to transform from $\varphi$ to $\mu$ as done previously.
+
+
+<<>>=
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)
+phi <- crossprod(t(modmat.mnew), beta.full)
+mus.fit2 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+@
+
+
+We now build the fitness landscape after adjusting for the population growth rate. The fitness landscape calculated using the code below is only for individuals that reach their second instar stage at age 2. The figure generated compares the fitness landscape constructed here to the fitness landscape unadjusted for $\lambda$ for individuals that reach their second instar stage at age 2.
+% make the fitness landscape for reweighted fitness for 
+% individuals reaching eclosion on age 2
+<<>>=
+ind <- which(grepl("B",rownames(data.frame(modmat.mnew))))
+qux.fit2 <- matrix(mus.fit2[ind], nrow = 10201, ncol = 8)
+sumslam.fit2 <- as.numeric(apply(qux.fit2, 1, sum))
+zday.fit2 <- matrix(sumslam.fit2, nrow = 101)
+@
+
+
+
+
+\begin{figure}
+\begin{center}
+<<comparison-landscapes, out.width = '6cm', out.height = '6cm', fig.show = 'hold'>>=
+plot(mass.second, pch = 20,
+  mass.reprod, xlab = "Mass at 
+  2nd instar", ylab = "Mass at Reproduction", 
+  main = "Fitness Landscape for Ovariole Counts vs. Mass")
+points(maximum(sums2)[1], maximum(sums2)[2], col = "red",
+  pch = 19)
+contour(x,y,zday2, add = TRUE, nlevels = 8, levels = 
+  c(100,150,200,250,300,325,350,360) )
+
+
+plot(mass.second, pch = 20,
+  mass.reprod, xlab = "Mass at 
+  2nd instar", ylab = "Mass at Reproduction", 
+  main = "Fitness Landscape for Ovariole Counts vs. Mass")
+points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], 
+  col = "red", pch = 19)
+contour(x,y,zday.fit2, add = TRUE, nlevels = 8)
+@
+\end{center}
+\caption{Fitness landscapes without (left panel) and with (right panel) adjustment for population
+growth rate $\lambda$ for hypothetical individuals reaching their second instar stage at age 2.}
+\label{fig:comp}
+\end{figure}
+
+
+We can see that the contours of the two fitness landscapes in Figure~\ref{fig:comp} differ. We now change the fitness landscape adjusted for the population growth rate to a relative fitness landscape. This is done by dividing estimated expected ovariole counts by the mean of estimated expected ovariole counts.
+
+
+%mymu.full <- transformUnconditional(beta.full, 
+%  modmat.full, data, from = "beta", to = "mu")
+%names(mymu.full) <- rownames(modmat.full)
+%mymu.full.births <- mymu.full[grepl("B", names(mymu.full))]
+%mydays <- sub("^.*\\.B", "", names(mymu.full.births))
+%mydays <- as.numeric(mydays[grepl("B", names(mymu.full.births))])
+%myweights.lam <- exp(- lambda.hat * mydays)
+%mean.fitness <- mean(mymu.full.births * myweights.lam)
+%mean.fitness <- mean.fitness * 8
+<<dounfit1,cache=TRUE>>=
+mymu.full <- transformUnconditional(beta.full, 
+  modmat.full, data, from = "beta", to = "mu")
+names(mymu.full) <- rownames(modmat.full)
+mymu.full.births <- mymu.full[grepl("B", names(mymu.full))]
+mean.fitness <- mean(mymu.full.births)
+mean.fitness <- mean.fitness * 8
+zday.fit2 <- zday.fit2 / mean.fitness
+@
+
+
+The same routine is performed for the 30603 individuals that reach their second instar life stage at ages 3, 4, and 5.
+
+
+<<makedata3,cache=TRUE>>=
+mnew <- data.frame(long.sex, rep(days[2], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+  group = group, code = code, families = families)
+foo <- as.character(data.mnew$redata$varb)
+offspring.mnew <- as.numeric(bar)
+
+baz <- offspring.mnew
+baz[bar] <- sub("B", "", foo)[bar]
+baz <- as.numeric(baz)
+baz[bar] <- weight(baz[bar] - 32)
+offspring.mnew <- baz
+offspring.mnew <- 100 * offspring.mnew
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+ 
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)
+phi <- crossprod(t(modmat.mnew), beta.full)
+mus.fit3 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+
+births.fit3 <- mus.fit3[ind]
+quxlam.fit3 <- matrix(births.fit3, nrow = 10201)
+sumslam.fit3 <- apply(quxlam.fit3, 1, sum)
+zday.fit3 <- matrix(sumslam.fit3, nrow = 101)
+zday.fit3 <- zday.fit3 / mean.fitness
+
+
+mnew <- data.frame(long.sex, rep(days[3], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+  group = group, code = code, families = families)
+foo <- as.character(data.mnew$redata$varb)
+offspring.mnew <- as.numeric(bar)
+
+baz <- offspring.mnew
+baz[bar] <- sub("B", "", foo)[bar]
+baz <- as.numeric(baz)
+baz[bar] <- weight(baz[bar] - 32)
+offspring.mnew <- baz
+offspring.mnew <- 100 * offspring.mnew
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+ 
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)
+phi <- crossprod(t(modmat.mnew), beta.full)
+mus.fit4 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+
+births.fit4 <- mus.fit4[ind]
+quxlam.fit4 <- matrix(births.fit4, nrow = 10201)
+sumslam.fit4 <- apply(quxlam.fit4, 1, sum)
+zday.fit4 <- matrix(sumslam.fit4, nrow = 101)
+zday.fit4 <- zday.fit4 / mean.fitness
+
+
+mnew <- data.frame(long.sex, rep(days[4], 101^2),
+    rep(x, times = 101), rep(y, each = 101))
+mnew <- cbind(mnew, matrix(rep(0, 26*101^2), ncol = 26))
+mnames <- c("Sex", "Time_2nd", "Mass_2nd", "Mass_Repro", vars)
+names(mnew) <- mnames
+data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+  group = group, code = code, families = families)
+foo <- as.character(data.mnew$redata$varb)
+offspring.mnew <- as.numeric(bar)
+
+baz <- offspring.mnew
+baz[bar] <- sub("B", "", foo)[bar]
+baz <- as.numeric(baz)
+baz[bar] <- weight(baz[bar] - 32)
+offspring.mnew <- baz
+offspring.mnew <- 100 * offspring.mnew
+data.mnew$redata <- transform(data.mnew$redata, 
+  offspring.mnew = offspring.mnew)
+ 
+modmat.mnew <- model.matrix(resp ~ varb + 
+  offspring.mnew:(Mass_Repro + Mass_2nd + 
+  I(Mass_Repro^2) + I(Mass_2nd^2) + I(Mass_2nd*Mass_Repro) + 
+  Time_2nd), data = data.mnew$redata)
+phi <- crossprod(t(modmat.mnew), beta.full)
+mus.fit5 <- transformSaturated(phi, data.mnew, from = "phi", 
+  to = "mu")
+
+births.fit5 <- mus.fit5[ind]
+quxlam.fit5 <- matrix(births.fit5, nrow = 10201)
+sumslam.fit5 <- apply(quxlam.fit5, 1, sum)
+zday.fit5 <- matrix(sumslam.fit5, nrow = 101)
+zday.fit5 <- zday.fit5 / mean.fitness
+@
+
+
+
+%We now make the four-panelled fitness landscape where fitness is reweighted to include the population growth rate. 
+
+
+%<<eval = FALSE>>=
+%par(mfrow = c(2, 2), mar = rep(0.5, 4), oma = c(4, 4, 0, 0) + 0.1)
+%# day 2
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], pch = 0)
+%contour(x, y, zday.fit2, nlevels = 7, add = TRUE)
+%# day 3
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit3)[1], maximum(sumslam.fit3)[2], pch = 0)
+%contour(x, y, zday.fit3, nlevels = 7, add = TRUE)
+%# day 4
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit4)[1], maximum(sumslam.fit4)[2], pch = 0)
+%contour(x, y, zday.fit4, nlevels = 7, add = TRUE)
+%# day 5
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit5)[1], maximum(sumslam.fit5)[2], pch = 0)
+%contour(x, y, zday.fit5, nlevels = 7, add = TRUE)
+%@
+
+
+
+
+%\begin{figure}
+%\begin{center}
+%<<fitnesslandscape-reweighted, echo = FALSE>>=
+%par(mfrow = c(2, 2), mar = rep(0.5, 4), oma = c(4, 4, 0, 0) + 0.1)
+%# day 2
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], pch = 0)
+%contour(x, y, zday.fit2, nlevels = 7, add = TRUE)
+%# day 3
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit3)[1], maximum(sumslam.fit3)[2], pch = 0)
+%contour(x, y, zday.fit3, nlevels = 7, add = TRUE)
+%# day 4
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit4)[1], maximum(sumslam.fit4)[2], pch = 0)
+%contour(x, y, zday.fit4, nlevels = 7, add = TRUE)
+%# day 5
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit5)[1], maximum(sumslam.fit5)[2], pch = 0)
+%contour(x, y, zday.fit5, nlevels = 7, add = TRUE)
+%@
+%\end{center}
+%\caption{foo}
+%\end{figure}
+
+
+
+
+%%%%%%%%%%%% the 2 two by two plots, before the most recent change %%%%%%%%%%%%
+%We now make the two four-panelled fitness landscape that appears in the paper. These plots allow the reader to discern the differences between estimated expected Darwinian fitness and estimated expected Darwinian fitness adjusted for the population growth rate.
+
+
+
+
+
+%<<eval=FALSE>>=
+%par(mfrow = c(2, 2), mar = rep(0.5, 4), 
+%  oma = c(4, 4, 0, 0) + 0.1)
+%# day 2
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, 
+%  side = 2, at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, 
+%  side = 1, at = 0.50)
+%points(maximum(sums2)[1], maximum(sums2)[2], pch = 0)
+%levels <- seq(50, 350, by = 50)
+%contour(x, y, zday2, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit2, nlevels = 7, add = TRUE)
+
+%# day 3
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums3)[1], maximum(sums3)[2], pch = 0)
+%contour(x, y, zday3, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit3)[1], maximum(sumslam.fit3)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit3, nlevels = 7, add = TRUE)
+%@
+
+
+
+
+
+
+%\begin{figure}
+%\begin{center}
+%<<4by2-part1,echo=FALSE>>=
+%par(mfrow = c(2, 2), mar = rep(0.5, 4), 
+%  oma = c(4, 4, 0, 0) + 0.1)
+%# day 2
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, 
+%  at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, 
+%  side = 1, at = 0.50)
+%points(maximum(sums2)[1], maximum(sums2)[2], pch = 0)
+%levels <- seq(50, 350, by = 50)
+%contour(x, y, zday2, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit2, nlevels = 7, add = TRUE)
+
+%# day 3
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums3)[1], maximum(sums3)[2], pch = 0)
+%contour(x, y, zday3, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit3)[1], maximum(sumslam.fit3)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit3, nlevels = 7, add = TRUE)
+%@
+%\end{center}
+%\caption{Fitness landscapes with and without adjustment for population
+%growth rate $\lambda$.  Left column not adjusted, right column adjusted.
+%Top row 2nd instar stage reached at age two,
+%bottom row 2nd instar stage reached at age three
+%(Fig.~\ref{fig:bar} has other ages).  Numbers on contours are absolute
+%fitness (unconditional expected ovariole counts) in the left column
+%and are relative fitness (absolute fitness divided its average
+%over the population) in the right column.
+%All plots plot fitness vs.\ mass at eclosion and mass at 2nd instar stage.  
+%Boxes denote location of maxima. 
+%The maximum values are
+%\Sexpr{round(max(zday2),1)} (top left),
+%\Sexpr{round(max(zday3),1)} (bottom left),
+%\Sexpr{round(max(zday.fit2),2)} (top right),
+%and \Sexpr{round(max(zday.fit3),2)} (bottom-right). 
+%}
+%\label{fig:foo}
+%\end{figure}
+
+% These 8 plots are fitness landscapes. Fitness landscapes appearing in the first column are for unconditional ovariole count while fitness landscapes appearing in the second column are for fitness adjusted for the population growth rate. The first row is for individuals that reach their second instar stage at age 2, the second row is for individuals that reach their second instar stage at 3, and so on. 
+
+
+
+
+
+%%%%%%%%%%%% the 2 two by two plots, before the most recent change (part 2) %%%%%%%%%%%%
+%<<eval = FALSE>>=
+%# day 4
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, 
+%  at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, 
+%  side = 1, at = 0.50)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums4)[1], maximum(sums4)[2], pch = 0)
+%contour(x, y, zday4, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit4)[1], maximum(sumslam.fit4)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit4, nlevels = 7, add = TRUE)
+
+%# day 5
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums5)[1], maximum(sums5)[2], pch = 0)
+%contour(x, y, zday5, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit5)[1], maximum(sumslam.fit5)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit5, nlevels = 7, add = TRUE)
+%@
+
+
+
+%\begin{figure}
+%\begin{center}
+%<<4by2-part2,echo=FALSE>>=
+%par(mfrow = c(2, 2), mar = rep(0.5, 4), oma = 
+%  c(4, 4, 0, 0) + 0.1)
+%# day 4
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, 
+%  at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, 
+%  side = 1, at = 0.50)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums4)[1], maximum(sums4)[2], pch = 0)
+%contour(x, y, zday4, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit4)[1], maximum(sumslam.fit4)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit4, nlevels = 7, add = TRUE)
+
+%# day 5
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums5)[1], maximum(sums5)[2], pch = 0)
+%contour(x, y, zday5, add = TRUE, levels = levels)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit5)[1], maximum(sumslam.fit5)[2], 
+%  pch = 0)
+%contour(x, y, zday.fit5, nlevels = 7, add = TRUE)
+%@
+%\end{center}
+%\caption{Fitness landscapes with and without adjustment for population
+%growth rate $\lambda$.  Left column not adjusted, right column adjusted.
+%Top row 2nd instar stage reached at age four,
+%bottom row 2nd instar stage reached at age five 
+%(Fig.~\ref{fig:foo} has other ages).  Numbers on contours are absolute
+%fitness (unconditional expected ovariole counts) in the left column
+%and are relative fitness (absolute fitness divided its average
+%over the population) in the right column.
+%All plots plot fitness vs.\ mass at eclosion and mass at 2nd instar stage.  
+%Boxes denote location of maxima. 
+%The maximum values are
+%\Sexpr{round(max(zday4),1)} (top left),
+%\Sexpr{round(max(zday5),1)} (bottom left),
+%\Sexpr{round(max(zday.fit4),2)} (top right),
+%and \Sexpr{round(max(zday.fit5),2)} (bottom-right). 
+%}
+%\label{fig:bar}
+%\end{figure}
+
+
+We now make the eight-paneled plot that appears in the paper, see Figure~\ref{fig:paper}. The plots in these panels are slightly different than those that appeared in Figure~\ref{fig:comp}. We have zoomed out in order to capture more of the contour shapes. This allows one to easily see the differences in the contours before and after adjusting for the population growth rate.
+
+
+<<eight-paneled,eval=FALSE>>=
+xlim <- range(x)
+ylim <- range(y)
+
+par(mfrow = c(4, 2), mar = rep(0.5, 4), 
+  oma = c(4, 4, 0, 4) + 0.1)
+# day 2
+plot(mass.second,
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+axis(side = 2, outer = TRUE)
+mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, 
+  at = 0.50)
+mtext("mass at 2nd instar stage", outer = TRUE, line = 3, 
+  side = 1, at = 0.50)
+mtext("age second instar stage reached", outer = TRUE,
+  line = 1, side = 4, at = 0.50)
+mtext(as.character(2:5), outer = TRUE, line = 3,
+  side = 4, at = c(7, 5, 3, 1) / 8)
+points(maximum(sums2)[1], maximum(sums2)[2], pch = 0)
+levels <- seq(50, 350, by = 50)
+contour(x, y, zday2, add = TRUE, levels = levels)
+
+
+plot(mass.second, 
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], 
+  pch = 0)
+contour(x, y, zday.fit2, nlevels = 7, add = TRUE)
+
+
+# day 3
+plot(mass.second,
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+axis(side = 2, outer = TRUE)
+mtext("mass at eclosion", outer = TRUE, line = 3, 
+  side = 2, at = 0.50)
+points(maximum(sums3)[1], maximum(sums3)[2], pch = 0)
+contour(x, y, zday3, add = TRUE, levels = levels)
+
+
+plot(mass.second, 
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+points(maximum(sumslam.fit3)[1], maximum(sumslam.fit3)[2], 
+  pch = 0)
+contour(x, y, zday.fit3, nlevels = 7, add = TRUE)
+
+
+# day 4
+plot(mass.second,
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+axis(side = 2, outer = TRUE)
+mtext("mass at eclosion", outer = TRUE, line = 3, 
+  side = 2, at = 0.50)
+points(maximum(sums4)[1], maximum(sums4)[2], pch = 0)
+contour(x, y, zday4, add = TRUE, levels = levels)
+
+
+plot(mass.second, 
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+points(maximum(sumslam.fit4)[1], maximum(sumslam.fit4)[2], 
+  pch = 0)
+contour(x, y, zday.fit4, nlevels = 7, add = TRUE)
+
+
+# day 5
+plot(mass.second,
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+axis(side = 1, outer = TRUE)
+axis(side = 2, outer = TRUE)
+points(maximum(sums5)[1], maximum(sums5)[2], pch = 0)
+contour(x, y, zday5, add = TRUE, levels = levels)
+
+
+plot(mass.second, 
+    mass.reprod,
+    axes = FALSE, xlab = "", ylab = "", pch = 20,
+    xlim = xlim, ylim = ylim)
+box()
+axis(side = 1, outer = TRUE)
+points(maximum(sumslam.fit5)[1], maximum(sumslam.fit5)[2], 
+  pch = 0)
+contour(x, y, zday.fit5, nlevels = 7, add = TRUE)
+@
+
+
+
+
+
+
+
+
+
+
+\begin{figure}[p]
+\begin{center}
+%%%%% DON'T REPEAT YOURSELF (the DRY rule)
+%%%%% Quote chunks, don't repeat chunks.
+<<new4by2,echo=FALSE>>=
+<<eight-paneled>>
+@
+\end{center}
+\caption{Fitness landscapes without (left column) and with (right column) adjustment for population
+growth rate $\lambda$. 
+Rows top to bottom are 2nd instar stage
+reached at age 2, 3, 4, and 5.  
+Numbers on contours are absolute
+fitness (unconditional expected ovariole counts) in the left column
+and are relative fitness (absolute fitness divided by its average
+over the population) in the right column.
+All plots display fitness as contours vs. mass at eclosion and mass at 2nd instar stage.  
+Boxes denote locations of maxima. 
+Maximum values are (left column, from top to bottom)
+\Sexpr{formatC(max(sums2), digits = 1, format = "f")},
+\Sexpr{formatC(max(sums3), digits = 1, format = "f")},
+\Sexpr{formatC(max(sums4), digits = 1, format = "f")},
+\Sexpr{formatC(max(sums5), digits = 1, format = "f")},
+(right column, from top to bottom)
+\Sexpr{formatC(max(zday.fit2), digits = 2, format = "f")},
+\Sexpr{formatC(max(zday.fit3), digits = 2, format = "f")},
+\Sexpr{formatC(max(zday.fit4), digits = 2, format = "f")},
+\Sexpr{formatC(max(zday.fit5), digits = 2, format = "f")}.}
+% The maximum values for unconditional expected ovariole counts for each age are
+% 363.6 (age 2),
+% 342.4 (age 3),
+% 322.4 (age 4),
+% and 303.6 (age 5).}
+%. Left column not adjusted: contours are fitness (unconditional
+%expected ovariole count).  Right column adjusted: contours are relative fitness
+%(fitness divided by mean fitness).  
+%Boxes denote locations of maxima, the values
+%being 363.6, 342.4, 322.4, and 303.6 going down left column
+%and 1.39, 1.28, 1.20, and 1.14 going down right column.}
+\label{fig:paper}
+\end{figure}
+
+
+
+
+
+
+
+
+
+
+
+%%%%% All 8 contours with unlabeled axes %%%%%
+%<<eval = FALSE>>=
+%par(mfrow = c(4, 2), mar = rep(0.5, 4), oma = c(4, 4, 0, 0) + 0.1)
+%# day 2
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sums2)[1], maximum(sums2)[2], pch = 0)
+%levels <- seq(50, 350, by = 50)
+%contour(x, y, zday2, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], pch = 0)
+%contour(x, y, zday.fit2, nlevels = 7, add = TRUE,
+%  drawlabels = FALSE)
+
+
+%# day 3
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%points(maximum(sums3)[1], maximum(sums3)[2], pch = 0)
+%contour(x, y, zday3, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit3)[1], maximum(sumslam.fit3)[2], pch = 0)
+%#contour(x, y, zday.fit3, nlevels = 7, add = TRUE)
+%contour(x, y, zday.fit3, nlevels = 7, add = TRUE, 
+%  drawlabels = FALSE)
+
+
+%# day 4
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%points(maximum(sums4)[1], maximum(sums4)[2], pch = 0)
+%contour(x, y, zday4, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit4)[1], maximum(sumslam.fit4)[2], pch = 0)
+%contour(x, y, zday.fit4, nlevels = 7, add = TRUE,
+%  drawlabels = FALSE)
+
+
+%# day 5
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums5)[1], maximum(sums5)[2], pch = 0)
+%contour(x, y, zday5, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit5)[1], maximum(sumslam.fit5)[2], pch = 0)
+%contour(x, y, zday.fit5, nlevels = 7, add = TRUE,
+%  drawlabels = FALSE)
+%@
+
+
+
+
+
+
+
+%\begin{figure}
+%\begin{center}
+%<<4by2-tech, echo = FALSE>>=
+%par(mfrow = c(4, 2), mar = rep(0.5, 4), oma = c(4, 4, 0, 0) + 0.1)
+%# day 2
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sums2)[1], maximum(sums2)[2], pch = 0)
+%levels <- seq(50, 350, by = 50)
+%#contour(x, y, zday2, add = TRUE, levels = levels)
+%contour(x, y, zday2, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit2)[1], maximum(sumslam.fit2)[2], pch = 0)
+%#contour(x, y, zday.fit2, nlevels = 7, add = TRUE)
+%contour(x, y, zday.fit2, nlevels = 7, add = TRUE,
+%  drawlabels = FALSE)
+
+
+%# day 3
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%points(maximum(sums3)[1], maximum(sums3)[2], pch = 0)
+%#contour(x, y, zday3, add = TRUE, levels = levels)
+%contour(x, y, zday3, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit3)[1], maximum(sumslam.fit3)[2], pch = 0)
+%#contour(x, y, zday.fit3, nlevels = 7, add = TRUE)
+%contour(x, y, zday.fit3, nlevels = 7, add = TRUE, 
+%  drawlabels = FALSE)
+
+
+%# day 4
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%points(maximum(sums4)[1], maximum(sums4)[2], pch = 0)
+%#contour(x, y, zday4, add = TRUE, levels = levels)
+%contour(x, y, zday4, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam.fit4)[1], maximum(sumslam.fit4)[2], pch = 0)
+%#contour(x, y, zday.fit4, nlevels = 7, add = TRUE)
+%contour(x, y, zday.fit4, nlevels = 7, add = TRUE,
+%  drawlabels = FALSE)
+
+
+%# day 5
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%axis(side = 2, outer = TRUE)
+%points(maximum(sums5)[1], maximum(sums5)[2], pch = 0)
+%#contour(x, y, zday5, add = TRUE, levels = levels)
+%contour(x, y, zday5, add = TRUE, levels = levels,
+%  drawlabels = FALSE)
+
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam.fit5)[1], maximum(sumslam.fit5)[2], pch = 0)
+%#contour(x, y, zday.fit5, nlevels = 7, add = TRUE)
+%contour(x, y, zday.fit5, nlevels = 7, add = TRUE,
+%  drawlabels = FALSE)
+%@
+%\end{center}
+%\caption{These 8 plots are fitness landscapes. Fitness landscapes appearing in the first column are 
+%for unconditional ovariole count while fitness landscapes appearing in the second column are for fitness 
+%adjusted for the population growth rate. The first row is for individuals that reach their second instar 
+%stage at age 2, the second row is for individuals that reach their second instar stage at 3, and so on. }
+%\end{figure}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%$\mu_x(z)$ is calculated using the \texttt{transformUnconditional} function. This calculation could be made by first transforming from $\beta$ to $\varphi$ manually and then using \texttt{transformSaturated} to transform from $\varphi$ to $\mu$ as done previously. 
+
+
+%<<>>=
+%mymu.full <- transformUnconditional(beta.full, 
+%  modmat.full, data, from = "beta", to = "mu")
+%names(mymu.full) <- rownames(modmat.full)
+%@
+
+
+%Reweighted estimated expected ovariole count is then computed along with the mean of reweighted estimated expected ovariole count. This mean is taken over the estimated expected ovariole count of females within our observed dataset. There are 8 expected ovariole count values for each individual. These correspond to expected ovariole count for an individual at every possible day at which they may reach their reproductive stage. We therefore multiply our estimated mean expected ovariole count by 8 so that our average has a denominator corresponding to the number of individuals rather than number of nodes.
+
+
+%<<>>= % first line used to be grepl("varbB", rownames(tau.full))
+%mymu.full.births <- mymu.full[grepl("B", names(mymu.full))]
+%mydays <- sub("^.*\\.B", "", names(mymu.full.births))
+%mydays <- as.numeric(mydays[grepl("B", names(mymu.full.births))])
+%myweights.lam <- exp(- lambda.hat * mydays)
+%mean.fitness <- mean(mymu.full.births * myweights.lam)
+%mean.fitness <- mean.fitness * 8
+%@
+
+
+%\subsection{Fitness landscape weighted with respect to the population growth rate}
+
+%The fitness landscape for expected ovariole count reweighted with respect to the population growth rate is constructed the same way as before with the exception that estimates of $\mu$ are weighted.
+
+
+%<<>>=
+%mnew <- data.frame(cbind(rep(x,101), 
+%  unlist(lapply(y, FUN = gary))))
+%mnew <- cbind(id, rep(1,101^2), rep(days[1],101^2), 
+%  mnew, matrix( rep(0,26*101^2), nrow = 101^2, ncol = 26))
+%names(mnew) <- names(Msextadata)
+%data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+%  group = group, code = code, families = families)
+%foo <- as.character(data.mnew$redata$varb)
+%bar <- grepl("B", foo)
+%offspring.mnew <- as.numeric(bar)
+
+%baz <- offspring.mnew
+%baz[bar] <- sub("B", "", foo)[bar]
+%baz <- as.numeric(baz)
+%baz[bar] <- weight(baz[bar] - 32)
+%offspring.mnew <- baz
+%data.mnew$redata <- transform(data.mnew$redata, 
+%  offspring.mnew = offspring.mnew)
+ 
+%modmat.mnew <- model.matrix(resp ~ varb + 
+%  offspring.mnew:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd), 
+%  data = data.mnew$redata)
+%phi <- crossprod(t(modmat.mnew), beta.full)
+%mus2 <- transformSaturated(phi, data.mnew, from = "phi", 
+%  to = "mu")
+
+%ind <- which(grepl("B",rownames(data.frame(modmat.mnew))))
+%births2 <- mus2[ind]
+%#%john2 <- function(x)  weight(x) * births2[((x-1)*10201+1):(x*10201)]
+%#%quxlam2 <- unlist(apply( matrix(c(1:8)),1, FUN = john2))
+%quxlam2 <- matrix(births2, nrow = 10201)
+%sumslam2 <- apply(quxlam2, 1, sum)
+%zlam2 <- matrix(sumslam2, nrow = 101)
+%@
+
+
+%We now divide by the estimated mean expected ovariole count to produce relative fitness for our hypothetical individuals
+
+
+%<<>>=
+%#%zlam2 <- zlam2 / (mean.fitness)
+%@
+
+
+%Our relative fitness landscape is seen below.
+
+
+%<<>>=
+%plot(mass.second, 
+%  mass.reprod, xlab = 
+%  "Mass at 2nd instar", ylab = "Mass at Reproduction", pch = 20, 
+%  main = "Fitness Landscape for ovariole counts vs.Mass")
+%contour(x,y,zlam2, add = TRUE)
+%@
+
+
+
+
+%We perform the same calculations to produce relative fitness landscapes for the other 30603 hypothetical individuals that reach their second instar life stage at ages 3, 4, and 5.
+
+
+
+%<<>>=
+%mnew <- data.frame(cbind(rep(x,101), 
+%  unlist(lapply(y, FUN = gary))))
+%mnew <- cbind(id, rep(1,101^2), rep(days[2],101^2), 
+%  mnew, matrix( rep(0,26*101^2), nrow = 101^2, ncol = 26))
+%names(mnew) <- names(Msextadata)
+%data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+%  group = group, code = code, families = families)
+%foo <- as.character(data.mnew$redata$varb)
+%offspring.mnew <- as.numeric(bar)
+
+%baz <- offspring.mnew
+%baz[bar] <- sub("B", "", foo)[bar]
+%baz <- as.numeric(baz)
+%baz[bar] <- weight(baz[bar] - 32)
+%offspring.mnew <- baz
+%data.mnew$redata <- transform(data.mnew$redata, 
+%  offspring.mnew = offspring.mnew)
+ 
+%modmat.mnew <- model.matrix(resp ~ varb + 
+%  offspring.mnew:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd), 
+%  data = data.mnew$redata)
+%phi <- crossprod(t(modmat.mnew), beta.full)
+%mus3 <- transformSaturated(phi, data.mnew, from = "phi", 
+%  to = "mu")
+
+%births3 <- mus3[ind]
+%#%john3 <- function(x)  weight(x) * births3[((x-1)*10201+1):(x*10201)]
+%#%quxlam3 <- unlist(apply( matrix(c(1:8)),1, FUN = john3))
+%quxlam3 <- matrix(births3, nrow = 10201)
+%sumslam3 <- apply(quxlam3, 1, sum)
+%zlam3 <- matrix(sumslam3, nrow = 101)
+
+%# compute relative fitness
+%#zlam3 <- zlam3 / (mean.fitness * 8)
+
+%mnew <- data.frame(cbind(rep(x,101), 
+%  unlist(lapply(y, FUN = gary))))
+%mnew <- cbind(id, rep(1,101^2), rep(days[3],101^2), 
+%  mnew, matrix( rep(0,26*101^2), nrow = 101^2, ncol = 26))
+%names(mnew) <- names(Msextadata)
+%data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+%  group = group, code = code, families = families)
+%foo <- as.character(data.mnew$redata$varb)
+%offspring.mnew <- as.numeric(bar)
+
+%baz <- offspring.mnew
+%baz[bar] <- sub("B", "", foo)[bar]
+%baz <- as.numeric(baz)
+%baz[bar] <- weight(baz[bar] - 32)
+%offspring.mnew <- baz
+%data.mnew$redata <- transform(data.mnew$redata, 
+%  offspring.mnew = offspring.mnew)
+ 
+%modmat.mnew <- model.matrix(resp ~ varb + 
+%  offspring.mnew:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd), 
+%  data = data.mnew$redata)
+%phi <- crossprod(t(modmat.mnew), beta.full)
+%mus4 <- transformSaturated(phi, data.mnew, from = "phi", 
+%  to = "mu")
+
+%births4 <- mus4[ind]
+%#%john4 <- function(x)  weight(x) * births4[((x-1)*10201+1):(x*10201)]
+%#%quxlam4 <- unlist(apply( matrix(c(1:8)),1, FUN = john4))
+%quxlam4 <- matrix(births4, nrow = 10201)
+%sumslam4 <- apply(quxlam4, 1, sum)
+%zlam4 <- matrix(sumslam4, nrow = 101)
+
+%# compute relative fitness
+%#zlam4 <- zlam4 / (mean.fitness * 8)
+
+
+%mnew <- data.frame(cbind(rep(x,101), 
+%  unlist(lapply(y, FUN = gary))))
+%mnew <- cbind(id, rep(1,101^2), rep(days[4],101^2), 
+%  mnew, matrix( rep(0,26*101^2), nrow = 101^2, ncol = 26))
+%names(mnew) <- names(Msextadata)
+%data.mnew <- asterdata(mnew, vars = vars, pred = pred, 
+%  group = group, code = code, families = families)
+%foo <- as.character(data.mnew$redata$varb)
+%offspring.mnew <- as.numeric(bar)
+
+%baz <- offspring.mnew
+%baz[bar] <- sub("B", "", foo)[bar]
+%baz <- as.numeric(baz)
+%baz[bar] <- weight(baz[bar] - 32)
+%offspring.mnew <- baz
+%data.mnew$redata <- transform(data.mnew$redata, 
+%  offspring.mnew = offspring.mnew)
+ 
+%modmat.mnew <- model.matrix(resp ~ varb + 
+%  offspring.mnew:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd), 
+%  data = data.mnew$redata)
+%phi <- crossprod(t(modmat.mnew), beta.full)
+%mus5 <- transformSaturated(phi, data.mnew, from = "phi", 
+%  to = "mu")
+
+%births5 <- mus5[ind]
+%#%john5 <- function(x)  weight(x) * births5[((x-1)*10201+1):(x*10201)]
+%#%quxlam5 <- unlist(apply( matrix(c(1:8)),1, FUN = john5))
+%quxlam5 <- matrix(births5, nrow = 10201)
+%sumslam5 <- apply(quxlam5, 1, sum)
+%zlam5 <- matrix(sumslam5, nrow = 101)
+
+%# compute relative fitness
+%#zlam5 <- zlam5 / (mean.fitness * 8)
+%@
+
+
+
+%<<>>=
+%plot(mass.second, mass.reprod, xlab = 
+%"Mass at 2nd instar", ylab = "Mass at Reproduction", 
+%main = "Fitness Landscape for ovariole counts vs.Mass")
+%contour(x,y,zlam3, add = TRUE)
+%@
+
+%<<>>=
+%plot(mass.second, mass.reprod, xlab = 
+%"Mass at 2nd instar", ylab = "Mass at Reproduction", 
+%main = "Fitness Landscape for ovariole counts vs.Mass")
+%contour(x,y,zlam4, add = TRUE)
+%@
+
+%<<>>=
+%plot(mass.second, mass.reprod, xlab = 
+%"Mass at 2nd instar", ylab = "Mass at Reproduction", 
+%main = "Fitness Landscape for ovariole counts vs.Mass")
+%contour(x,y,zlam5, add = TRUE)
+%@
+
+
+
+%Comparison of \eqref{eq:stable} and \eqref{eq:stable-reweight} shows that
+%if we replace $z$ for a hypothetical individual by the covariate vector
+%$z_i$ for individual $i$ and average over all individuals in the data,
+%we get 1. This indicates that $w(z)$ is \emph{relative fitness} (fitness divided by mean
+%fitness) for a hypothetical individual with covariate vector $z$.
+%Then computing $w(z)$ for $z$ values ranging over a grid
+%and making a contour plot of these values gives a fitness landscape
+%adjusted for population growth rate (Figs.~\ref{fig:four} and~\ref{fig:five}). \\
+
+
+
+
+%%%find the population growth rate. The population growth rate parameter for the observed population of \emph{M. sexta} is calculated from the stable age equation
+%%%\[ 1 = \sum_{x = 33}^{40} \mu(x) e^{-\lambda x} \]
+%%%as discussed in \citep*[p.~26]{fisher}. The unconditional expectation of fitness for day $x$, denoted by $\mu_x$, is equivalent to Fisher's $l_x b_x$ where in our model $\lambda$ is in days instead of years. From the stable age equation, $\lambda = \Sexpr{round(lambda.hat, 3)}$. The positive value of $\lambda$ indicates a growing population. We examine the effects that $\lambda$ has on expected fitness by reweighting the fitness landscape according to 
+%%%\[ w_{ijk} = \sum_{x = 33}^{40} \mu_{ijk}(x) e^{-\lambda x}. \]
+%%%The subscripts $i$, $j$, and $k$ represent the $i^{th}$ mass at the second instar stage, the $j^{th}$ mass at eclosion, and the $k^{th}$ day at which an individual reaches its second instar stage respectively \citep[p.~134]{charles}. $\mu_{ijk}(x)$ is thus the unconditional expected fitness for a female \emph{M. sexta} on day $x$ having the $i^{th}$ value for mass at second instar stage, the $j^{th}$ value for mass at eclosion, and the $k^{th}$ value for day when second instar stage is reached. 
+%The estimated fitness landscapes taking into account population growth and timing of reproduction (Fig.~\ref{fig:four}) 
+%%%tells essentially the same story as the first fitness landscape. 
+%is qualitatively similar to that for unconditional ovariole count without accounting for these aspects (Fig.~\ref{fig:two}).
+%An increase in mass at eclosion increases expected fitness for each fixed age.  As before, expected fitness does not appear to vary much with changes in mass at the second instar stage. Similarly, expected fitness decreases with increasing age at 2nd instar; for example, maximum fitness decreases by $15 \%$ as age to 2nd instar increases from 2 to 5 days (Fig.~\ref{fig:four}). This suggests that, in this study, variation in generation time does not contribute importantly to patterns of phenotypic selection on these traits.
+
+
+
+
+%\begin{figure}[h!]
+%\begin{center}
+%<<label=fig4, echo = FALSE>>=
+%par(mfrow = c(2, 2), mar = rep(0.5, 4), oma = c(4, 4, 0, 0) + 0.1)
+%# day 2
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sumslam2)[1], maximum(sumslam2)[2], pch = 0)
+%contour(x, y, zlam2, nlevels = 7, add = TRUE)
+%# day 3
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumslam3)[1], maximum(sumslam3)[2], pch = 0)
+%contour(x, y, zlam3, nlevels = 7, add = TRUE)
+%# day 4
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam4)[1], maximum(sumslam4)[2], pch = 0)
+%contour(x, y, zlam4, nlevels = 7, add = TRUE)
+%# day 5
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumslam5)[1], maximum(sumslam5)[2], pch = 0)
+%contour(x, y, zlam5, nlevels = 7, add = TRUE)
+%@
+%\end{center}
+%\caption{Relative fitness landscapes accounting for $\lambda$.
+%Different panels are for different
+%ages (in days since hatching) at which individuals reached the second instar
+%larval stage (age 2 is top left, age 3 is top right, age 4 is bottom left,
+%and age 5 is bottom right). Mass at second instar stage is on the $x$-axis,
+%and mass at eclosion is on the $y$-axis. The boxes denote the maxima. 
+%The maximum values are \Sexpr{round(max(zlam2),2)} (top left),
+%\Sexpr{round(max(zlam3),2)} (top right),
+%\Sexpr{round(max(zlam4),2)} (bottom left),
+%and \Sexpr{round(max(zlam5),2)} (bottom right).}
+%\label{fig:four}
+%\end{figure}
+
+
+
+%\subsection{Fitness landscape weighted with respect to a hypothetically declining population}
+
+%Changing the mean population growth rate of the population, $\lambda$, 
+%%%and reweighting the fitness landscapes according to the new value 
+%can, in principle, substantially change the landscape. Here we consider an alternate value of $\lambda$ to be $\ensuremath{-0.122}$ which is the negative of the estimate of the actual population growth rate. This new value corresponds to a population that is decreasing in size. The new fitness landscapes for this hypothetical, declining population (Fig.~\ref{fig:five}) differ in scale but not in the shape of landscapes (cf.\ Fig.~\ref{fig:two} and Fig.~\ref{fig:four}). 
+%For these data, mean population growth rate has little effect on the patterns of phenotypic selection on these traits. \\
+
+%To construct Fig.~\ref{fig:five} we first obtain the new $\lambda$ value corresponding to the hypothetically declining population. Estimated mean expected fitness is obtained the same way as before. 
+
+
+%<<>>=
+%lambda.hat2 <- - lambda.hat 
+%myweights <- exp(- lambda.hat2 * mydays)
+%mean.fitness.neglam <- mean(mymu.full.births * myweights) * 8
+%@
+
+
+%The weights with respect to this new population growth rate are
+
+
+%<<>>=
+%weight.neg <- function(t) exp(-lambda.hat2 * (32 + t))
+%weight.neg(c(1:8))
+%@
+
+
+%We perform the same calculations as before to produce the relative fitness landscapes reweighted with respect to the population growth rate for this hypothetically declining population. The 40804 hypothetical individuals used are the same individuals that produced the previous fitness landscapes.
+
+
+%<<>>=
+%neglam2 <- function(x) weight.neg(x) * births2[((x-1)*10201+1):(x*10201)]
+%quxneglam2 <- unlist(apply( matrix(c(1:8)),1, FUN = neglam2))
+%sumsneglam2 <- apply(quxneglam2, 1, sum)
+%zneglam2 <- matrix(sumsneglam2, nrow = 101)
+
+%# compute relative fitness
+%zneglam2 <- zneglam2 / mean.fitness.neglam
+
+%neglam3 <- function(x) weight.neg(x) * births3[((x-1)*10201+1):(x*10201)]
+%quxneglam3 <- unlist(apply( matrix(c(1:8)),1, FUN = neglam3))
+%sumsneglam3 <- apply(quxneglam3, 1, sum)
+%zneglam3 <- matrix(sumsneglam3, nrow = 101)
+
+%# compute relative fitness
+%zneglam3 <- zneglam3 / mean.fitness.neglam
+
+%neglam4 <- function(x) weight.neg(x) * births4[((x-1)*10201+1):(x*10201)]
+%quxneglam4 <- unlist(apply( matrix(c(1:8)),1, FUN = neglam4))
+%sumsneglam4 <- apply(quxneglam4, 1, sum)
+%zneglam4 <- matrix(sumsneglam4, nrow = 101)
+
+%# compute relative fitness
+%zneglam4 <- zneglam4 / mean.fitness.neglam
+
+%neglam5 <- function(x) weight.neg(x) * births5[((x-1)*10201+1):(x*10201)]
+%quxneglam5 <- unlist(apply( matrix(c(1:8)),1, FUN = neglam5))
+%sumsneglam5 <- apply(quxneglam5, 1, sum)
+%zneglam5 <- matrix(sumsneglam5, nrow = 101)
+
+%# compute relative fitness
+%zneglam5 <- zneglam5 / mean.fitness.neglam
+%@
+
+
+%\begin{figure}[h!]
+%\begin{center}
+%<<label=neglam, echo = FALSE>>=
+%par(mfrow = c(2, 2), mar = rep(0.5, 4), oma = c(4, 4, 0, 0) + 0.1)
+
+%plot(mass.second, 
+%  mass.reprod, 
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sumsneglam2)[1], maximum(sumsneglam2)[2], pch = 0)
+%contour(x,y,zneglam2, add = TRUE)
+
+%plot(mass.second, 
+%  mass.reprod, 
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%points(maximum(sumsneglam3)[1], maximum(sumsneglam3)[2], pch = 0)
+%contour(x,y,zneglam3, add = TRUE)
+
+%plot(mass.second, 
+%  mass.reprod, 
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 2, outer = TRUE)
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumsneglam4)[1], maximum(sumsneglam4)[2], pch = 0)
+%contour(x,y,zneglam4, add = TRUE)
+
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%axis(side = 1, outer = TRUE)
+%points(maximum(sumsneglam5)[1], maximum(sumsneglam5)[2], pch = 0)
+%contour(x,y,zneglam5, add = TRUE)
+%@
+%\end{center}
+%\caption{fitness landscapes accounting for $\lambda$ of
+%a hypothetically declining population.
+%Different panels are for different
+%ages (in days since hatching) at which individuals reached the second instar
+%larval stage (age 2 is top left, age 3 is top right, age 4 is bottom left,
+%and age 5 is bottom right). Mass at second instar stage is on the $x$-axis,
+%and mass at eclosion is on the $y$-axis. The boxes denote the maxima. 
+%The maximum values are
+%1.5 (top-left),
+%1.42 (top-right),
+%1.33 (bottom-left),
+%and 1.25 (bottom-right).}
+%\label{fig:five}
+%\end{figure}
+
+
+
+
+%\begin{figure}[h!]
+%\begin{center}
+%<<out.width='6cm', out.height='6cm',fig.show='hold'>>=
+%plot(mass.second, 
+%  mass.reprod,
+%  axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%#axis(side = 2, outer = TRUE)
+%#mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%#mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sumslam2)[1], maximum(sumslam2)[2], pch = 0)
+%contour(x, y, zlam2, nlevels = 7, add = TRUE)
+
+%plot(mass.second, mass.reprod,
+%    axes = FALSE, xlab = "", ylab = "", pch = 20)
+%box()
+%#axis(side = 2, outer = TRUE)
+%#mtext("mass at eclosion", outer = TRUE, line = 3, side = 2, at = 0.50)
+%#mtext("mass at 2nd instar stage", outer = TRUE, line = 3, side = 1, at = 0.50)
+%points(maximum(sums2)[1], maximum(sums2)[2], pch = 0)
+%levels <- seq(50, 350, by = 50)
+%contour(x, y, zday2, add = TRUE, levels = levels)
+%@
+%\end{center}
+%\caption{The left panel is the fitness landscape where fitness is reweighted according to the population growth rate. The right panel is the fitness landscape with no reweighting. The contours appear to be no different.}
+%\label{fig:six}
+%\end{figure}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%\newpage
+%Redo the analysis with fitness reweighted to incorporate the population growth rate.
+
+
+%<<>>=
+%foo <- data$redata$varb
+%bar <- grepl("B",data$redata$varb)
+%offspring <- as.numeric(bar)
+%baz <- offspring
+%baz[bar] <- sub("B", "", foo)[bar]
+%baz <- as.numeric(baz)
+%baz[bar] <- weight(baz[bar] - 32)
+%offspring <- baz
+%data$redata <- transform(data$redata, 
+%  offspring = offspring)
+
+%modmat <- model.matrix(resp ~ varb + offspring:(Mass_2nd + 
+%  Mass_Repro), data = data$redata)
+%tau <- crossprod(modmat, data$redata$resp)
+%beta <- transformUnconditional(tau, modmat, 
+%  data, from = "tau", to = "beta")
+%@
+
+
+%<<>>=
+%modmat.quad <- model.matrix(resp ~ varb + 
+%  offspring:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro)), 
+%  data = data$redata)
+%tau.quad <- crossprod(modmat.quad, data$redata$resp)
+%@
+
+
+%The MLE of the submodel mean-value parameter from the linear model in both mass traits is now calculated. We transform our MLE for the submodel canonical parameter to the mean-value parameterization under the null hypothesis that the quadratic terms are not present in our model. The quadratic terms are the last three elements of our submodel canonical parameter vector for the full model. Therefore we add three zeros to the end of \texttt{beta} before calling \texttt{transformUnconditional}. The score function needed for the Rao test is then calculated.
+
+
+%<<>>=
+%tau.null <- transformUnconditional(c(beta,rep(0,3)), 
+%  modmat.quad, data, from = "beta", to = "tau")
+%score <- tau.quad - tau.null  
+%@
+
+
+%The \texttt{jacobian} function is then used to find the Jacobian of the map from $\beta$ to $\tau$ under the null hypothesis.
+
+
+%<<>>=
+%Fisher.null <- jacobian(c(beta,rep(0,3)), data, 
+%  transform = "unconditional", from = "beta", 
+%  to = "tau", modmat = modmat.quad)
+%@
+
+%<<eval = FALSE, echo = FALSE>>=
+%foot <- crossprod(modmat.quad, data$redata$resp)
+%foot[c(29:31)] <- 0
+%blah <- transformUnconditional(foot, tolerance = 1e-30,
+%  modmat.quad, data, from = "tau", to = "beta")
+%Fisher.null2 <- jacobian(blah, data, 
+%  transform = "unconditional", from = "beta", 
+%  to = "tau", modmat = modmat.quad)
+%score2 <- foot - tau.quad
+
+%Rao2 <- t(score2) %*% Fisher.null2 %*% score2
+%@
+
+
+%We build the Rao test statistic and then calculated the p-value where the reference distribution for this test is $\chi^2$ with three degrees of freedom. The p-value from the Rao test is lower than any reasonable significance level. The full quadratic model is preferred over the simpler linear model.
+
+
+%<<>>=
+%Rao <- t(score) %*% solve(Fisher.null, tol = 1e-50) %*% score
+%Rao
+%df <- 3
+%pval <- pchisq(Rao, df = df, lower.tail = FALSE)
+%pval
+%@
+
+
+%We now wish to compare the full quadratic model to the model that is full quadratic in the two mass terms and has a linear term for the time it takes individuals to reach their second instar life stage. The MLE of the submodel canonical parameter vector for the full quadratic model is obtained using the \texttt{transformUnconditional} function. This is now an estimator of the submodel canonical parameter vector corresponding to the null hypothesis of our model selection procedure.
+
+
+%<<>>=
+%beta.quad <- transformUnconditional(tau.quad, 
+%  modmat.quad, data, from = "tau", to = "beta")
+%@
+
+
+%The exact same steps are executed to perform the Rao test that compares the two models of interest. The p-value from the Rao test indicates that the larger model is preferred at any reasonable choice of significance level. This model includes a linear term for the time it takes individuals to reach their second instar life stage to the full quadratic model selected in the previous test.
+
+
+%<<>>=
+%modmat.full <- model.matrix(resp ~ varb + 
+%  offspring:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd), 
+%  data = data$redata)
+%tau.full <- crossprod(modmat.full, data$redata$resp)
+%beta.full <- transformUnconditional(tau.full, 
+%  modmat.full, data, from = "tau", to = "beta")
+
+%tau.null <- transformUnconditional(c(beta.quad,0), 
+%  modmat.full, data, from = "beta", to = "tau")
+%Fisher.null <- jacobian(c(beta.quad,0), data, transform = 
+%  "unconditional", from = "beta", to = "tau", 
+%  modmat = modmat.full)
+%score <- tau.full - tau.null
+%Rao <- t(score) %*% solve(Fisher.null, tol = 1e-50) %*% score
+%Rao
+
+%df <- length(beta.full) - length(beta.quad)
+%pval <- pchisq(Rao, df = df, lower.tail = FALSE)
+%pval
+%@
+
+
+
+%<<echo = FALSE>>=
+%mymu.full <- transformUnconditional(beta.full, 
+%  modmat.full, data, from = "beta", to = "mu")
+%mytau.full <- crossprod(modmat.full, mymu.full)
+%#all.equal(mytau.full, tau.full)
+%names(mymu.full) <- rownames(modmat.full)
+%@
+
+
+%All more complicated models are found to be insignificant when testing at the 0.05 significance level. Our final model includes the full quadratic structure between the two mass terms and a linear term for the age at which an individual \emph{M. sexta} reaches its second instar larval stage as useful predictors of ovariole count (expected Darwinian fitness). For example, the model including the interaction between mass at reproduction and age to the second instar stage is seen to be not significant.
+
+
+
+%<<>>=
+%modmat.bigger <- model.matrix(resp ~ varb + 
+%  offspring:(Mass_2nd + Mass_Repro + I(Mass_2nd^2) + 
+%  I(Mass_Repro^2) + I(Mass_2nd*Mass_Repro) + Time_2nd + 
+%  I(Time_2nd*Mass_Repro)), 
+%  data = data$redata)
+%canonical.bigger <- crossprod(modmat.bigger, 
+%  data$redata$resp)
+%beta.bigger <- transformUnconditional(canonical.bigger, 
+%  modmat.bigger, data, from = "tau", to = "beta")
+
+%tau.null <- transformUnconditional(c(beta.full,0), 
+%  modmat.bigger, data, from = "beta", to = "tau")
+%Fisher.null <- jacobian(c(beta.full,0), data, 
+%  transform = "unconditional", from = "beta", 
+%  to = "tau", modmat = modmat.bigger)
+%score <- canonical.bigger - tau.null
+%Rao <- t(score) %*% solve(Fisher.null, tol = 1e-50) %*% score
+%Rao
+
+%df <- length(beta.bigger) - length(beta.full)
+%pval <- pchisq(Rao, df = df, lower.tail = FALSE)
+%pval
+%@
+
+
+
+
+
+
+\appendix
+
+\section{Make the Data}
+
+In this appendix we show how the \texttt{hornworm} dataset in the \astertwo
+package was initially created starting from the data for the original analysis
+\citep{kingsolver-et-al}, which was a comma separated values (CSV) file.
+This file can be found at the same location at the University of Minnesota
+Digital Conservancy (\url{http://conservancy.umn.edu/}) where this technical
+report is found.
+<<>>=
+MSexta <- read.csv("MSexta.Aster.csv")
+names(MSexta)
+@
+
+Some of the column names are changed for convenience.
+Any column name that ends in \texttt{Repro} means that the data in that column
+pertains to the eclosion stage of \emph{M. sexta}.
+
+<<>>=
+names(MSexta)[c(3,6,7,8)] <- c("Surv_Repro","Time_Repro",
+    "Mass_Repro","Eggs")
+names(MSexta)
+@
+
+%#names(MSexta)
+%#sapply(MSexta, class)
+%#levels(MSexta$id)
+%#levels(MSexta$Sex)
+%#sapply(MSexta, function(x) any(is.na(x)))
+
+%#MSexta[MSexta$Surv_Repro == 0, ]
+%# note that time to reproduction and mass at reproduction are undefined
+%# if individual did not survive to reproduction
+%#MSexta[MSexta$Surv_Repro == 1 & MSexta$Sex == "M", ]
+%# note that for all males ovariole count is undefined, have to trim this
+%# node off of graph for males.  But also have some other undefined values.
+%#MSexta[MSexta$Surv_Repro == 1 & MSexta$Sex == "F", ]
+%# note that for some females ovariole count is also undefined, have to trim this
+%# node off of graph for these females.
+
+This dataset has two individuals that have an ovariole count
+but have sex declared as \texttt{NA}.  We change sex from \texttt{NA}
+to female for these individuals.
+
+<<>>=
+sex.change <- (! is.na(MSexta$Eggs)) & is.na(MSexta$Sex)
+sum(sex.change)
+MSexta[sex.change, "Sex"] <- "F"
+@
+
+
+Sex cannot be determined for \emph{M. sexta} that die before pupation
+so the dataset at this point has \texttt{NA} values recorded for the
+sex of such individuals.  The \texttt{aster} and \texttt{aster2} packages
+do not allow \texttt{NA} values in covariates,
+so change sex from \texttt{NA} to \texttt{U} for unobservable.
+
+<<>>=
+fred <- as.character(MSexta$Sex)
+fred[is.na(fred)] <- "U"
+MSexta$Sex <- as.factor(fred)
+@
+
+There is some data on female \emph{M. sexta} that reached eclosion but
+had \texttt{NA} recorded for ovariole count.  Since the fitness of such
+individuals is unknown (missing data), they provide no information about
+fitness, so we remove them from the data.
+
+<<>>=
+condition <- (MSexta$Sex == "F") & is.na(MSexta$Eggs) &
+    (MSexta$Surv_Repro == 1)
+sum(condition)
+MSexta <- MSexta[!condition,]
+@
+
+
+We now add the survival to pupation variable, called $P$
+in the aster graph (p.~\pageref{graph}).
+This variable is constructed using the \texttt{Sex} variable.
+Every individual that has sex recorded as male or female survived to pupation,
+and every individual that has no sex recorded died before pupation. 
+
+
+<<>>=
+P <- as.numeric(MSexta$Sex != "U")
+MSexta <- data.frame(MSexta, P = P)
+@
+
+Other nodes in the graph  are constructed using
+the survival to reproduction variables \verb@Surv_Repro@ and \verb@Time_Repro@.
+<<>>=
+surv.repro <- MSexta$Surv_Repro
+time.repro <- MSexta$Time_Repro
+@
+Time of death is not recorded for individuals that do not reach eclosion.
+<<>>=
+all(is.na(time.repro) == (surv.repro == 0))
+@
+
+So that \texttt{NA} values do not propagate into the variables we are creating,
+we eliminate these \texttt{NA} values.
+<<>>=
+time.repro[is.na(time.repro)] <- 0
+@
+
+Since the day of death for individuals that did not survive to eclosion
+was not recorded,
+we cannot say on what day death occurred for these individuals and hence
+record the death at age 33 days.  For all other individuals, we record
+when they reached eclosion by creating all the indicator variables in
+the graph.  For each of the ``$T$ with subscripts'' variables
+in the graph, we create an R variable of that name except we
+flatten the subscripts ($T_{35_1}$ becomes \texttt{T351}).  Because
+all deaths after pupation are recorded on day 33, that day is special.
+There is a \texttt{T330} variable but no $\texttt{T}x\texttt{0}$ variable for
+$x > 33$.  There are $\texttt{T}x\texttt{1}$ and $\texttt{T}x\texttt{2}$
+variables for all $x$ between 33 and 40.
+<<>>=
+T330 <- as.numeric((MSexta$Surv_Repro == 0) & (MSexta$P == 1))
+for (j in 33:40) {
+    varname1 <- paste("T", j, "1", sep = "")
+    varname2 <- paste("T", j, "2", sep = "")
+    assign(varname1, as.numeric(time.repro > j))
+    assign(varname2, as.numeric(time.repro == j))
+}
+@
+
+Now we also need the ovariole count variables, and we change \texttt{NA}
+to zero there too, which is harmless because all females that survive
+to eclosion now have egg counts.
+
+We have another problem that will not arise until we use
+the \texttt{asterdata} function, but it is easiest to fix here.
+The graph for females is different from the graph for males and unobserved.
+Females have egg counts, which are the $\texttt{B}x$ nodes of the graph.
+Others don't.  But the R function \texttt{asterdata} only deals with
+data such that every individual has the same graph.  The idea is do that first,
+and fix it later using the \texttt{subset} function to delete any unwanted
+nodes.  But if we do that,
+the males and unknown must have valid egg counts (even though they are
+bogus and will be deleted later) or the \texttt{asterdata} function will
+complain.  Since we are using
+the zero-truncated Poisson distribution for egg counts, every male
+who reaches eclosion must have at least one egg (even though this is
+bogus and we are going to delete his egg count node later).  The unknowns
+do not reach eclosion, so no fix-up is needed for them.
+<<>>=
+eggs <- MSexta$Eggs
+sex <- as.character(MSexta$Sex)
+eggs[sex == "M"] <- NA
+all(is.na(eggs) == ((surv.repro == 0) | (sex != "F")))
+eggs[is.na(eggs)] <- 0
+eggs[(sex == "M") & (surv.repro == 1)] <- 1
+@
+The variable $\texttt{B}x$ is equal to the egg count for that individual
+if the individual reached eclosion on day $x$ and is zero otherwise.
+<<>>=
+for (j in 33:40) {
+    varname <- paste("B", j, sep = "")
+    assign(varname, ifelse(time.repro == j, eggs, 0))
+}
+@
+
+Finally we need to fix the one covariate that still has \texttt{NA} values.
+<<>>=
+all(is.na(MSexta$Mass_Repro) == (MSexta$Surv_Repro == 0))
+MSexta$Mass_Repro[is.na(MSexta$Mass_Repro)] <- 0
+@
+
+We now stuff all these variables into a data frame, in the process changing
+the units on some of the variables: the units for \verb@Time_2nd@ change
+from days to weeks, and the units for \verb@Mass_2nd@ and \verb@Mass_Repro@
+change from milligrams to grams.  These changes of units were perhaps
+unnecessary, but were done with the idea that they might make computations
+more stable.
+
+<<>>=
+Msextadata <- data.frame(LarvaID = MSexta$LarvaID, Sex = MSexta$Sex,
+    Time_2nd = MSexta$Time_2nd / 7, Mass_2nd = MSexta$Mass_2nd / 1000,
+    Mass_Repro = MSexta$Mass_Repro / 1000, P, T330, T331, T332, B33,
+    T341, T342, B34, T351, T352, B35, T361, T362, B36, T371, T372,
+    B37, T381, T382, B38, T391, T392, B39, T401, T402, B40)
+@
+
+And check for no \texttt{NA} values.
+
+<<>>=
+! any(is.na(Msextadata))
+@
+
+Now we need to specify the rest of the graph shown in Figure~1.
+<<>>=
+vars <- c("P", "T330", "T331", "T332", "B33", "T341", "T342",
+    "B34", "T351", "T352", "B35", "T361", "T362", "B36",
+    "T371", "T372", "B37", "T381", "T382", "B38", "T391",
+    "T392", "B39", "T401", "T402", "B40")
+pred <- c(0, 1, 1, 1, 4, 3, 3, 7, 6, 6, 10, 9, 9, 13, 12, 12,
+    16, 15, 15, 19, 18, 18, 22, 21, 21, 25)
+group <- c(0, 0, 2, 3, 0, 0, 6, 0, 0, 9, 0, 0, 12, 0, 0, 15,
+    0, 0, 18, 0, 0, 21, 0, 0, 24, 0)
+families <- list("bernoulli", fam.multinomial(3), 
+    fam.zero.truncated.poisson(), fam.multinomial(2))
+code <- c(1, 2, 2, 2, 3, 4, 4, 3, 4, 4, 3, 4, 4, 3, 4, 4, 3,
+    4, 4, 3, 4, 4, 3, 4, 4, 3)
+@
+
+One of these variables that specify the graph is obvious.
+\texttt{vars} names the variables that are pasted together to form
+the response vector (all the variables at all the nodes of the graph).
+The others are less obvious.  \texttt{pred} specifies the arrows of the
+graph, and \texttt{group} specifies the lines.  If \texttt{pred[j]} is
+not zero, then there is an arrow from node \texttt{pred[j]} to node \texttt{j}.
+Otherwise, there is a line from the initial node
+(marked 1 in the aster graph) to node \texttt{j}.
+Similarly, if \texttt{group[j]} is nonzero, then there is a line from
+node \texttt{group[j]} to node \texttt{j}.
+\texttt{code} is an index vector into the families vector;
+\verb@families[code[j]]@ is the family for the conditional distribution
+of the dependence group containing node \texttt{j} given its predecessor
+node.  Since these are so hard to follow, we check that these variables
+are set right.
+<<>>=
+charpred <- c("Initial", vars)[pred + 1]
+groupidx <- seq(along = group)
+for (j in seq(along = groupidx))
+    if (group[j] != 0)
+        groupidx[j] <- groupidx[group[j]]
+data.frame(predecessor = charpred, successor = vars,
+     group = groupidx, code)
+@
+
+In each line here, \texttt{predecessor} is the predecessor
+(variable at the tail of an arrow) and
+\texttt{successor} is the successor
+(variable at the head of an arrow)
+for some arrow in the graph,
+\texttt{group} is now an arbitrary number that is the same for successor
+nodes in the same dependence group and different for successor nodes
+in different dependence groups, and \texttt{code} is the same as before.
+We see that only $\{ \texttt{T330}, \texttt{T331}, \texttt{T332} \}$
+form a three-node dependence group, and their distribution is (same
+for all three, as it must be, because this is their joint distribution)
+three-dimensional multinomial.
+We see that $\{ \texttt{T}x\texttt{1}, \texttt{T}x\texttt{2} \}$
+form a two-node dependence group for $x > 33$, and their distribution is (same
+for both) two-dimensional multinomial.
+We see that $P$ is a dependence group all by itself, and its distribution
+is Bernoulli.
+We see that $\texttt{B}x$ is a dependence group all by itself for $x \ge 33$,
+and its distribution is zero-truncated Poisson.
+We see that the predecessor of $P$ is the initial node,
+the predecessor of the $\texttt{T33}$ dependence group is $P$,
+the predecessor of the $\texttt{T}x$ dependence group is
+the $\texttt{T}w\texttt{1}$ node where $w = x - 1$
+(the predecessor of $T_{x_y}$ is $T_{w_1}$),
+and the predecessor of $\texttt{B}x$ is $\texttt{T}x\texttt{2}$ for $x \ge 33$.
+It all checks.
+
+Now we make the asterdata object.
+<<>>=
+fred <- asterdata(Msextadata, vars = vars, pred = pred,
+    group = group, code = code, families = families)
+dim(fred$redata)
+nrow(Msextadata) * length(vars)
+names(fred$redata)
+@
+And then we remove nodes of the graph that are not supposed to be there:
+ovariole count nodes for males and unknown.
+<<>>=
+condition2 <- (fred$redata$Sex == "F") | (! grepl("B", fred$redata$varb))
+fred <- subset(fred, subset = condition2, successors = FALSE)
+dim(fred$redata)
+nrow(Msextadata) * length(vars) -
+    sum(Msextadata$Sex != "F") * sum(grepl("B", vars))
+names(fred$redata)
+@
+
+Now we check this against the \texttt{hornworm} dataset from
+the \texttt{aster2} package.
+<<check-it>>=
+identical(fred, hornworm)
+@
+If \texttt{FALSE}, this is i18n insanity, which is not really R's fault.
+The details section of \texttt{help(Comparison)} has an explicit disclaimer
+that sort order is not guaranteed to work the same way on different machines.
+<<fix-it-up>>=
+foo <- fred$redata$LarvaID
+bar <- hornworm$redata$LarvaID
+identical(foo, bar)
+foo <- as.character(foo)
+bar <- as.character(bar)
+identical(foo, bar)
+baz <- levels(hornworm$redata$LarvaID)
+all(foo %in% baz)
+qux <- factor(foo, levels = baz)
+fred$redata$LarvaID <- qux
+identical(fred, hornworm)
+@
+
+<<save,echo=FALSE,message=FALSE>>=
+# we also save it in case we have updated anything and need to put it
+# in the aster2 package
+hornworm <- fred
+save(hornworm, file = "hornworm.rda")
+@
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+\begin{thebibliography}{}
+
+% \bibitem[Arnold and Wade(1984)]{arnold-wade}
+% Arnold, S.~J., and M.~J. Wade. 1984.
+% \newblock On the measurement of natural and sexual selection: theory.
+% \newblock \emph{Evolution} 38:709--719.
+
+%\bibitem[Blows and Brooks(2003)]{blows-brooks}
+%Blows, M.W., and R. Brooks. 2003.
+%\newblock Measuring nonlinear selection.
+%\newblock \emph{Am. Nat.} 162:815--820.
+
+\bibitem[Charlesworth(1980)]{charles}
+Charlesworth, B. 1980.
+\newblock \emph{Evolution in age-structured populations}.
+\newblock Cambridge Univ. Press, Cambridge, U.~K.
+
+%\bibitem[Charmantier and Gienapp(2014)]{charmantier-gienapp}
+%Charmantier, A., and P. Gienapp. 2014.
+%\newblock Climate change and timing of avian breeding and migration:
+%    evolutionary versus plastic changes.
+%\newblock \emph{Evol. Appl.} 7:15-28.
+
+%\bibitem[Clutton-Brock and Sheldon(2010)]{clutton-brock-sheldon}
+%Clutton-Brock, T., and B.~C. Sheldon. 2010.
+%\newblock Individuals and populations: the role of long-term,
+%    individual-based studies of animals in ecology and evolutionary biology.
+%\newblock \emph{Trends Ecol. Evol.} 25:562-573.
+
+% \bibitem[Diamond, et al.(2010)Diamond, Hawkins, Nijhout, and Kingsolver]
+%     {diamond-et-al}
+% Diamond, S.~E., S.~D. Hawkins, H.~F. Nijhout, and J.~G. Kingsolver. 2010.
+% \newblock Evolutionary divergence of field and laboratory populations of
+%     \emph{Manduca sexta} in response to host-plant quality.
+% \newblock Ecological Entomology 35:166--174.
+
+%\bibitem[Diamond and Kingsolver(2010a)]{diamond-kingsolver-too}
+%Diamond, S.~E., and J.~G. Kingsolver. 2010a.
+%\newblock Environmental dependence of thermal reaction norms: Host plant
+%    quality can reverse the temperature-size rule.
+%\newblock \emph{Am. Nat.} 175:1--10.
+
+%\bibitem[Diamond and Kingsolver(2010b)]{diamond-kingsolver}
+%Diamond, S.~E., and J.~G. Kingsolver. 2010b.
+%\newblock Fitness consequences of host plant choice: a field experiment.
+%\newblock \emph{Oikos} 119:542--550.
+
+\bibitem[Fisher(1930)]{fisher}
+Fisher, R.~A. 1930.
+\newblock \emph{The genetical theory of natural selection}.
+\newblock Clarendon Press, Oxford, U.~K.
+
+\bibitem[Geyer(2009)]{geyer-gdor}
+Geyer, C.~J. (2009).
+\newblock Likelihood inference in exponential families and directions
+    of recession.
+\newblock \emph{Electronic Journal of Statistics}, \textbf{3}, 259--289.
+
+\bibitem[Geyer(2010)Geyer]{phil}
+Geyer, C.~J. (2010).
+\newblock A philosophical look at aster models.
+\newblock Technical Report No. 676. School of Statistics,
+    University of Minnesota.
+\newblock \url{http://purl.umn.edu/57163}.
+
+\bibitem[Geyer(2014)]{aster-package}
+Geyer, C.~J. 2014.
+\newblock R package \texttt{aster} (aster models), version 0.8-30.
+\newblock \url{http://cran.r-project.org/package=aster}.
+
+\bibitem[Geyer(2015)]{aster2-package}
+Geyer, C.~J. 2015.
+\newblock R package aster2 (aster models), version 0.2-1.
+\newblock \url{http://cran.r-project.org/package=aster2}.
+
+\bibitem[Geyer, et al.(2007)Geyer, Wagenius, and Shaw]{aster1}
+Geyer, C.~J., S. Wagenius, and R.~G. Shaw. 2007.
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika} 94:415--426.
+
+%\bibitem[Kingsolver and Diamond(2011)]{kingsolver-diamond}
+%Kingsolver, J.~G., and S.~E. Diamond. 2011.
+%\newblock Phenotypic selection in natural populations: What limits
+%    directional selection?
+%\newblock \emph{Am. Nat.} 177:346--357.
+
+\bibitem[Kingsolver, et al.(2012)Kingsolver, Diamond, Seiter,
+    and Higgins]{kingsolver-et-al}
+Kingsolver, J.~G., S.~E. Diamond, S.~A. Seiter, and J.~K. Higgins. 2012.
+\newblock Direct and indirect phenotypic selection on developmental
+    trajectories in \emph{Manduca sexta}.
+\newblock \emph{Funct. Ecol.} 26:598--607.
+
+%\bibitem[Kingsolver, et al.(2001)Kingsolver, Hoekstra, Hoekstra, Berrigan,
+%    Vignieri, Hill, Hoang, Gilbert, and Beerli]{kingsolver-et-al-2001}
+%Kingsolver, J.~G., H.~E. Hoekstra, J.~M. Hoekstra, D. Berrigan, S.~N. Vignieri,
+%    C.~E. Hill, A. Hoang, P. Gilbert, and P. Beerli. 2001.
+%\newblock The strength of phenotypic selection in natural populations.
+%\newblock \emph{Am. Nat.} 157:245-261.
+
+%\bibitem[Klein, et al.(2011)Klein, Carpentier, Oddou-Muratorio]{klein}
+%Klein, E.~K., Carpentier, F.~H., Oddou-Muratorio, S. 2011.
+%\newblock Estimating the variance of male fecundity from genotypes of 
+%    progeny arrays: evaluation of the Bayesian forward approach.
+%\newblock \emph{Methods Ecol. Evol.}, \textbf{2}, 349-361.
+
+%\bibitem[Lande and Arnold(1983)]{lande}
+%Lande, R., and S. Arnold. 1983.
+%\newblock The measurement of selection on correlated characters.
+%\newblock \emph{Evolution} 37:1210--1226.
+
+%\bibitem[Lenski and Service(1982)]{lenski-service}
+%Lenski, R.~E., and P.~M. Service. 1982.
+%\newblock The statistical analysis of population growth rates calculated
+%    from schedules of survivorship and fecundity.
+%\newblock \emph{Ecology} 63:655–662.
+
+%\bibitem[Madden and Chamberlin(1945)]{madden-chamberlin}
+%Madden, A.~H., and F.~S. Chamberlin. 1945.
+%\newblock Biology of the tobacco hornworm in the southern cigar-tobacco
+%    district.
+%\newblock \emph{U. S. Dep. Agric. Tech. Bull.} 896.
+%\newblock \url{http://purl.umn.edu/169886}.
+
+% \bibitem[Mechaber and Hildebrand(2000)]{mechaber-hildebrand}
+% Mechaber, W.~L., and J.~G. Hildebrand. 2000.
+% \newblock Novel, non-solanaceous hostplant record for \emph{Manduca sexta}
+%     (Lepidoptera: Sphingidae) in the southwestern United States.
+% \newblock \emph{Ann. Entomol. Soc. Am.} 93:447--451.
+
+% \bibitem[Mira and Bernays(2002)]{mira-bernays}
+% Mira, A., and E.~A. Bernays. 2002.
+% \newblock Trade-offs in host use by \emph{Manduca sexta:} plant characters
+%     vs natural enemies.
+% \newblock \emph{Oikos} 97:387--397.
+
+%\bibitem[Nijhout and Davidowitz(2009)]{nijhout-davidowitz}
+%Nijhout, H.~F., and G. Davidowitz. (2009).
+%\newblock The developmental-physiological basis of phenotypic plasticity.
+%\newblock Pp. 589--608 \emph{in} D.~W. Whitman and T.~N. Ananthakrishnan, eds.
+%\newblock \emph{Phenotypic plasticity of insects: mechanisms and consequences}.
+%\newblock Science Publishers, Enfield, NH.
+
+%\bibitem[Ozgul et al.(2010)Ozgul, Childs, Oli, Armitage, Blumstein, Olson,
+%    Tuljapurkar, and Coulson]{ozgul-et-al-2010}
+%Ozgul, A., D.~Z. Childs, M.~K. Oli, K.~B. Armitage, D.~T. Blumstein,
+%   L.~E. Olson, S. Tuljapurkar, and T. Coulson. 2010.
+%\newblock Coupled dynamics of body mass and population growth in response
+%    to environmental change.
+%\newblock \emph{Nature} 466:482--485.
+
+%\bibitem[Ozgul et al.(2009)Ozgul, Tuljapurkar, Benton, Pemberton,
+%    Clutton-Brock, and Coulson]{ozgul-et-al-2009}
+%Ozgul, A., S. Tuljapurkar, T.~G. Benton, J.~M. Pemberton, T.~H. Clutton-Brock,
+%    and T. Coulson. 2009.
+%\newblock The dynamics of phenotypic change and the shrinking sheep
+%    of St. Kilda.
+%\newblock \emph{Science} 325:464-467.
+
+\bibitem[R Development Core Team, 2014]{rcore}
+R Development Core Team. 2014.
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+%\bibitem[Roff(2002)]{roff}
+%Roff, D.~A. 2002.
+%\newblock \emph{Life history evolution}.
+%\newblock Sinauer Associates, Sunderland MA.
+
+\bibitem[Shaw and Geyer(2010)]{aster3}
+Shaw, R.~G., and C.~J. Geyer. 2010.
+\newblock Inferring fitness landscapes.
+\newblock \emph{Evolution} 64:2510--2520.
+
+\bibitem[Shaw, et al.(2008)Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., C.~J. Geyer, S. Wagenius, H. Hangelbroek, and J.~R. Etterson. 2008.
+\newblock Unifying life-history analyses for 
+    inference of fitness and population growth.
+\newblock \emph{Am. Nat.} 172:E35--E47.
+
+\bibitem[Shaw, et~al.(2015)Shaw, Wagenius, and Geyer]{aster-aphid}
+Shaw, R.~G., Wagenius, S., and Geyer, C.~J. (2015).
+\newblock The susceptibility of \emph{Echinacea angustifolia} to a
+    specialist aphid: eco-evolutionary perspective on genotypic variation
+    and demographic consequences.
+\newblock \emph{Journal of Ecology}, \textbf{103}, 809--818.
+
+%\bibitem[Siepielski, et al.(2009)Siepielski, DiBattista,
+%    and Carlson]{siepielski-et-al}
+%Siepielski, A.~M., J.~D. DiBattista, and S.~M. Carlson. 2009.
+%\newblock It's about time: the temporal dynamics of phenotypic selection
+%    in the wild.
+%\newblock \emph{Ecol. Lett.} 12:1261--1276.
+
+%\bibitem[Yamamoto(1969)]{yamamoto}
+%Yamamoto, R.~T. 1969.
+%\newblock Mass rearing of the tobacco hornworm. II. Larval rearing
+%    and pupation.
+%\newblock \emph{J. Econ. Entomol.} 62:1427--1437.
+
+%\bibitem[Yamauchi and Yoshitake(1984)]{yamauchi-yoshitake}
+%Yamauchi, H., and N. Yoshitake. 1984.
+%\newblock Developmental stages of ovarian follicles of the silkworm,
+%    \emph{Bombyx mori} L.
+%\newblock \emph{J. Morphol.} 179:21--31.
+
+\end{thebibliography}
+
+
+
+
+
+\end{document}
