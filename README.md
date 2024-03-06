@@ -13,7 +13,7 @@ Done
 | [tr696](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr696.pdf) | http://hdl.handle.net/11299/152355 | |
 | [tr692](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr692.pdf) | http://hdl.handle.net/11299/135870 | edited to add library(trust) |
 | [tr675r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr675r.pdf) | http://hdl.handle.net/11299/56394 | |
-| [tr674r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr674r.pdf) | tr674r http://hdl.handle.net/11299/56328 | |
+| [tr674r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr674r.pdf) | http://hdl.handle.net/11299/56328 | |
 
 To Do
 
