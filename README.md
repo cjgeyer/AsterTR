@@ -14,10 +14,12 @@ Done
 | [tr692](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr692.pdf) | http://hdl.handle.net/11299/135870 | edited to add library(trust) |
 | [tr675r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr675r.pdf) | http://hdl.handle.net/11299/56394 | |
 | [tr674r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr674r.pdf) | http://hdl.handle.net/11299/56328 | |
+| [tr671r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr671r.pdf) | http://hdl.handle.net/11299/56219 | edited because needed R-2.10.0 |
+| | | emits warning about `RNGversion("2.5.0")` |
+
 
 To Do
 
-tr671r http://hdl.handle.net/11299/56219 edited because needs R-2.10.0
 tr670  http://hdl.handle.net/11299/56218
 tr669  http://hdl.handle.net/11299/56204 edited to fix plots
 tr666  http://www.stat.umn.edu/geyer/aster/tr666/tr666.Rnw

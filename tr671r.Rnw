@@ -1,0 +1,2496 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+\DeclareMathOperator{\aic}{AIC}
+\DeclareMathOperator{\aicc}{AICc}
+\DeclareMathOperator{\bic}{BIC}
+\DeclareMathOperator{\hic}{HIC}
+\DeclareMathOperator{\lb}{LB}
+\DeclareMathOperator{\gcsm}{gcsm}
+\DeclareMathOperator{\lcsm}{lcsm}
+\DeclareMathOperator{\tr}{tr}
+
+\newcommand{\boldtheta}{{\boldsymbol{\theta}}}
+\newcommand{\boldphi}{{\boldsymbol{\varphi}}}
+\newcommand{\boldxi}{{\boldsymbol{\xi}}}
+\newcommand{\boldmu}{{\boldsymbol{\mu}}}
+\newcommand{\boldw}{{\mathbf{w}}}
+\newcommand{\boldx}{{\mathbf{x}}}
+\newcommand{\boldy}{{\mathbf{y}}}
+\newcommand{\boldz}{{\mathbf{z}}}
+
+\hyphenation{Wa-gen-ius}
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{- 2 in}
+\setlength{\topmargin}{0.25 pt}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \footskip}
+
+\setlength{\textwidth}{\paperwidth}
+\addtolength{\textwidth}{- 2 in}
+\setlength{\oddsidemargin}{0.25 in}
+\setlength{\evensidemargin}{0.25 in}
+\addtolength{\textwidth}{- \oddsidemargin}
+\addtolength{\textwidth}{- \evensidemargin}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Model Selection in Estimation of Fitness Landscapes} \\
+    By \\
+    Charles J. Geyer and Ruth G. Shaw \\
+    Technical Report No.~671 \\
+    School of Statistics \\
+    University of Minnesota \\
+%       April 20, 2005 \\
+    July, 10, 2008 \\
+    % original downloaded from conservancy.umn.edu said Revised \today
+    Revised July 6, 2009
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+A solution to the problem of estimating fitness landscapes was
+proposed by \citet{la}.  Another solution, which avoids problematic
+aspects of the Lande-Arnold methodology, was proposed by \citet*{aster2},
+who also provided an illustrative example involving real data.
+An earlier technical report \citep{evo2008talk} gave an example that was
+simpler in some ways (the data are simulated from the aster model so there
+are no issues making the data fit the model one has with real data) and much
+more complicated in others (each individual has five measured components of
+fitness over four time periods, 20 variables in all) and illustrates the
+full richness possible in aster analysis of fitness landscapes.  The one
+issue that technical report did not deal with is model selection.  When
+many phenotypic variables are measured, one often does not know which
+to put in the model.  \citet{la} proposed using principal components
+regression as a method of dimension reduction, but this method is known
+to have no theoretical basis.  Much of late 20th century and 21st century
+statistics is about model selection and model averaging, and we apply some
+of this methodology (which does have strong theoretical basis) to estimation
+of fitness landscapes using another simulated data set.
+
+All analyses are done in R \citep{rcore} using the \texttt{aster}
+contributed package described by \citet*{gws} except for analyses
+in the style of \citet{la}, which use ordinary least squares regression.
+Furthermore, all analyses are done using the \texttt{Sweave} function in R,
+so this entire technical report and all of the analyses reported in it
+are completely reproducible by anyone who has R with the \texttt{aster}
+package installed and the R noweb file specifying the document.
+
+This revision corrects major errors in the frequentist model averaging
+calculations (Section~\ref{sec:fma}) in the first version of the technical
+report.
+\end{abstract}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+ps.options(pointsize = 15)
+pdf.options(pointsize = 15)
+@
+
+\section{R Package Aster}
+
+We use R statistical computing environment \citep{rcore} in our analysis.
+It is free software and can be obtained from
+\url{http://cran.r-project.org}.  Precompiled binaries
+are available for Windows, Macintosh, and popular Linux distributions.
+We use the contributed package \verb@aster@.
+If R has been installed, but this package has
+not yet been installed, do
+\begin{verbatim}
+install.packages("aster")
+\end{verbatim}
+from the R command line
+(or do the equivalent using the GUI menus if on Apple Macintosh
+or Microsoft Windows).  This may require root or administrator privileges.
+
+Assuming the \verb@aster@ package has been installed, we load it
+<<library>>=
+library(aster)
+@
+<<baz,include=FALSE,echo=FALSE>>=
+baz <- library(help = "aster")
+baz <- baz$info[[1]]
+baz <- baz[grep("Version", baz)]
+baz <- sub("^Version: *", "", baz)
+bazzer <- paste(R.version$major, R.version$minor, sep = ".")
+@
+The version of the package used to make this document
+is \Sexpr{baz} (which is available on CRAN).
+The version of R used to make this document is \Sexpr{bazzer}.
+
+This entire document and all of the calculations shown were made using
+the R command \texttt{Sweave} and hence are exactly reproducible by
+anyone who has R and the R noweb (RNW) file from which it was created.
+Both the RNW file and and the PDF document produced from it are available at
+\url{http://www.stat.umn.edu/geyer/aster}.  For further details on
+the use of Sweave and R see Chapter~1 of the technical report by
+\citet{aster2tr} available at the same web site.
+
+Not only can one exactly reproduce the results in the printable document,
+one can also modify the parameters of the simulation and get different
+results.  Obvious modifications to try are noted on pages~\pageref{rnw:1},
+\pageref{rnw:2}, \pageref{rnw:3}, and~\pageref{rnw:4} below.  But, of course,
+anything at all can be changed once one has the RNW file.
+
+\section{Simulate Data from Conditional Model} \label{sec:sim-cond}
+
+\subsection{Overview} \label{sec:overview-one}
+
+It is hard to make up an unconditional aster model because the unconditional
+parameterization is so unintuitive.  Thus we proceed in two steps.
+\begin{itemize}
+\item First we simulate data using a conditional aster model with parameters
+    we understand.
+\item Then we fit an unconditional aster model to these data, and simulate
+    data using the fitted unconditional model.
+\end{itemize}
+
+Also it is hard to make up a fitness landscape, because we model it on
+the canonical parameter scale and these have no simple connection to
+the mean value parameter scale.  Thus we also proceed in two steps here.
+\begin{itemize}
+\item First we simulate data having a flat fitness landscape.
+\item Then we fit models having a non-flat fitness landscapes, which we
+    adjust in strength to be moderately statistically significant.
+\end{itemize}
+
+The way these two issues interleave is as follows.
+\begin{enumerate}
+\item We simulate data using a conditional model having a flat
+    fitness landscape.
+\item We simulate data using an unconditional model having a flat
+    fitness landscape.
+\item We simulate data using unconditional models having a non-flat fitness
+    landscapes.
+\end{enumerate}
+In Section~\ref{sec:sim-cond} we only do the first step.
+
+\subsection{Graphical Model}
+
+We make a graphical model based on consecutive time periods (call them years
+for concreteness).  Data are ``observed'' over 10 years.
+For each individual we observe in year $i$ three random
+variables $U_i$, $V_i$, and $W_i$.  All random variables on one individual
+are connected by the graph shown in Figure~\ref{fig:graph}.
+\begin{figure}
+\begin{center}
+\setlength{\unitlength}{0.45 in}
+\thicklines
+\begin{picture}(10.3,2.5)(-0.1,-2.3)
+\put(0,0){\makebox(0,0){$1_{\hphantom{0}}$}}
+\put(1,0){\makebox(0,0){$u_1$}}
+\put(2,0){\makebox(0,0){$u_2$}}
+\put(3,0){\makebox(0,0){$u_3$}}
+\put(4,0){\makebox(0,0){$u_4$}}
+\put(5,0){\makebox(0,0){$u_5$}}
+\put(6,0){\makebox(0,0){$u_6$}}
+\put(7,0){\makebox(0,0){$u_7$}}
+\put(8,0){\makebox(0,0){$u_8$}}
+\put(9,0){\makebox(0,0){$u_9$}}
+\put(10,0){\makebox(0,0){$u_{10}$}}
+\multiput(0.35,0)(1,0){10}{\vector(1,0){0.3}}
+\put(1,-1){\makebox(0,0){$v_1$}}
+\put(2,-1){\makebox(0,0){$v_2$}}
+\put(3,-1){\makebox(0,0){$v_3$}}
+\put(4,-1){\makebox(0,0){$v_4$}}
+\put(5,-1){\makebox(0,0){$v_5$}}
+\put(6,-1){\makebox(0,0){$v_6$}}
+\put(7,-1){\makebox(0,0){$v_7$}}
+\put(8,-1){\makebox(0,0){$v_8$}}
+\put(9,-1){\makebox(0,0){$v_9$}}
+\put(10,-1){\makebox(0,0){$v_{10}$}}
+\multiput(1,-0.25)(1,0){10}{\vector(0,-1){0.5}}
+\put(1,-2){\makebox(0,0){$w_1$}}
+\put(2,-2){\makebox(0,0){$w_2$}}
+\put(3,-2){\makebox(0,0){$w_3$}}
+\put(4,-2){\makebox(0,0){$w_4$}}
+\put(5,-2){\makebox(0,0){$w_5$}}
+\put(6,-2){\makebox(0,0){$w_6$}}
+\put(7,-2){\makebox(0,0){$w_7$}}
+\put(8,-2){\makebox(0,0){$w_8$}}
+\put(9,-2){\makebox(0,0){$w_9$}}
+\put(10,-2){\makebox(0,0){$w_{10}$}}
+\multiput(1,-1.25)(1,0){10}{\vector(0,-1){0.5}}
+\end{picture}
+\end{center}
+\caption{Graph for the example.  $u_i$ indicate survival,
+$w_i$ count number of offspring, $v_i$ indicate $w_i > 0$.}
+\label{fig:graph}
+\end{figure}
+The variables $U_i$ and $V_i$ are Bernoulli (zero-or-one valued);
+the variables $W_i$ are nonnegative-integer-valued.
+The $V_i$ are redundant: $V_i = 1$ if and only if $W_i > 0$.
+The variables $U_i$ indicate survival through the $i$-th year;
+the variables $W_i$ count offspring produced in the $i$-th year.
+Hence the variables $V_i$ indicate successful reproduction in the $i$-year
+(one or more offspring).
+We model the $W_i$ as zero-truncated Poisson given $V_i$.
+
+If one likes to think of it that way, one can ignore $V_i$ and say that $W_i$
+is zero-inflated Poisson given $U_i$, but the aster way to think about this
+requires three variables $U_i$, $V_i$, and $W_i$ because that fits the
+required exponential family structure.
+
+In these data, the variable $\sum_i W_i$ is considered fitness (total
+number of offspring over the course of the study, which will include most
+of the lifespan).
+
+\subsection{Simulation}
+
+We set the seeds of the random number generator so that we
+obtain the same results every time.  To get different results,
+obtain the RNW file, change this statement, and reprocess
+using \texttt{Sweave} and \LaTeX. \label{rnw:1}
+<<set-seed>>=
+RNGversion("2.5.0")
+set.seed(42)
+@
+We also set up some parameters of the simulation.  These can also be changed.
+<<param>>=
+nind <- 350
+ntime <- 10
+psurv <- 0.8
+prepr <- 0.7
+mpois <- 3
+theta.surv <- log(psurv) - log(1 - psurv)
+theta.repr <- log(prepr) - log(1 - prepr)
+theta.pois <- log(mpois)
+tau.pois <- mpois / (1 - exp(- mpois))
+@
+For a first pass we set
+mean survival per unit time to be \verb@psurv@ = \Sexpr{psurv}
+and mean reproduction indicator per unit time
+to be \verb@prepr@ = \Sexpr{prepr}.
+For number of offspring in a time period given any offspring in that
+time period, the easiest thing to specify is the mean of the untruncated
+Poisson random variable that when truncated is the distribution we want.
+This untruncated mean is \verb@mpois@ = \Sexpr{mpois}.  The mean of the
+corresponding zero-truncated distribution
+is $\tau = \Sexpr{round(tau.pois, 3)}$.
+
+<<graph>>=
+vars <- as.vector(outer(c("u", "v", "w"), 1:10, paste, sep = ""))
+vtype <- as.factor(substr(as.character(vars), 1, 1))
+fam <- rep(1, length(vars))
+fam[vtype == "w"] <- 3
+pred <- seq(along = vars) - 1
+pred[vtype == "u"] <- seq(along = vars)[vtype == "u"] - 3
+pred[1] <- 0
+@
+\label{pg:vars}
+Simulate data.
+<<raster-cond>>=
+root <- matrix(1, nrow = nind, ncol = length(vars))
+theta <- root
+theta[ , vtype == "u"] <- theta.surv
+theta[ , vtype == "v"] <- theta.repr
+theta[ , vtype == "w"] <- theta.pois
+x <- raster(theta, pred, fam, root)
+dimnames(x) <- list(NULL, vars)
+dat <- as.data.frame(x)
+dat <- as.list(dat)
+dat[["root"]] <- rep(1, nind)
+@
+
+Now we add some covariates.  These will play the role of phenotypic variables
+in the Lande-Arnold analysis and the competing aster analysis.
+Lande-Arnold analysis requires that these be jointly multivariate normal
+and centered at zero.  Aster analysis does not.
+
+For fair comparison, we make these covariates satisfy
+the conditions required for Lande-Arnold analysis.
+In addition, we make them have the same variance, and we make all pairs
+of them have correlation $1 / 2$.  The reason for the correlation is that
+this makes some of the modeling issues more difficult.
+Of course, all of this can be changed if one has the RNW file
+for this document. \label{rnw:2}
+<<pheno>>=
+npheno <- 10
+zbase <- rnorm(nind)
+for (i in 1:npheno) {
+    labz <- paste("z", i, sep = "")
+    dat[[labz]] <- zbase + rnorm(nind)
+}
+@
+
+Reshape the data
+<<reshape>>=
+names(dat)
+dat <- as.data.frame(dat)
+redata <- reshape(dat, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+@
+
+There is one further step. We wish to make inferences about overall fitness,
+taking advantage of the monotonicity property of unconditional aster models,
+as explained in Section~3.2 of \citet{evo2008talk}.  This requires that we
+model only the $W_i$ as dependent on the phenotypic traits.  To accomplish
+this, we set to zero all the phenotype values except those associated
+with the $W_i$, the life history variables that directly reflect fitness.
+<<zero-out>>=
+wind <- grep("w", as.character(redata$varb))
+for (labz in grep("z", names(redata), value = TRUE)) {
+    redata[[labz]][- wind] <- 0
+}
+@
+
+\section{Fit Initial Data} \label{sec:fit-initial}
+
+\subsection{Overview} \label{sec:overview-two}
+
+We have now simulated our ``initial data'' so we have now done step~1
+of the overview in Section~\ref{sec:overview-one}.  However, we still
+do a few checks to see that these data make sense (of course, they
+must unless the aster software is buggy, but we check anyway); we do
+this in Section~\ref{sec:check-cond-mod}.
+
+In Section~\ref{sec:check-unco-mod} we start on what we called step~2
+in the overview in Section~\ref{sec:overview-one}.  First we fit an
+unconditional aster model to the data we just checked was reasonable
+(Section~\ref{sec:check-cond-mod}).
+Then we ``predict'' the mean value parameters and see whether they
+make sense (according to our intuition).  They sort of make sense,
+but we think we can do better, so we fit a more elaborate unconditional
+model adding a term \texttt{uyear} to the model formula, which lets
+mortality be a linear function of year on the canonical parameter scale.
+We again ``predict'' the mean value parameters and see whether they
+make sense, and this time decide they are good enough
+(according to our intuition).  That finishes what we called step~2
+in the overview in Section~\ref{sec:overview-one}, and also finishes
+Section~\ref{sec:fit-initial}.  We continue our overview in
+Section~\ref{sec:new-sim}.
+
+\subsection{Conditional Models} \label{sec:check-cond-mod}
+
+Fit the aster model (the one used to generate the data).
+<<out2>>=
+redata$vtype <- as.factor(substr(as.character(redata$varb), 1, 1))
+out2 <- aster(resp ~ vtype + 0, pred, fam, varb, id, root,
+    data = redata, type = "conditional")
+summary(out2)
+@
+For comparison, these should be
+<<out2-too>>=
+theta.surv
+theta.repr
+theta.pois
+@
+
+For further comparison, the likelihood ratio test with this model
+as the alternative hypothesis and the simulation truth for the point
+null hypothesis can be calculated as follows.
+<<mlogl>>=
+mout2true <- mlogl(c(theta.surv, theta.repr, theta.pois), pred, fam, out2$x,
+    out2$root, out2$modmat, type = out2$type, origin = out2$origin)
+dev2true <- 2 * mout2true$value - out2$deviance
+dev2true
+1 - pchisq(dev2true, df = 3)
+@
+
+Great!  Statistics works.  When we simulate data from a model
+and estimate the parameters in that model, the maximum likelihood
+estimates are close to the simulation truth, and the log likelihood
+ratio test statistic comparing the MLE to the simulation truth parameter
+value is not significant.
+
+\subsection{Unconditional Models} \label{sec:check-unco-mod}
+
+The next step is to switch to unconditional models.
+<<out3>>=
+out3 <- aster(resp ~ vtype + 0, pred, fam, varb, id, root,
+    data = redata)
+summary(out3)
+@
+
+We have no intuition about whether this model makes sense.
+We must switch to unconditional models in order to model fitness,
+but is this particular unconditional model sensible?  To check
+that out we look at conditional mean value parameters.  Do they
+still make sense?  We originally simulated a conditional model,
+based on certain conditional mean value parameters.  Now we have
+switched to an unconditional model, but we can still calculate its
+conditional mean value parameters.  The new model (\texttt{out3})
+is ``incorrect'' in the sense that it is not the old model (\texttt{out2}),
+but is it close to correct in the sense that the relevant parameters
+have not changed?
+
+In order to compute conditional mean value parameters we need to supply
+data (since they depend on data, see \citealp*{gws}, Section~2.5).
+Since all individuals are alike, we could have a new model matrix with
+just one individual all of whose variables that are ``parent'' variables
+(i.~e., all of the $U_i$ and $V_i$) are equal to one.  But a much simpler
+choice is just to use the observed data, if it contains one such individual.
+<<foofoo>>=
+foo <- apply(out3$x, 1, function(bar) all(bar > 0))
+ifoo <- seq(along = foo)[foo]
+length(ifoo)
+ifoo <- ifoo[1]
+ifoo
+@
+It does.
+<<pred3>>=
+pout3 <- predict(out3, model.type = "conditional")
+pout3 <- matrix(pout3, nrow(out3$x))
+pout3 <- pout3[ifoo, ]
+pout3
+@
+We see that all of the $W_i$ have conditional expectation
+\Sexpr{round(pout3[3], 4)} given $V_i = 1$.
+This is ``obvious'' (we admit we did not guess this in advance, but
+it is easy to explain in hindsight) from the fact that all $W_i$ are
+at terminal nodes, hence their
+conditional canonical parameters $\theta_j$ are equal to their unconditional
+canonical parameters $\varphi_j$.
+
+We also see that all of the $V_i$ have conditional expectation
+\Sexpr{round(pout3[2], 4)} given $U_i = 1$.
+This is ``obvious'' (we admit we did not guess this in advance, but
+it is easy to explain in hindsight) from the fact that all $V_i$ have
+exactly one successor $W_i$ and all of the $W_i$ have the same distribution
+and the same conditional
+canonical parameter.  Thus equation (5) in \citet{gws} makes all the
+unconditional canonical parameters $\varphi_j$ for the $V_i$ the same.
+
+So we are left with several questions.  First, are the conditional
+mean value parameters already discussed reasonable?  They are to be
+compared with
+<<compare3>>=
+prepr
+tau.pois
+@
+which are the actual conditional expectations used to simulate the
+data.  They seem close enough.  (We know that the difference between
+\Sexpr{round(pout3[3], 4)} and \Sexpr{round(tau.pois, 4)} is just sampling
+variation, because there is no difference between conditional and
+unconditional canonical parameters for terminal nodes, and the conditional
+canonical parameters determine the conditional mean value parameters.)
+
+Second, are the conditional
+mean value parameters for the $U_i$ reasonable?  These now all differ,
+because each has a different number of ``ancestor'' nodes (predecessor,
+predecessor of predecessor, etc.)
+<<compare3-too>>=
+pout3u <- matrix(pout3, nrow = 3)[1, ]
+round(pout3u, 4)
+@
+Clearly, our model has changed.  Originally, we modeled organisms that do
+not age: they have the same mortality at all ages.  This was just for
+simplicity; we could have put in mortality that is a function of age.
+But when we switch to an unconditional model, mortality increases (survival
+probability decreases) with age.
+
+We have two options.  Since we are just
+making up data, we could accept this change.  Alternatively, we could
+put additional terms into the unconditional aster model to allow the
+unconditional canonical parameters for the $U_i$ to increase with age
+more than they do in the model fit above (\texttt{out3}).
+Let's try the latter.
+<<out4>>=
+redata$year <- as.numeric(substring(as.character(redata$varb), 2))
+redata$uyear <- redata$year *
+    as.numeric(as.character(redata$vtype) == "u")
+out4 <- aster(resp ~ vtype + uyear, pred, fam, varb, id, root,
+    data = redata)
+summary(out4)
+@
+
+Again we look at conditional mean value parameters.
+<<pred4>>=
+pout4 <- predict(out4, model.type = "conditional")
+pout4 <- matrix(pout4, nrow(out4$x))
+pout4 <- pout4[ifoo, ]
+pout4
+@
+Again we see that all of the $W_i$ have the same conditional mean
+value parameter and that it has hardly changed from what it was in
+\texttt{out3}, and the same is true of all the $V_i$.  Since we did
+not change the model in any way that affects the parameterization
+of these variables, this is no surprise.
+<<compare4-too>>=
+pout4u <- matrix(pout4, nrow = 3)[1, ]
+round(pout4u, 4)
+@
+Now the conditional mean value parameters $E(U_i \mid U_{i - 1} = 1)$ for
+$i > 2$ and $E(U_1)$ seem fairly constant.  Perhaps they decrease at
+large ages (9 and 10), or perhaps this is just chance variation,
+since there are few individuals alive at these ages.  In any event,
+we will be satisfied with this model \texttt{out4}.  This will be
+our ``baseline'' model, the model with a flat fitness landscape,
+since fitness, which we take to be $\sum_i E(W_i)$, does not depend
+on any of the $Z_i$, because we put none of these variables in any models
+fit so far.
+
+\section{Simulate New Data} \label{sec:new-sim}
+
+\subsection{Overview} \label{sec:overview-three}
+
+At this point we have a reasonable unconditional aster model
+(\texttt{out4}) with a
+flat fitness landscape.  Now we want to simulate models with non-flat
+fitness landscapes.
+
+We will simulate two such models, which we call Model~1 and Model~2.
+In Model~1, the fitness landscape depends on just two
+phenotypic variables \texttt{z1} and \texttt{z2}.
+This is somewhat unrealistic but allows
+us to draw some simple pictures of fitness landscapes.
+\citet[Section~1.2.5]{b+a} are particularly emphatic about the biological
+unrealism of ``true'' (at least simulation truth) models with only a few
+parameters.  Hence we also simulate more realistic data that depends on
+ten phenotypic variables \texttt{z1}, \ldots, \texttt{z10}.
+
+We make both fitness landscapes depend quadratically on phenotypic variables
+on the canonical parameter scale.  Since the mean value parameter is a
+multivariate monotone function of the canonical parameter, this means
+expected fitness is a monotone function of this quadratic function
+(see Section~3.2 of \citealp{evo2008talk} for details).  We make our
+quadratic function have negative curvature (corresponding to stabilizing
+selection) in all directions.  Thus it has elliptical contours.
+By monotonicity, the contours of the actual fitness landscape (expected
+fitness considered as a function of phenotypic variables) also has elliptical
+contours.  We locate the fitness maximum to one side of the distribution of
+phenotypic values not right in the middle.
+
+The only remaining decision is how steeply fitness should fall off
+as we move away from the fitness maximum.  In order for our simulation
+to provide useful guidance, the fall-off should be steep enough so that
+the fitness landscape is statistically significant but not so steep that
+one doesn't need statistics to see that it is significant.  (It's always
+nice when evidence is so clear that statistics is unnecessary, but this
+is not typical.)  Thus we adjust the dependence of fitness on phenotype
+in both Model~1 and Model~2 to be strong but not too strong.
+
+This proceeds in several steps, which are substeps of what was called
+Step~3 in Section~\ref{sec:overview-one}.
+\begin{enumerate}
+\item[(a)] We fit a model with quadratic fitness landscape to the data
+    with flat fitness landscape.  The sole purpose is to get the coefficient
+    vector for such a model.
+\item[(b)] We adjust the coefficients of the quadratic fitness landscape.
+\item[(c)] We simulate new data having this unconditional aster model with
+    non-flat (quadratic on the canonical parameter scale) fitness landscape.
+\item[(d)] We do a likelihood ratio test comparing the models with flat
+    and non-flat fitness landscape.  If the result is not statistically
+    significant or is too statistically significant (the inference is
+    so clear that statistics is unnecessary) we go back to substep (b).
+\end{enumerate}
+
+\subsection{Model 1} \label{sec:model-1}
+
+For a first try, let us have the fitness landscape depend on just the first
+two phenotypic variables \texttt{z1} and \texttt{z2}.
+\citet[Section~1.2.5]{b+a} are particularly emphatic about the biological
+unrealism of ``true'' (at least simulation truth) models with only a few
+parameters.  The main virtue of this simple model is that it allows
+us to draw some simple pictures of fitness landscapes.  We will also
+simulate a more complicated model in Section~\ref{sec:model-2}.
+
+Now we will simulate new data using the \texttt{raster} function.  To use
+that we need to, first, make up a model, including dependence on \texttt{z1}
+and \texttt{z2} and, second, convert unconditional canonical parameters
+$\varphi$ to conditional canonical parameters $\theta$, because that is what
+the \texttt{raster} function wants.  There is no function in the \texttt{aster}
+package that does this conversion, perhaps a defect in the \texttt{aster}
+user interface.  We can, however, trick the \texttt{predict.aster} function
+into doing this conversion.
+
+First we fit the model we want to use to the data we have.  The fitted
+parameters will make no sense, because the fitness landscape is flat for
+the data we have, but we can use the model structure.
+<<out5>>=
+out5 <- aster(resp ~ vtype + uyear + z1 + z2 + I(z1^2) + I(z2^2) + I(z1 * z2),
+    pred, fam, varb, id, root, data = redata)
+summary(out5)
+@
+
+We now want to make up a quadratic function of $z$ that has approximate
+mean zero (averaged over the $z$) values so that the average fitness is
+more or less the same as in our initial data.  We also want reasonably
+sane values, so we keep the quadratic term small.  For simplicity,
+we make the fitness landscape symmetric in the two variables.
+(It took several tries to get the quadratic term small enough.  These tries are
+not shown.  The coefficients of the linear and quadratic terms were adjusted
+until the $P$-values in the tests on p.~\pageref{pg:out6-8} show that both
+were highly statistically significant but not humongously so.)
+Of course, all of this can be changed if one has the RNW file
+for this document. \label{rnw:3}
+<<try1>>=
+z1 <- dat$z1
+z2 <- dat$z2
+ascal <- 0.013
+quad <- ascal * ((z1 + z2) - (z1^2 + z2^2) + z1 * z2)
+con <- mean(quad)
+mean(quad - con)
+@
+
+Now we change the coefficients in \texttt{out5} to be the ones for this
+made up model.
+<<fake>>=
+beta.new <- out5$coefficients
+beta.new[1:4] <- out4$coefficients
+beta.new[3] <- beta.new[3] - con
+beta.new[5:6] <- ascal
+beta.new[7:8] <- (- ascal)
+beta.new[9] <- ascal
+beta.new <- round(beta.new, 3)
+beta.new
+@
+Then we ``predict'' the conditional canonical parameters using
+\texttt{beta.new} because those are the parameters that the \texttt{raster}
+function wants.
+<<fake-predict>>=
+theta <- predict(out5, model.type = "conditional", parm.type = "canonical",
+    newcoef = beta.new)
+theta <- matrix(theta, nrow = nrow(out5$x), ncol = ncol(out5$x))
+# apply(theta, 2, range)
+xnew <- raster(theta, pred, fam, root)
+@
+
+Now we need to reshape these new data just like we did the old.
+<<remake>>=
+dimnames(xnew) <- list(NULL, vars)
+dnew1 <- as.data.frame(xnew)
+renew <- reshape(dnew1, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+redata$resp1 <- renew$resp
+@
+
+For future reference we also save the unconditional canonical and
+mean value ``simulation truth'' parameter values.
+<<truth>>=
+redata$tau1 <- predict(out5, newcoef = beta.new)
+redata$phi1 <- predict(out5, parm.type = "canonical", newcoef = beta.new)
+beta1true <- beta.new
+@
+
+\subsection{Model 2} \label{sec:model-2}
+
+As pointed out in the Sections~\ref{sec:overview-three} and~\ref{sec:model-1},
+\citet[Section~1.2.5]{b+a} are particularly emphatic about the biological
+unrealism of simulation truth models like that simulated
+in Section~\ref{sec:model-1}.
+In reality, the true stochastic mechanism generating the data
+is much more complicated than any model under consideration and even if
+known would have far too many parameters to be well estimated by available
+data.  Not all parameters are equally important, of course, and some parameters
+of the true model, assuming it were known, could be estimated better than
+others.
+
+Hence in this section we create a model that is much like the model in
+Section~\ref{sec:model-1} except the quadratic function depends on all of
+the $z_i$ but not equally.
+
+As before, we start by fitting the full model to the data at hand
+% had to change sub command below
+% in the original, downloaded from conservancy.umn.edu, it used to
+% to have argument extended = FALSE, which was removed in R-2.11.0.
+% because of that the regular expression needed to be changed too.
+% the version here works in current versions of R.
+<<out5too>>=
+out5too <- aster(resp ~ vtype + uyear + poly(z1, z2, z3, z4, z5, z6, z7,
+    z8, z9, z10, degree = 2, raw = TRUE),
+    pred, fam, varb, id, root, data = redata)
+names(out5too$coefficients) <- sub("^poly[(][^)]*[)]", "",
+   names(out5too$coefficients))
+summary(out5too)
+@
+
+Now we have to figure out which coefficients are which
+<<out5too-coef>>=
+fred <- strsplit(names(out5too$coefficients)[-(1:4)], "\\.")
+fred <- lapply(fred, as.numeric)
+@
+
+Then we construct the quadratic function that is the canonical parameter
+for fitness.  This time we don't bother to adjust the intercept.
+Of course, all of this can be changed if one has the RNW file
+for this document. \label{rnw:4}
+<<try2>>=
+b <- 0.5
+bvec <- c(1, 1, b^(1:8))
+bvec <- bvec / sum(bvec) * 2
+round(bvec, 5)
+@
+Again make a parameter vector \texttt{beta.new} constructed above
+<<fake2>>=
+beta.new <- out5too$coefficients
+beta.new[1:4] <- out4$coefficients
+for (i in seq(along = fred)) {
+    freddy <- fred[[i]]
+    sally <- freddy > 0
+    if (sum(sally) == 1) {
+        if (freddy[sally] == 1) {
+            ### linear term
+            beta.new[i + 4] <- ascal * bvec[sally]
+        } else {
+            ### quadratic term
+            beta.new[i + 4] <- (- ascal * bvec[sally])
+        }
+    } else {
+        ### cross term
+        beta.new[i + 4] <- ascal * mean(bvec[sally])
+    }
+}
+beta.new
+@
+
+And the rest is just like the Section~\ref{sec:model-1}.
+<<fake-predict-too>>=
+theta <- predict(out5too, model.type = "conditional",
+    parm.type = "canonical", newcoef = beta.new)
+theta <- matrix(theta, nrow = nrow(out5too$x), ncol = ncol(out5too$x))
+# apply(theta, 2, range)
+xnew <- raster(theta, pred, fam, root)
+@
+Reshape.
+<<remake-too>>=
+dimnames(xnew) <- list(NULL, vars)
+dnew2 <- as.data.frame(xnew)
+renew <- reshape(dnew2, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+redata$resp2 <- renew$resp
+@
+For future reference we also save the unconditional canonical and
+mean value ``simulation truth'' parameter values.
+<<truth-too>>=
+redata$tau2 <- predict(out5too, newcoef = beta.new)
+redata$phi2 <- predict(out5too, parm.type = "canonical", newcoef = beta.new)
+beta2true <- beta.new
+@
+
+\section{Fit New Data}
+
+\subsection{Overview} \label{sec:overview-four}
+
+At this point, we have finished making up data
+(by simulation from an aster model).  In real life, none of the work
+up to here would be necessary.  We would collect data by measuring
+fitness components of real living organisms.  For the purposes of this
+technical report we pretend that the simulated data, \verb@redata$resp@
+and \verb@redata$resp2@ are such real scientific data.  Everything we
+do from here on is an example of what could be done with real data.
+
+\subsection{Fit Model 1} \label{sec:fit-new}
+
+So we should be able to fit the model that was used to simulate these data.
+We start with the simpler model~1 that has only \texttt{z1} and \texttt{z2}
+involved in the simulation truth model.
+\label{pg:out6}
+<<out6>>=
+out6 <- aster(resp1 ~ vtype + uyear + z1 + z2 + I(z1^2) + I(z2^2) + I(z1 * z2),
+    pred, fam, varb, id, root, data = redata)
+summary(out6)
+@
+
+For further comparison, the likelihood ratio test with this model
+as the alternative hypothesis and the simulation truth for the point
+null hypothesis can be calculated as follows.
+<<mlogl-6>>=
+mout6true <- mlogl(beta1true, pred, fam, out6$x,
+    out6$root, out6$modmat, type = out6$type, origin = out6$origin)
+dev6true <- 2 * mout6true$value - out6$deviance
+dev6true
+1 - pchisq(dev6true, df = length(beta.new))
+@
+
+Great!  Statistics works again.  When we simulate data from a model
+and estimate the parameters in that model, the maximum likelihood
+estimates are close to the simulation truth.
+
+We also look at how statistically significant our quadratic effect is
+<<out6-8>>=
+out8 <- aster(resp1 ~ vtype + uyear,
+    pred, fam, varb, id, root, data = redata)
+out7 <- aster(resp1 ~ vtype + uyear + z1 + z2,
+    pred, fam, varb, id, root, data = redata)
+anova(out8, out7, out6)
+anova(out8, out6)
+@
+\label{pg:out6-8}
+
+\subsection{Plot Monotone Function of Fitness}
+
+We extract the quadratic part of the fitness function (on the canonical
+parameter scale), which is a monotone transformation of actual fitness,
+see Sections~3.4, and~3.10 of \citet*{aster2tr} for details.
+<<regfun-setup-start>>=
+qcoef <- out6$coefficients
+@
+<<regfun-setup>>=
+a1 <- qcoef["z1"]
+a2 <- qcoef["z2"]
+a <- c(a1, a2)
+A11 <- qcoef["I(z1^2)"]
+A22 <- qcoef["I(z2^2)"]
+A12 <- qcoef["I(z1 * z2)"] / 2
+A <- matrix(c(A11, A12, A12, A22), 2, 2)
+@
+Figure~\ref{fig:surf} (page~\pageref{fig:surf})
+shows the scatterplot of data values for \texttt{z1} and \texttt{z2}
+and the contours of the estimated quadratic fitness function.
+It is similar to Figure~3 in the first submission of \citet{aster2},
+which is Figure~3.1 in \citet{aster2tr}.
+(In the second submission of the paper,
+this figure was changed to be like Figure~\ref{fig:nerf} below.)
+It is made by the following code.
+<<label=surftoo,include=FALSE>>=
+plot(z1, z2)
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+z <- matrix(NA, nx, ny)
+x <- seq(ufoo[1], ufoo[2], length = nx)
+y <- seq(ufoo[3], ufoo[4], length = ny)
+for (i in 1:nx) {
+    for (j in 1:ny) {
+        b <- c(x[i], y[j])
+        z[i, j] <- sum(a * b) + as.numeric(t(b) %*% A %*% b)
+    }
+}
+contour(x, y, z, add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=surf,fig=TRUE,echo=FALSE>>=
+<<surftoo>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+contours of the estimated quadratic function of phenotypic covariates
+in the linear predictor, which is only a monotone function of fitness
+not actual fitness.  Compare Figure~\ref{fig:nerf}.}
+\label{fig:surf}
+\end{figure}
+
+\subsection{Plot Actual Fitness} \label{sec:actual}
+
+The plot produced in the preceding section (Figure~\ref{fig:surf})
+is good enough for most purposes, even though the numbers on the contours
+are not actual fitness but a monotone transformation of it (the corresponding
+canonical parameter).  The contours shown are contours of actual fitness,
+but the numbers attached to them do not reflect actual fitness.
+
+We can get a similar plot where the numbers on the contours are actual
+fitness.  It just takes a bit more work.
+The first plot of this kind was made in Section~3.11 of \citet{aster2tr}.
+Figure~3 of the second submission of \citet{aster2} was also a plot of this
+kind.
+
+Figure~\ref{fig:nerf} (page~\pageref{fig:nerf})
+shows the scatterplot of data values for \texttt{z1} and \texttt{z2}
+and the contours of the estimated quadratic fitness function.
+It is made by the following code.
+<<label=nerftoo,include=FALSE>>=
+xx <- outer(x, y^0)
+yy <- outer(x^0, y)
+xx <- as.vector(xx)
+yy <- as.vector(yy)
+n <- length(xx)
+foo <- rep(1, n)
+bar <- list(z1 = xx, z2 = yy, root = foo)
+for (lab in levels(renew$varb)) {
+    bar[[lab]] <- foo
+    ##### response doesn't matter for prediction #####
+}
+bar <- as.data.frame(bar)
+rebar <- reshape(bar, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp1")
+rebar$vtype <- as.factor(substr(as.character(rebar$varb), 1, 1))
+rebar$year <- as.numeric(substring(as.character(rebar$varb), 2))
+rebar$uyear <- rebar$year * as.numeric(as.character(rebar$vtype) == "u")
+pbar <- predict(out6, newdata = rebar, varvar = varb, idvar = id,
+    root = root)
+pbar <- matrix(pbar, nrow = nrow(bar))
+pbar <- pbar[ , grep("w", vars)]
+zz <- apply(pbar, 1, sum)
+zz <- matrix(zz, nx, ny)
+@
+and
+<<label=nerftootoo,include=FALSE>>=
+plot(z1, z2)
+contour(x, y, zz, add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=nerf,fig=TRUE,echo=FALSE>>=
+<<nerftootoo>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+contours of the estimated fitness function.
+Note numbers on the contours are actual fitness.}
+\label{fig:nerf}
+\end{figure}
+
+Figure~\ref{fig:nerf} looks quite a bit different from
+Figure~\ref{fig:surf}.  Nevertheless, every contour of one
+is also a contour of the other.  The only differences are
+the numbers attached to the contours and which contours
+the \texttt{contour} function draws by default.
+
+\section{Lande-Arnold Analysis}
+
+\subsection{Original}
+
+\citet{la} proposed a method of analysis of phenotypic natural selection
+that is related
+to the analysis we did leading to Figure~\ref{fig:surf} but different
+in the following respects.
+
+First, it uses ordinary least squares (OLS) rather than aster models.
+Second, it does not estimate the fitness landscape itself.  If $w$ is
+fitness and
+\begin{equation} \label{eq:fit}
+   g(z) = E(w \mid z).
+\end{equation}
+is the fitness landscape, define
+\begin{equation} \label{eq:q-repeat}
+   Q(\alpha, \beta, \gamma)
+   =
+   E \bigl\{ (w - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z)^2 \bigr\}
+\end{equation}
+and define $\alpha_2$, $\beta_2$, and $\gamma_2$ to be the values of
+$\alpha$, $\beta$, and $\gamma$ that minimize $Q(\alpha, \beta, \gamma)$.
+Then
+\begin{equation} \label{eq:best-repeat}
+   g_2(z) = \alpha_2 + z^T \beta_2 + \tfrac{1}{2} z^T \gamma_2 z
+\end{equation}
+the best quadratic approximation to the fitness landscape.
+\citet{la} show that $\beta_2$ and $\gamma_2$ have several other equivalent
+characterizations when $z$ is multivariate normal, but we will have
+little to say about them in this technical report.
+
+So let us try a Lande-Arnold analysis.  First we construct the
+fitness variable.
+<<fit>>=
+widx <- grep("^w[0-9]", colnames(dnew1))
+dnew1$fit <- apply(dnew1[ , widx], 1, sum)
+@
+Then we do the OLS regression that is, in other respects, just like
+the aster ``regression'' producing \text{out6}.
+<<lout1>>=
+lout1 <- lm(fit ~ z1 + z2 + I(z1^2) + I(z2^2) + I(z1 * z2), data = dnew1)
+summary(lout1)
+@
+
+We now plot the results of the OLS analysis.
+<<regfun-setup-lout>>=
+qcoef <- lout1$coefficients
+intercept <- qcoef[1]
+<<regfun-setup>>
+@
+Figure~\ref{fig:lurf} (page~\pageref{fig:lurf})
+shows the scatterplot of data values for \texttt{z1} and \texttt{z2}
+and the contours of the estimated quadratic function.
+For comparison, it also shows
+the contours of the fitness landscape taken from Figure~\ref{fig:nerf}.
+It is made by the following code.
+<<label=lurftoo,include=FALSE>>=
+<<nerftootoo>>
+zols <- matrix(NA, nx, ny)
+for (i in 1:nx) {
+    for (j in 1:ny) {
+        b <- c(x[i], y[j])
+        zols[i, j] <- intercept + sum(a * b) + as.numeric(t(b) %*% A %*% b)
+    }
+}
+contour(x, y, zols, col = "red", add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=lurf,fig=TRUE,echo=FALSE>>=
+<<lurftoo>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+contours of the estimated fitness landscape (black)
+and contours of the Lande-Arnold function (red), its best quadratic
+approximation.}
+\label{fig:lurf}
+\end{figure}
+
+Clearly from Figure~\ref{fig:lurf} the two analyses are qualitatively
+similar but differ in detail.  To the extent they disagree the aster
+analysis is correct and the Lande-Arnold analysis incorrect (we know
+this because we know the ``true'' model under which the data were simulated).
+The red contours in Figure~\ref{fig:lurf} are the best quadratic approximation
+to the fitness landscape, but the fitness landscape is not close to quadratic,
+so even the best quadratic approximation is not a very good approximation.
+We know fitness is nonnegative, so all of the red contours with negative values
+are nonsense.  To counterbalance the negative nonsense, the best quadratic
+approximation must underestimate the peak (because it must average to the
+correct average, a property of best quadratic approximation).  The maximum
+value of the surface with black contours (on the grid where it was evaluated)
+is \Sexpr{round(max(zz), 2)}; the maximum
+value of the surface with red contours (on the same grid)
+is \Sexpr{round(max(zols), 2)}.
+
+\subsection{Improved by Combination with Aster Analysis} \label{sec:improve}
+
+To the extent that we still care about best quadratic approximation now that
+we know how to estimate the fitness landscape itself, it is interesting
+that OLS regression is not the best way to estimate $\beta$ and
+$\gamma$ once we have an aster model for the data, which we do (\texttt{out6}).
+
+If we knew the fitness landscape $g(z)$, then we should estimate the
+best quadratic approximation by regressing $g(z)$ on $z$ rather than
+regressing $w$ on $z$.  This would give us an estimate that had no
+statistical error, only error from approximating a non-quadratic function
+by a quadratic one.  We do not know the true fitness landscape, but we
+do have a good approximation from the aster model, the function whose
+contours are shown in Figure~\ref{fig:nerf}.  So we can improve our
+estimate of the best quadratic approximation to the fitness landscape
+as follows.
+
+First we go back to the aster analysis (\texttt{out6}) and obtain
+the unconditional mean value parameters, which in this context are
+the $E(w \mid z)$.
+<<fit-aster>>=
+pout6 <- predict(out6)
+pout6 <- matrix(pout6, nrow = nrow(out6$x), ncol = ncol(out6$x))
+wcol <- grep("w", colnames(out6$x))
+afit <- apply(pout6[ , wcol], 1, sum)
+dnew1$afit <- afit
+@
+Then we do the OLS regression that is, in other respects, just like
+the preceding OLS regression (\texttt{lout1}).
+<<lout2>>=
+lout2 <- lm(afit ~ z1 + z2 + I(z1^2) + I(z2^2) + I(z1 * z2), data = dnew1)
+summary(lout2)
+@
+To the extent that the estimates in the two OLS regressions
+(\texttt{lout1} and \texttt{lout2}) differ, the latter is better.
+This is clear from the smallness of the reported standard errors for the
+latter.  These standard errors are invalid, because they are based on
+the assumption that the response is normal, which it is not (although
+it is a lot closer to normal in the latter).  In order to do the Lande-Arnold
+analysis, we only needed to assume that $z$ was multivariate normal and
+needed no assumption about the distribution of $w$ given $z$.
+(Of course, we do know that distribution --- it is the aster model used
+to simulate the data --- but that distribution does not satisfy the ``usual''
+assumptions for OLS regression.)  But invalid or not, the standard errors
+give a rough indication of the variability of the ``response.''  Of course,
+correct standard errors could be derived based on the aster model
+and the delta method, but that is a lot of work.
+
+Figure~\ref{fig:alurf} (page~\pageref{fig:alurf})
+is just like Figure~\ref{fig:lurf} except that now our improved
+Lande-Arnold estimates based on combining aster analysis with OLS
+regression (\texttt{lout2}) are used instead of the crude OLS estimates.
+\begin{figure}
+\begin{center}
+<<label=alurf,fig=TRUE,echo=FALSE>>=
+qcoef <- lout2$coefficients
+intercept <- qcoef[1]
+<<regfun-setup>>
+<<lurftoo>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+contours of the estimated quadratic fitness function (black)
+and contours of the Lande-Arnold function (red) using the improved
+Lande-Arnold estimators.}
+\label{fig:alurf}
+\end{figure}
+
+\subsection{Discussion}
+
+It is clear from Figure~\ref{fig:alurf} that fitness landscape analysis
+using aster models and Lande-Arnold analysis estimate different things.
+The best quadratic approximation to the fitness landscape may not be a
+very good approximation.  It cannot be when the fitness landscape
+is far from quadratic, which is the usual case.
+\citet{la} are, of course, not to be faulted for failing to use methods
+that were first proposed more than 20 years after they wrote their paper,
+but we can do better now.
+
+\section{Model Selection}
+
+\subsection{Principal Components Regression}
+
+\citet[p.~1214]{la} have a section on model selection in which they recommend
+principal components regression (PCR).  They are not to be faulted for this
+because PCR is a very popular methodology that is the subject of many books
+and articles and has been used for more than 100 years.  However, despite
+its popularity, PCR has no theory that justifies it or even motivates it.
+Principal components as a method of dimension reduction in multivariate
+analysis (where there is no response) is justified by theory, but PCR is not.
+This is well known to statisticians.
+The problem with PCR
+is that the principal components (which in this case would be linear
+combinations of the covariates $z_1$, $z_2$, $\ldots$, $z_{10}$) are chosen
+without any use of the response (in this case $w$ or the entire
+response vector containing all the $u_i$, $v_i$, and $w_i$).
+Hence there is no reason why the principal components should be related
+to the response.  PCR may work, but only by fortunate coincidence.
+
+In our first simulated data set (model~1), PCR would give terrible results.
+We know (because we simulated the data) that $z_1$ and $z_2$ are the
+variables related to $w$.  If we look at the loadings of these variables
+on the principal components
+<<princomp>>=
+vz <- dat[ , grep("z[0-9]$|z10", names(dat), value = TRUE)]
+names(vz)
+vz <- var(vz)
+ez <- eigen(vz, symmetric = TRUE)
+ez$values
+ez$vectors[1:2, ]
+@
+we see that we need all the principal components to contain the subspace
+spanned by $z_1$ and $z_2$.  Thus principal components does exactly the
+wrong thing in our example.  It couldn't be more damaging.
+Of course, our example was constructed to be this way.
+In any particular application, principal components may do better
+(it couldn't do worse), but one can never know when it will do a good job.
+
+In our second simulated data set (model~2), PCR would give slightly less
+terrible results.  The first principal component is now closer to the
+principal axis of the quadratic form that is canonical parameter for fitness,
+but still not close, and the rest of the principal components are random
+directions having no relationship to fitness.
+
+\citet{cook} gives a thorough discussion of the origins of PCR and what
+is wrong with it and proposes modern methods that have some of the flavor
+of PCR without the problems.  The earliest criticism of PCR cited by
+\citet{cook} is \citet{cox}, so the problems of PCR have been recognized
+for at least 40 years.
+
+\subsection{Information Criteria}
+
+Having given up on the idea that principal components will magically select
+the correct model, we move to methods
+that are justified by statistical theory.  These methods fit all models
+in some specified family $\mathcal{M}$ of models, the ``models of interest''
+and evaluate them using some criterion.  The oldest and best known criteria
+are the \emph{Akaike information criterion}
+\citep[AIC,][]{aic} or the \emph{Bayes information criterion}
+\citep[BIC,][]{schwarz}.  Many other information criteria have been proposed,
+but we shall add only one more.  Corrected AIC (AICc) which is a finite-sample
+size correction to AIC, originally due to \citet{sugiura}.
+
+If $l(\hat{\theta}_m)$ is the log likelihood
+maximized over the parameter space of model $m$ and $p_m$ is the dimension
+of the parameter space of model $m$, then
+\begin{equation} \label{eq:aic}
+   \aic(m) = - 2 l(\hat{\theta}_m) + 2 p_m
+\end{equation}
+is AIC for model $m$,
+\begin{equation} \label{eq:aicc}
+   \aicc(m) = \aic(m) + \frac{2 p_m [p_m + 1]}{n - p_m - 1}
+\end{equation}
+is AICc for model $m$, and
+\begin{equation} \label{eq:bic}
+   \bic(m) = - 2 l(\hat{\theta}_m) + \log(n) p_m
+\end{equation}
+is BIC for model $m$, where $n$ is the sample size.  $\aic(m)$ provides
+a consistent estimator of the maximum expected log likelihood for model $m$,
+and $\bic(m)$ provides an asymptotic approximation of the Bayes factor for
+model $m$.  In our example $\log(n)$ is
+<<logn>>=
+log(nind)
+@
+Note that natural logarithms are used (as they are everywhere in statistics).
+According to \citet{b+a} AICc should always be preferred to AIC unless the
+sample size is very large.
+
+The idea is that the model with the smallest information criterion,
+whichever one $\aic(m)$, $\aicc(m)$, or $\bic(m)$ we are using,
+is the best estimate of the true unknown
+model that we can get.  As everywhere else in statistics the estimate
+is not the truth and is random.  When the class $\mathcal{M}$ of models
+in which we look for the best model is very large, then the probability
+of selecting the best model may be very small (more on this later).
+But we shall try these procedures out and see how they do.
+
+\subsection{The Branch and Bound Algorithm}
+
+We need another idea.  Fitting all models in the class $\mathcal{M}$
+is unpalatable if the class is large.  The \emph{branch and bound} algorithm
+from computer science was first introduced into statistical model selection
+by \citet{leaps}, a paper that is almost unreadable being bogged down
+in the details of Fortran code for least squares.  A good introduction
+to the branch and bound algorithm is given by \citet{hand}.
+
+The branch and bound algorithm works on the principle of divide and conquer.
+``Branch'' refers to dividing up the work to be done.  In this case we divide
+up the work by fixing how one phenotypic covariate enters the model.  The
+canonical parameter is constant, linear, or quadratic in that variable.
+That divides the whole class of models to be examined into three disjoint
+subclasses (constant, linear, and quadratic in one particular variable).
+We can further subdivide the work by splitting on another variable,
+further subdivide the subdivisions by splitting on yet another, and so forth.
+
+``Bound'' refers to bounding the criterion function (e.~g., AIC) for a
+whole subclass of models.  If we keep track of the AIC of the best model
+found so far, this provides an upper bound for the AIC of the best model
+in the entire class of models to be examined.  From \eqref{eq:aic} we
+see that, as a function of model complexity, the first term of \eqref{eq:aic}
+decreases (a supermodel has higher likelihood than one of its submodels)
+whereas the second term of \eqref{eq:aic} increases
+(a supermodel has more parameters than one of its submodels).  Hence a lower
+bound for AIC of all the models in a subclass $M \subset \mathcal{M}$ of
+models is
+\begin{equation} \label{eq:lower-bound}
+    - 2 l_{\text{LCS}(M)}(\hat{\theta}_{\text{LCS}(M)}) + 2 p_{\text{GCS}(M)}
+\end{equation}
+where $\text{LCS}(M)$ is the least common supermodel (the smallest model that is
+a supermodel of every $m$ in $M$) and $\text{GCS}(M)$ is the greatest common
+submodel
+(the largest model that is a submodel of every $m$ in $M$).   The same argument
+provides a lower bound for BIC or AICc because their penalty terms are
+also
+increasing functions of $p_m$.  Note further that
+the lower bound is cheap to evaluate (we only need to fit two models no
+matter how many models are in $M$).
+
+If \eqref{eq:lower-bound} is greater than $\aic(m)$ for the
+best model seen so far, then we know that $M$ cannot contain the best model
+and we need not examine it further.
+If the lower bound does not allow us to dispense with $M$, then we subdivide
+it, finding bounds for each subdivision.  When the subdivisions become small
+enough they will be eliminated (no subdivision can be empty, and if it
+contains just one model, we evaluate that model and are done with that
+subdivision).
+
+Branch and bound is not magic.  Typically, the number of models to be
+evaluated grows exponentially in the dimension of the problem.  Here we
+have $3^k$ models if there are $k$ phenotypic covariates.  The branch and bound
+algorithm still takes time exponential in $k$, but the constant is much smaller.
+Typically, the branch and bound algorithm only examines a small fraction of
+the possible models.  The number of models actually examined is reported in
+each case.  So branch and bound does not allow us to do arbitrarily large
+problems, but it does allow us to do problems somewhat larger than we could
+do without it.
+
+This algorithm is not implemented in the \texttt{aster} package,
+so we provide an implementation for the particular problem we are interested
+in here.
+% changed source from file downloaded from conservancy.umn.edu
+% it read from web, now we read from local. which was downloaded
+% from conservancy.umn.edu
+<<source-leaps>>=
+# source("http://www.stat.umn.edu/geyer/aster/leap-funs.R")
+source("leap-funs.R")
+args(aster.leaps)
+@
+\label{pg:source-leaps}
+The function \verb@aster.leaps@ fits all models in a certain
+class of models, that we now describe.  First each model formula
+starts off ``\verb@resp1 ~ vtype + uyear@'' just like \texttt{out6}
+if given the argument \verb@response = "resp1"@.
+The rest of the terms are linear or quadratic in some or all of
+the variables \texttt{z1}, \texttt{z2}, \ldots, the number of
+such variables being the argument \texttt{nsplit} to \texttt{aster.leaps}.
+The linear predictor may be constant, linear, or quadratic in such a variable.
+If ``constant'' the variable does not appear in the formula.
+If ``linear'' the variable appears linearly, for example, if \texttt{z2}
+and \texttt{z3} are linear, then the formula continues ``\verb@+ z2 + z3@''
+If ``quadratic'' the variable appears quadratically, for example,
+if \texttt{z1}, \texttt{z4}, and \texttt{z5} are quadratic, then the
+formula continues ``\verb@+ poly(z1, z4, z5, degree = 2, raw = TRUE)@''.
+Note that this means mixed terms of degree two, such as, \verb@z1 * z4@
+are included in the formula, in effect.
+
+One argument to \texttt{aster.leaps}, that is \texttt{nsplit}, has been
+described already.  The other non-optional arguments \texttt{pred},
+\texttt{fam}, and \texttt{data} are passed to the \texttt{aster} function
+to fit aster models, for this case, we give them the same values they
+had in producing \texttt{out6}, that is \texttt{pred}, \texttt{fam},
+and \texttt{redata}.
+
+\subsection{Five Predictors} \label{sec:five}
+
+\subsubsection{Model 1}
+
+Let's try it.
+We apply the branch and bound algorithm to the data for Model 1
+simulated in Section~\ref{sec:model-1} in which fitness is a quadratic
+function of \texttt{z1} and \texttt{z2} only.
+Because this function may take a lot of time to run,
+we store the results in the current working directory, and simply load
+them if they exist.
+<<b1out5a>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out5a.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out5a")) {
+    b1out5a <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp1")
+    save(b1out5a, file = "b1out5a.rda")
+}
+secs <- b1out5a$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+names(b1out5a)
+b1out5a$time
+b1out5a$fits
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+The models fit by the branch and bound algorithm are shown.  The deviance,
+degrees of freedom, AIC, BIC, and AICc (labeled \texttt{cic}) are shown for
+each model.  Of the $3^5 = \Sexpr{3^5}$ models under consideration, the
+branch and bound algorithm fit only \verb@nrow(b1out5a$fits)@ =
+\Sexpr{nrow(b1out5a$fits)} in determining the model with the lowest AIC.
+The labels for the models indicate the degree of each predictor variable.
+For example, \texttt{q125l3} means \texttt{z1}, \texttt{z2}, and \texttt{z5}
+are quadratic, \texttt{z3} is linear, and \texttt{z4} is constant (not in
+the model).
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out5a$fits))} according to AIC
+of the models that have been fit.
+
+We shall say no more right now about the how well the branch and bound
+algorithm with AIC worked.  Nor will we say anything about performance
+of similar uses of the branch and bound algorithm with other numbers
+of predictor variables and other information criteria ($\aicc$ and $\bic$)
+in the rest of this section.  Some aspects of performance will be examined
+in Section~\ref{sec:fma}.
+
+Now we repeat what we just did using $\aicc$ instead of $\aic$.
+<<b1out5c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out5c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out5c")) {
+    b1out5c <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp1", type = "AICc", envir = b1out5a$envir)
+    save(b1out5c, file = "b1out5c.rda")
+}
+secs <- b1out5c$time[1]
+b1out5c$nfit
+identical(rownames(b1out5a$fits), rownames(b1out5c$fits))
+@
+This takes essentially no time (\Sexpr{round(secs, 3)} seconds),
+since no new fits
+need to be done.  However, the order of models according to AIC and AICc
+are different.  Rather than show all the fits we now show only those
+having AICc within 10 of the lowest.
+<<b1out5c-aux>>=
+ilow <- b1out5c$fits[ , "cic"] < b1out5c$fits[1, "cic"] + 10
+b1out5c$fits[ilow, , drop = FALSE]
+@
+The number 10 is arbitrary, but \citet[Section~2.6]{b+a} make it the dividing
+line between ``considerably less than substantial'' support
+and ``essentially none.''
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out5c$fits))} according to AICc
+of the models that have been fit.
+
+Now we repeat what we just did using $\bic$ instead of $\aicc$.
+<<b1out5b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out5b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out5b")) {
+    b1out5b <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp1", type = "BIC", envir = b1out5c$envir)
+    save(b1out5b, file = "b1out5b.rda")
+}
+secs <- b1out5b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b1out5b$fits[ , "bic"] < b1out5b$fits[1, "bic"] + 10
+b1out5b$fits[ilow, , drop = FALSE]
+@
+In all three calls to \texttt{aster.leaps} we have fit
+\Sexpr{nrow(b1out5b$fits)} models.
+In this call we fit \Sexpr{b1out5b$nfit}.
+The time taken for this call was \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out5b$fits))} according to BIC
+of the models that have been fit.
+
+\subsubsection{Model 2}
+
+Now we do the same thing with model~2,
+simulated in Section~\ref{sec:model-2} in which fitness is a quadratic
+function of \texttt{z1}, $\ldots$, \texttt{z10}.
+<<b2out5a>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out5a.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out5a")) {
+    b2out5a <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp2")
+    save(b2out5a, file = "b2out5a.rda")
+}
+secs <- b2out5a$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out5a$fits[ , "aic"] < b2out5a$fits[1, "aic"] + 10
+b2out5a$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+<<b2out5c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out5c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out5c")) {
+    b2out5c <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp2", type = "AICc", envir = b2out5a$envir)
+    save(b2out5c, file = "b2out5c.rda")
+}
+secs <- b2out5c$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out5c$fits[ , "cic"] < b2out5c$fits[1, "cic"] + 10
+b2out5c$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+<<b2out5b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out5b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out5b")) {
+    b2out5b <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp2", type = "BIC", envir = b2out5c$envir)
+    save(b2out5b, file = "b2out5b.rda")
+}
+secs <- b2out5b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out5b$fits[ , "bic"] < b2out5b$fits[1, "bic"] + 10
+b2out5b$fits[ilow, , drop = FALSE]
+@
+The time taken for this call was \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+\subsection{Six Predictors} \label{sec:six}
+
+This section repeats Section~\ref{sec:five} changing ``five'' to ``six.''
+
+\subsubsection{Model 1}
+
+<<b1out6a>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out6a.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out6a")) {
+    b1out6a <- aster.leaps(pred, fam, data = redata, nsplit = 6,
+        response = "resp1", type = "AIC", envir = b1out5b$envir)
+    save(b1out6a, file = "b1out6a.rda")
+}
+secs <- b1out6a$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b1out6a$fits[ , "aic"] < b1out6a$fits[1, "aic"] + 10
+b1out6a$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out6a$fits))} according to AIC
+of the models that have been fit.
+
+<<b1out6c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out6c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out6c")) {
+    b1out6c <- aster.leaps(pred, fam, data = redata, nsplit = 6,
+        response = "resp1", type = "AICc", envir = b1out6a$envir)
+    save(b1out6c, file = "b1out6c.rda")
+}
+secs <- b1out6c$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b1out6c$fits[ , "cic"] < b1out6c$fits[1, "cic"] + 10
+b1out6c$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out6c$fits))} according to AICc
+of the models that have been fit.
+
+<<b1out6b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out6b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out6b")) {
+    b1out6b <- aster.leaps(pred, fam, data = redata, nsplit = 6,
+        response = "resp1", type = "BIC", envir = b1out6c$envir)
+    save(b1out6b, file = "b1out6b.rda")
+}
+secs <- b1out6b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b1out6b$fits[ , "bic"] < b1out6b$fits[1, "bic"] + 10
+b1out6b$fits[ilow, , drop = FALSE]
+@
+The time taken for this call was \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out6b$fits))} according to BIC
+of the models that have been fit.
+
+\subsubsection{Model 2}
+
+<<b2out6a>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out6a.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out6a")) {
+    b2out6a <- aster.leaps(pred, fam, data = redata, nsplit = 6,
+        response = "resp2", envir = b2out5b$envir)
+    save(b2out6a, file = "b2out6a.rda")
+}
+secs <- b2out6a$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out6a$fits[ , "aic"] < b2out6a$fits[1, "aic"] + 10
+b2out6a$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+<<b2out6c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out6c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out6c")) {
+    b2out6c <- aster.leaps(pred, fam, data = redata, nsplit = 6,
+        response = "resp2", type = "AICc", envir = b2out6a$envir)
+    save(b2out6c, file = "b2out6c.rda")
+}
+secs <- b2out6c$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out6c$fits[ , "cic"] < b2out6c$fits[1, "cic"] + 10
+b2out6c$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+<<b2out6b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out6b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out6b")) {
+    b2out6b <- aster.leaps(pred, fam, data = redata, nsplit = 6,
+        response = "resp2", type = "BIC", envir = b2out6c$envir)
+    save(b2out6b, file = "b2out6b.rda")
+}
+secs <- b2out6b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out6b$fits[ , "bic"] < b2out6b$fits[1, "bic"] + 10
+b2out6b$fits[ilow, , drop = FALSE]
+@
+The time taken for this call was \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+\subsection{Seven Predictors} \label{sec:seven}
+
+This section repeats Section~\ref{sec:six} changing ``six'' to ``seven.''
+
+\subsubsection{Model 1}
+
+<<b1out7a>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out7a.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out7a")) {
+    b1out7a <- aster.leaps(pred, fam, data = redata, nsplit = 7,
+        response = "resp1", type = "AIC", envir = b1out6b$envir)
+    save(b1out7a, file = "b1out7a.rda")
+}
+secs <- b1out7a$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b1out7a$fits[ , "aic"] < b1out7a$fits[1, "aic"] + 10
+b1out7a$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out7a$fits))} according to AIC
+of the models that have been fit.
+
+<<b1out7c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out7c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out7c")) {
+    b1out7c <- aster.leaps(pred, fam, data = redata, nsplit = 7,
+        response = "resp1", type = "AICc", envir = b1out7a$envir)
+    save(b1out7c, file = "b1out7c.rda")
+}
+secs <- b1out7c$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b1out7c$fits[ , "cic"] < b1out7c$fits[1, "cic"] + 10
+b1out7c$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out7c$fits))} according to AICc
+of the models that have been fit.
+
+<<b1out7b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b1out7b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b1out7b")) {
+    b1out7b <- aster.leaps(pred, fam, data = redata, nsplit = 7,
+        response = "resp1", type = "BIC", envir = b1out7c$envir)
+    save(b1out7b, file = "b1out7b.rda")
+}
+secs <- b1out7b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b1out7b$fits[ , "bic"] < b1out7b$fits[1, "bic"] + 10
+b1out7b$fits[ilow, , drop = FALSE]
+@
+The time taken for this call was \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model ranks
+number \Sexpr{match("q12l", rownames(b1out7b$fits))} according to BIC
+of the models that have been fit.
+
+\subsubsection{Model 2}
+
+<<b2out7a>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out7a.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out7a")) {
+    b2out7a <- aster.leaps(pred, fam, data = redata, nsplit = 7,
+        response = "resp2", envir = b2out6b$envir)
+    save(b2out7a, file = "b2out7a.rda")
+}
+secs <- b2out7a$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out7a$fits[ , "aic"] < b2out7a$fits[1, "aic"] + 10
+b2out7a$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+<<b2out7c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out7c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out7c")) {
+    b2out7c <- aster.leaps(pred, fam, data = redata, nsplit = 7,
+        response = "resp2", type = "AICc", envir = b2out7a$envir)
+    save(b2out7c, file = "b2out7c.rda")
+}
+secs <- b2out7c$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out7c$fits[ , "cic"] < b2out7c$fits[1, "cic"] + 10
+b2out7c$fits[ilow, , drop = FALSE]
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+<<b2out7b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("b2out7b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+if (! exists("b2out7b")) {
+    b2out7b <- aster.leaps(pred, fam, data = redata, nsplit = 7,
+        response = "resp2", type = "BIC", envir = b2out7c$envir)
+    save(b2out7b, file = "b2out7b.rda")
+}
+secs <- b2out7b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+ilow <- b2out7b$fits[ , "bic"] < b2out7b$fits[1, "bic"] + 10
+b2out7b$fits[ilow, , drop = FALSE]
+@
+The time taken for this call was \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+Note that the simulation truth model is not among the models under
+consideration (it depends on all 10 $z_i$).
+
+\subsection{Total Time}
+
+The total time taken for all calls to \texttt{aster.leaps} is
+<<total-time>>=
+leapout <- ls(pattern = "^b[12]out")
+secs <- 0
+for (i in seq(along = leapout)) {
+    bxout <- get(leapout[i])
+    secs <- secs + bxout$time[1]
+}
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+hrs <- floor(mins / 60)
+mins <- floor(mins - hrs * 60)
+@
+\Sexpr{hrs} hours, \Sexpr{mins} minutes, and \Sexpr{secs} seconds.
+
+\section{Frequentist Model Averaging} \label{sec:fma}
+
+We do not know if any model under consideration (in the class $\mathcal{M}$)
+is correct; in our second example none are.  Even if some model under
+consideration is correct, we do not know which one it is; in our first example
+neither $\aic$, $\aicc$ nor $\bic$ ever selected the correct model.
+Thus it makes no sense to proceed as if the model selected
+by $\aic$, $\aicc$ or $\bic$ is correct.  So what do we do?
+
+A recent proposal is frequentist model averaging (FMA), which copies
+Bayesian model averaging (BMA) in operation though not in philosophy.
+See \citet{b+a} and \citet{hjort} for FMA and \citet{bma} for BMA.
+
+BMA does the Right Thing from the Bayesian point of view.  A Bayesian
+considers everything unknown a parameter and formulates uncertainty about
+it as a prior distribution.  Here both models and what the frequentist
+calls parameters within models are unknown.  Given a prior on both models
+and parameters within models, the Bayesian computes the posterior distribution
+(on both models and parameters within models).  Then, given something to
+predict (e.~g., the fitness landscape), which is a function of model and
+parameter within model the Bayesian predicts this by averaging over the
+posterior distribution (over both models and parameters within models).
+In this context full BMA would be very computationally
+intensive, requiring Markov chain Monte Carlo.  FMA does roughly the same
+thing, is much easier to do, and perhaps works as well, although we do not
+investigate this.
+
+In this section we will mostly follow \citet[Chapter~4]{b+a}.
+The idea is to average inferences from various models that are reasonably
+well supported by the data.  The virtue of averaging here is the same as
+everywhere else in statistics: it cancels errors more often
+than it amplifies them.
+In BMA, $\exp\bigl(- \tfrac{1}{2} \bic(m)\bigr)$ is asymptotically proportional
+to the posterior probability of model $m$.  Hence if $g(\theta)$ is a function
+of the parameters we are interested in estimating, the weighted average
+\begin{equation} \label{eq:bma}
+   \frac{\sum_{m \in \mathcal{M}} g(\hat{\theta}_m)
+   \exp\bigl(- \tfrac{1}{2} \bic(m)\bigr)}{
+   \sum_{m \in \mathcal{M}}
+   \exp\bigl(- \tfrac{1}{2} \bic(m)\bigr)}
+\end{equation}
+is an asymptotic approximation of the posterior expectation of $g(\theta)$.
+True BMA would use the true posterior probabilities and also integrate
+over $\theta$ within models \citep{bma}, but this is a reasonable asymptotic
+approximation.  Proceeding by analogy, frequentists would use
+\begin{equation} \label{eq:fma}
+   \frac{\sum_{m \in \mathcal{M}} g(\hat{\theta}_m)
+   \exp\bigl(- \tfrac{1}{2} \aic(m)\bigr)}{
+   \sum_{m \in \mathcal{M}}
+   \exp\bigl(- \tfrac{1}{2} \aic(m)\bigr)}
+\end{equation}
+or the same with $\aic$ replaced by $\aicc$ \citep[Chapter~4]{b+a}.
+There does not seem to be a strong theoretical justification for this
+particular form of weighted average \citep{hjort}, but any averaging
+is better than no averaging.
+
+Because we have not fit all models in $\mathcal{M}$ and do not want to
+(it would take a huge amount of time), we propose to use a short cut
+in the spirit of what \citet{occam} called ``Occam's window.''
+Instead of averaging over all the models under consideration,
+we average only over a random subset $\mathcal{A}$, which we define by
+\begin{equation} \label{eq:prune}
+   \mathcal{A}
+   =
+   \left\{\, m \in \mathcal{M} :
+   \aic(m) < 2 \log(c) + \min_{m' \in \mathcal{M}} \aic(m')
+   \,\right\}
+\end{equation}
+where $c$ is a constant chosen by the investigators.  Then we replace
+$\mathcal{M}$ by $\mathcal{A}$ in \eqref{eq:bma} and \eqref{eq:fma}
+giving
+\begin{equation} \label{eq:fmac}
+   \frac{\sum_{m \in \mathcal{A}} g(\hat{\theta}_m)
+   \exp\bigl(- \tfrac{1}{2} \aic(m)\bigr)}{
+   \sum_{m \in \mathcal{A}}
+   \exp\bigl(- \tfrac{1}{2} \aic(m)\bigr)}
+\end{equation}
+or the same with $\aic$ replaced by $\aicc$ or $\bic$.
+\citet{occam} used in their examples $c = 20$ ``by analogy with the
+popular .05 cutoff for $P$ values'' but that ``popular'' choice is
+itself arbitrary and without any theoretical justification, hence so
+is using $c = 20$ in BMA or FMA.  Nevertheless, we will use the same
+choice.
+
+The full ``Occam's window'' proposal of \citet{occam} involved another
+kind of pruning using a smaller subset than the $\mathcal{A}$ defined
+here, but Raftery and coauthors seem to have dropped this second kind
+of pruning; \citet{bma} call it ``optional'' and \citet{volinsky} do
+not even mention it.
+
+The discussants of \citet{bma} were dubious about Occam's window
+and in reply \citet{bma} admitted ``we know of no formal theoretical
+support for it.''  It is merely a computational convenience.  In FMA
+the change from \eqref{eq:fma} to \eqref{eq:fmac} is, perhaps, a bit
+less dubious, not because there is stronger justification for the
+pruning \eqref{eq:prune} but because there is less theoretical justification
+for \eqref{eq:fma}, there being no philosophically ideal form of frequentist
+model averaging.
+
+For our examples of FMA we will
+stop using $\aic$ and use only $\aicc$ and $\bic$.
+
+\subsection{Five Predictors} \label{sec:five-fma}
+
+So far we have been passing around two environments, both now quite full.
+<<show-envir>>=
+b1out5a$envir
+b1out7b$envir
+b2out5a$envir
+b2out7b$envir
+@
+Different names for the same two environments.  Hence we restore them to
+where we want them.
+<<reload-envir>>=
+load("b1out5b.rda")
+load("b2out5b.rda")
+@
+
+\subsubsection{Model 1}
+
+First we use the data simulated from Model~1.
+Since we now want to be sure we have all models in the set \eqref{eq:prune},
+we need to rerun \verb@aster.leaps@ using its \verb@cutoff@ argument.
+<<f1out5c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("f1out5c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+cutoff <- 2 * log(20)
+if (! exists("f1out5c")) {
+    f1out5c <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp1", type = "AICc", envir = b1out5b$envir,
+        cutoff = cutoff)
+    save(f1out5c, file = "f1out5c.rda")
+}
+secs <- f1out5c$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+We had to fit \Sexpr{f1out5c$nfit} new models that we had not
+needed to fit in finding the minimum $\aic$, $\aicc$ and $\bic$.
+<<f1out5c-aux>>=
+ilow <- f1out5c$fits[ , "cic"] < f1out5c$fits[1, "cic"] + cutoff
+mods <- f1out5c$fits[ilow, , drop = FALSE]
+print(mods)
+@
+There are \Sexpr{sum(ilow)} models to average over (shown above).
+
+For the ``parameter'' to average, we take the whole fitness surface.
+Since this is a function, we cannot fit it at all points.  We will
+fit it at the \Sexpr{nind} data points.  First we define a function
+that takes the mean value parameter, $\tau$ in the notation in \citet{gws},
+to fitness; it uses the global variable \texttt{vars} defined on 
+p.~\pageref{pg:vars}.
+<<tau2fit>>=
+tau2fit <- function(tau) {
+    tau <- matrix(tau, ncol = length(vars))
+    widx <- grep("^w[0-9]", vars)
+    apply(tau[ , widx], 1, sum)
+}
+@
+Thus, for example, the ``simulation truth'' fitness for Model~1 is
+given by
+<<m1p5c-wtrue>>=
+true <- tau2fit(redata$tau1)
+@
+
+Since we did not save the whole fit, just the $\aic$, $\aicc$, and $\bic$
+values for the models we fit during execution of the branch and bound
+algorithm, we need to refit the model in the set $\mathcal{A}$.  Since
+we only know these models by their ``names,'' which are character strings
+<<m1p5c-modnames>>=
+modnames <- rownames(mods)
+modnames
+@
+we need a function that
+turns such strings into model formulas and fits the models.  Such a function,
+called \texttt{redomod}, is in the file sourced on p.~\pageref{pg:source-leaps}
+that also contained the \texttt{aster.leaps} function.
+Here is how it is called.
+<<args-redomod>>=
+args(redomod)
+@
+The \texttt{string} argument is the model specification, e.~g.,
+\texttt{"\Sexpr{modnames[1]}"}, the \texttt{data} argument is the data frame
+containing the variables, for us always \texttt{redata},
+and the \texttt{response} argument is the name of the response,
+for us either \texttt{"resp1"} or \texttt{"resp2"}.
+
+Thus, for example, the fitness predicted by the model
+``selected'' by $\aicc$ (the model with smallest $\aicc$) is given by
+<<m1p5c-wslct>>=
+out <- redomod(modnames[1], data = redata, response = "resp1")
+wslct <- tau2fit(predict(out))
+@
+and the fitness predicted by the correct model, which we know because
+the data are simulated but which we would not know in real life, is given by
+<<m1p5c-wbest>>=
+out <- redomod("q12l", data = redata, response = "resp1")
+wbest <- tau2fit(predict(out))
+@
+
+Now we want to calculate the fitness predicted using FMA.
+First we calculate the weights used in the weighted average,
+then we refit the models and average the predictions of the
+models using these weights.
+<<m1p5c-wpred>>=
+wgt <- mods[ , "cic"]
+wgt <- wgt - wgt[1]
+wgt <- exp(- wgt / 2)
+wgt <- wgt / sum(wgt)
+wgt
+
+wpred <- 0 * true
+modnames <- rownames(mods)
+for (i in seq(along = modnames)) {
+    out <- redomod(modnames[i], data = redata, response = "resp1")
+    wpred <- wpred + wgt[i] * tau2fit(predict(out))
+}
+@
+
+Now we compare these ``predictions'' (actually, \emph{estimates} is
+the better term in this situation).  There are several criteria
+we could use for comparison.  The most natural to statisticians is
+root-mean-square (RMS) error
+<<m1p5c-rms>>=
+### rms error
+sqrt(mean((wslct - true)^2))
+sqrt(mean((wpred - true)^2))
+sqrt(mean((wbest - true)^2))
+@
+We see that FMA does slightly better than merely using the model
+``selected'' by $\aicc$, but neither does as well as using the
+correct model, which in real life we would not know.
+
+Or we could use mean absolute error.
+<<m1p5c-abs>>=
+### mean abs error
+mean(abs(wslct - true))
+mean(abs(wpred - true))
+mean(abs(wbest - true))
+@
+Same story.
+
+Or we could use maximum error.
+<<m1p5c-max>>=
+### max error
+max(abs(wslct - true))
+max(abs(wpred - true))
+max(abs(wbest - true))
+@
+Same story.  Since we get the same results by all three criteria,
+from now on we will only use RMS error.
+
+We save these results for future reference.
+<<m1p5c-save>>=
+m1save <- data.frame(npred = c(5, 5, 2),
+    type = c("select-AICc", "FMA-AICc", "correct"),
+    rms = c(sqrt(mean((wslct - true)^2)), sqrt(mean((wpred - true)^2)),
+    sqrt(mean((wbest - true)^2))))
+print(m1save)
+@
+
+Now we redo everything using $\bic$ instead of $\aicc$.
+<<f1out5b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("f1out5b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+cutoff <- 2 * log(20)
+if (! exists("f1out5b")) {
+    f1out5b <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp1", type = "BIC", envir = f1out5c$envir,
+        cutoff = cutoff)
+    save(f1out5b, file = "f1out5b.rda")
+}
+secs <- f1out5b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+We had to fit \Sexpr{f1out5b$nfit} new models that we had not yet needed
+to fit.
+<<f1out5b-aux>>=
+ilow <- f1out5b$fits[ , "bic"] < f1out5b$fits[1, "bic"] + cutoff
+mods <- f1out5b$fits[ilow, , drop = FALSE]
+print(mods)
+@
+There are \Sexpr{sum(ilow)} models to average over (shown above)
+which have ``names''
+<<m1p5b-modnames>>=
+modnames <- rownames(mods)
+modnames
+@
+
+The fitness predicted by the model
+``selected'' by $\bic$ is given by
+<<m1p5b-wslct>>=
+out <- redomod(modnames[1], data = redata, response = "resp1")
+wslct <- tau2fit(predict(out))
+@
+We do not have to redo \texttt{wbest}.  It is the same as before
+(it did not depend on whether we were using $\aicc$ or $\bic$).
+
+Now we want to calculate the fitness predicted using FMA.
+First we calculate the weights used in the weighted average,
+then we refit the models and average the predictions of the
+models using these weights.
+<<m1p5b-wpred>>=
+wgt <- mods[ , "bic"]
+wgt <- wgt - wgt[1]
+wgt <- exp(- wgt / 2)
+wgt <- wgt / sum(wgt)
+wgt
+
+wpred <- 0 * true
+modnames <- rownames(mods)
+for (i in seq(along = modnames)) {
+    out <- redomod(modnames[i], data = redata, response = "resp1")
+    wpred <- wpred + wgt[i] * tau2fit(predict(out))
+}
+@
+
+Now we compare these estimates using RMS error and also compare
+with our other estimates using $\aicc$.
+<<m1p5b-save>>=
+tmp <- data.frame(npred = rep(5, 2),
+    type = c("select-BIC", "FMA-BIC"),
+    rms = c(sqrt(mean((wslct - true)^2)), sqrt(mean((wpred - true)^2))))
+m1save <- rbind(m1save, tmp)
+m1save <- m1save[rev(order(m1save[ , "rms"])), ]
+print(m1save)
+@
+
+Despite the fact that $\bic$ is supposed to do better than $\aicc$
+in this situation (where one of the models under consideration is
+true and a rather small one of them), it actually does worse in
+this particular example, the problem being that the model it ``selects''
+\texttt{"\Sexpr{modnames[1]}"} is too small.
+
+\subsubsection{Model 2}
+
+Now we use the data simulated from Model~2.
+<<f2out5c>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("f2out5c.rda"))
+options(show.error.messages = TRUE, warn = 0)
+cutoff <- 2 * log(20)
+if (! exists("f2out5c")) {
+    f2out5c <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp2", type = "AICc", envir = b2out5b$envir,
+        cutoff = cutoff)
+    save(f2out5c, file = "f2out5c.rda")
+}
+secs <- f2out5c$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+We had to fit \Sexpr{f2out5c$nfit} new models that we had not
+needed to fit in finding the minimum $\aic$, $\aicc$ and $\bic$.
+<<f2out5c-aux>>=
+ilow <- f2out5c$fits[ , "cic"] < f2out5c$fits[1, "cic"] + cutoff
+mods <- f2out5c$fits[ilow, , drop = FALSE]
+print(mods)
+@
+There are \Sexpr{sum(ilow)} models to average over (shown above),
+which have ``names''
+<<m2p5c-modnames>>=
+modnames <- rownames(mods)
+modnames
+@
+
+The ``simulation truth'' fitness for Model~2 is given by
+<<m2p5c-wtrue>>=
+wtrue <- tau2fit(redata$tau2)
+@
+
+The fitness predicted by the model ``selected'' by $\aicc$ is given by
+<<m2p5c-wslct>>=
+out <- redomod(modnames[1], data = redata, response = "resp2")
+wslct <- tau2fit(predict(out))
+@
+and the fitness predicted by the correct model, which we know because
+the data are simulated but which we would not know in real life, is given by
+<<m2p5c-wbest>>=
+out <- redomod("q123456789Al", data = redata, response = "resp2")
+wbest <- tau2fit(predict(out))
+@
+
+Now we want to calculate the fitness predicted using FMA.
+First we calculate the weights used in the weighted average,
+then we refit the models and average the predictions of the
+models using these weights.
+<<m2p5c-wpred>>=
+wgt <- mods[ , "cic"]
+wgt <- wgt - wgt[1]
+wgt <- exp(- wgt / 2)
+wgt <- wgt / sum(wgt)
+wgt
+
+wpred <- 0 * wtrue
+modnames <- rownames(mods)
+for (i in seq(along = modnames)) {
+    out <- redomod(modnames[i], data = redata, response = "resp2")
+    wpred <- wpred + wgt[i] * tau2fit(predict(out))
+}
+@
+
+Now we compare these estimates using root-mean-square error.
+<<m2p5c-save>>=
+m2save <- data.frame(npred = c(5, 5, 10),
+    type = c("select-AICc", "FMA-AICc", "correct"),
+    rms = c(sqrt(mean((wslct - true)^2)), sqrt(mean((wpred - true)^2)),
+    sqrt(mean((wbest - true)^2))))
+m2save <- m2save[rev(order(m2save[ , "rms"])), ]
+print(m2save)
+@
+We see that FMA does slightly worse than merely using the model
+``selected'' by $\aicc$, and both do better than using the
+correct model, because the correct model just has too many parameters
+to estimate well with this amount of data.
+
+Now we redo everything using $\bic$ instead of $\aicc$.
+<<f2out5b>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("f2out5b.rda"))
+options(show.error.messages = TRUE, warn = 0)
+cutoff <- 2 * log(20)
+if (! exists("f2out5b")) {
+    f2out5b <- aster.leaps(pred, fam, data = redata, nsplit = 5,
+        response = "resp2", type = "BIC", envir = f2out5c$envir,
+        cutoff = cutoff)
+    save(f2out5b, file = "f2out5b.rda")
+}
+secs <- f2out5b$time[1]
+mins <- floor(secs / 60)
+secs <- floor(secs - mins * 60)
+@
+The call to this function
+took \Sexpr{mins} minutes and \Sexpr{secs} seconds.
+We had to fit \Sexpr{f2out5b$nfit} new models that we had not yet needed
+to fit.
+<<f2out5b-aux>>=
+ilow <- f2out5b$fits[ , "bic"] < f2out5b$fits[1, "bic"] + cutoff
+mods <- f2out5b$fits[ilow, , drop = FALSE]
+print(mods)
+@
+There are \Sexpr{sum(ilow)} models to average over (shown above)
+which have ``names''
+<<m2p5b-modnames>>=
+modnames <- rownames(mods)
+modnames
+@
+
+The fitness predicted by the model
+``selected'' by $\bic$ is given by
+<<m2p5b-wslct>>=
+out <- redomod(modnames[1], data = redata, response = "resp2")
+wslct <- tau2fit(predict(out))
+@
+We do not have to redo \texttt{wbest}.  It is the same as before
+(it did not depend on whether we were using $\aicc$ or $\bic$).
+
+Now we want to calculate the fitness predicted using FMA.
+First we calculate the weights used in the weighted average,
+then we refit the models and average the predictions of the
+models using these weights.
+<<m2p5b-wpred>>=
+wgt <- mods[ , "bic"]
+wgt <- wgt - wgt[1]
+wgt <- exp(- wgt / 2)
+wgt <- wgt / sum(wgt)
+wgt
+
+wpred <- 0 * wtrue
+modnames <- dimnames(mods)[[1]]
+for (i in seq(along = modnames)) {
+    out <- redomod(modnames[i], data = redata, response = "resp2")
+    wpred <- wpred + wgt[i] * tau2fit(predict(out))
+}
+@
+
+Now we compare these estimates using root-mean-square error.
+<<m2p5b-save>>=
+tmp <- data.frame(npred = rep(5, 2),
+    type = c("select-BIC", "FMA-BIC"),
+    rms = c(sqrt(mean((wslct - true)^2)), sqrt(mean((wpred - true)^2))))
+m2save <- rbind(m2save, tmp)
+m2save <- m2save[rev(order(m2save[ , "rms"])), ]
+print(m2save)
+@
+The order between ``selection'' and FMA is now confused, with one
+FMA doing better than the ``selection'' and the other worse, but
+all of the model selection and model averaging estimators are better
+than using the correct model with 10 predictors and
+\Sexpr{length(out5too$coefficients)} parameters to estimate.
+
+\subsection{Summary}
+
+We originally intended to repeat the analyses in this section
+using more predictor variables, but since we have seen the pattern
+we expected (more or less) with five predictors, and since this
+model selection and model averaging are a minor point of the paper
+(although most of the work), we stop here.
+
+\section{Discussion}
+
+It is hard to know what lessons to draw from simulations.  All simulation
+studies are designed, consciously or unconsciously, to ``prove'' a particular
+point.  Since nearly any method can be made to look good if the simulation
+is chosen precisely to make it look good, simulations actually prove nothing.
+
+All we can say about this simulation is that we had, or at least were
+consciously aware of, no ax to grind other than illustrating that principal
+components regression is a bad idea.  But this latter point is so well
+understood by statisticians, that we did not bother to illustrate it with
+our simulations.  It is so obvious that principal components would do
+a horrible job on our example, that there would be no point to actually
+illustrating this.
+
+Among model selection and model averaging ideas that actually have some
+theoretical justification, we have no ax to grind, not being experts in
+the area.  We tried some and they worked, more or less.  Most readers,
+however, are probably disappointed in how well they worked.  Many users
+of statistics have no idea how badly most model selection schemes work
+on realistic problems, and the actual performance of the best schemes known
+is much worse than users desire.  But there is no magic, statistics works
+as well as it works.  Short of a fairy godmother with a magic wand, it
+is clear that no model selection method known will do much better than
+the ones we tried here.   We make no claim that the methods we tried are
+optimal; more complicated methods might do slightly better, but not much
+better.
+
+Of course, how well methods work depend on how obvious the true model is.
+If the effects are made large enough or if the sample size is large enough,
+then any method that is any good (this does not include principal components
+regression) will select the correct model.  If one increases the sample
+size \texttt{nind} (p.~\pageref{rnw:1}) or if one increases the strength
+of the quadratic effect \texttt{ascal} (p.~\pageref{rnw:3}), then the problem
+becomes much easier and for sufficiently large \texttt{nind} or \texttt{ascal}
+all of the methods we tried will ``select'' the simulation truth model with
+reasonably high probability.  But how realistic is that?  Note that the
+data we actually simulated is very easy when the true predictors are known
+($P$-values on p.~\pageref{pg:out6-8}).  Most scientists plan experiments
+just large enough to show something, not so large that everything is obvious
+without statistics.
+
+We did, at least, show two contrasting situations.  When the true model,
+which is, of course, unknown in real life, is ``sparse'' with only a few
+regression coefficients nonzero, then BIC does better.  It has a bias towards
+small models, so when this bias works in its favor, it does better.
+When the true model, is non-sparse with many regression coefficients nonzero,
+then AIC and $\aicc$ do better.  They have a bias towards large models,
+so when this bias works in their favor, they do better.
+Choose whichever you like, depending on your opinion about the true state
+of affairs.
+As we have repeatedly mentioned,
+\citet[Section~1.2.5]{b+a} are particularly emphatic about the biological
+unrealism of ``true'' (at least simulation truth) models with only a few
+parameters.  Although we have nothing particular to add to this, we agree,
+for what it is worth.  Thus we would usually use $\aicc$ rather than $\bic$.
+
+Frequentist model averaging is new (less than ten years old) and we have
+even less to say about that.  It does seem to work better than
+``selecting'' a model and pretending it is true, a threadbare pretense
+when there are thousands of models under consideration and a negligible
+chance of selecting the correct one.  In such circumstances, ``selecting''
+a model and pretending it is true, especially overinterpreting the ``selected''
+model and claiming that the predictors ``selected'' are the ones that explain
+the phenomena, is clearly wrong, and frequentist model averaging is a
+sensible substitute.
+
+\begin{thebibliography}{}
+
+\bibitem[Akaike(1973)]{aic}
+Akaike, H. (1973).
+\newblock Information theory and an extension of the maximum
+    likelihood principle.
+\newblock \emph{Second International Symposium on Information Theory},
+    267--281.
+
+% \bibitem[Barndorff-Nielsen(1978)]{barndorff}
+% Barndorff-Nielsen, O.~E. (1978).
+% \newblock \emph{Information and Exponential Families}.
+% \newblock Chichester: John Wiley.
+
+% \bibitem[Brown(1986)]{brown}
+% Brown, L.~D. (1986).
+% \newblock \emph{Fundamentals of Statistical Exponential Families: with
+%     Applications in Statistical Decision Theory}.
+% \newblock Hayward, CA: Institute of Mathematical Statistics.
+
+\bibitem[Burnham and Anderson(2002)]{b+a}
+Burnham, K.~P. and Anderson, D.~R. (2002).
+\newblock \emph{Model Selection and Multimodel Inference: A Practical
+    Information-Theoretic Approach}, 2nd ed.
+\newblock New York: Springer-Verlag.
+
+\bibitem[Cook(2007)]{cook}
+Cook, R. D. (2007).
+\newblock Fisher lecture: Dimension reduction in regression (with discussion).
+\newblock \emph{Statistical Science}, in press.
+\newblock \url{http://www.imstat.org/sts/future_papers.html}
+
+\bibitem[Cox(1968)]{cox}
+Cox, D.~R. (1968).
+\newblock Notes on some aspects of regression analysis.
+\newblock \emph{Journal of the Royal Statistical Society, Ser. A},
+    \textbf{131}, 265--279.
+
+\bibitem[Furnival and Wilson(1974)]{leaps}
+Furnival, G.~M. and Wilson, R.~W., Jr. (1974).
+\newblock Regressions by Leaps and Bounds
+\newblock \emph{Technometrics}, \textbf{16}, 499--511.
+\newblock Reprinted, \emph{Technometrics}, \textbf{42}, 69--79.
+
+\bibitem[Geyer and Shaw(2008)]{evo2008talk}
+Geyer, C.~J. and Shaw, R.~G. (2008).
+\newblock Supporting Data Analysis for a talk to be given at Evolution 2008
+    University of Minnesota, June 20--24.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~669.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Geyer et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S. and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, \textbf{94} 415--426.
+
+\bibitem[Hand(1981)]{hand}
+Hand, D.~J. (1981).
+\newblock Branch and bound in statistical data analysis.
+\newblock \emph{The Statistician}, \textbf{30}, 1--13. 
+
+\bibitem[Hjort and Claeskens(2003)]{hjort}
+Hjort N.~L. and Claeskens G. (2003).
+\newblock Frequentist model average estimators.
+\newblock \emph{Journal of the American Statistical Association},
+    \textbf{98}, 879--899.
+
+\bibitem[Hoeting et al.(1999)Hoeting, Madigan, Raftery, and Volinsky]{bma}
+Hoeting, J.~A., Madigan, D., Raftery, A.~E., and Volinsky, C.~T. (1999).
+\newblock Bayesian model averaging: A tutorial (with discussion).
+\newblock \emph{Statistical Science}, \textbf{19}, 382--417.
+\newblock Corrected version available at
+    \url{http://www.stat.washington.edu/www/research/online/1999/hoeting.pdf}.
+
+\bibitem[Lande and Arnold(1983)]{la}
+Lande, R. and Arnold, S.~J. (1983).
+\newblock The measurement of selection on correlated characters.
+\newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+% \bibitem[Lindgren(1993)]{lindgren}
+% Lindgren, B.~W. (1993).
+% \newblock \emph{Statistical Theory}, 4th ed.
+% \newblock New York: Chapman \& Hall.
+
+\bibitem[Madigan and Raftery(1994)]{occam}
+Madigan, D. and Raftery, A.~E. (1994).
+\newblock Model selection and accounting for model uncertainty in
+    graphical models using Occam's window.
+\newblock \emph{Journal of the American Statistical Association},
+    \textbf{89}, 1535--1546. 
+
+% \bibitem[Phillips and Arnold(1989)]{p+a}
+% Phillips, P.~C. and Arnold, S.~J. (1989).
+% \newblock Visualizing multivariate selection.
+% \newblock \emph{Evolution}, \textbf{43}, 1209--1222.
+
+\bibitem[R Development Core Team(2008)]{rcore}
+R Development Core Team (2008).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+% \bibitem[Rockafellar and Wets(2004)]{raw}
+% Rockafellar, R.~T. and Wets, R. J.-B. (2004).
+% \newblock \emph{Variational Analysis}, corr.\ 2nd printing.
+% \newblock Berlin: Springer-Verlag.
+
+\bibitem[Schwarz(1978)]{schwarz}
+Schwarz, G. (1978).
+\newblock Estimating the dimension of a model.
+\newblock \emph{Annals of Statistics}, \textbf{6}, 461--464.
+
+\bibitem[Shaw, et al.(2008) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2008).
+\newblock Unifying life history analysis for inference of fitness and
+    population growth.
+\newblock \emph{American Naturalist}, in press.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Shaw, et al.(2007) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2tr}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2007).
+\newblock Supporting data analysis for ``Unifying life history analysis
+    for inference of fitness and population growth''.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~658
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+% \bibitem[Shaw, et al.(2007b) Shaw, Geyer, Wagenius, Hangelbroek, and
+%     Etterson]{aster2tr2}
+% Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+%     Etterson, J.~R. (2007b).
+% \newblock More Supporting data analysis for ``Unifying life history analysis
+%     for inference of fitness and population growth''.
+% \newblock University of Minnesota School of Statistics Technical Report
+%     No.~661
+% \newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Sugiura(1978)]{sugiura}
+Sugiura, N. (1978).
+\newblock Further analysis of the data by Akaike's information criterion
+    and the finite corrections.
+\newblock \emph{Communications in Statistics, Theory and Methods}, \textbf{A7},
+    13--26.
+
+\bibitem[Volinsky, et al.(1997)Volinsky, Madigan, Raftery and Kronmal]{volinsky}
+Volinsky, C.~T., Madigan, D., Raftery, A.~E. and Kronmal, R.~A. (1997).
+\newblock Bayesian model averaging in proportional hazard models: Assessing
+    the risk of a stroke.
+\newblock \emph{Applied Statistics}, \textbf{46}, 433--448. 
+
+\end{thebibliography}
+
+\end{document}
+
