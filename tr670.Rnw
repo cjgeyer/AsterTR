@@ -1,0 +1,1862 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+\DeclareMathOperator{\aic}{AIC}
+\DeclareMathOperator{\aicc}{AICc}
+\DeclareMathOperator{\bic}{BIC}
+\DeclareMathOperator{\hic}{HIC}
+\DeclareMathOperator{\lb}{LB}
+\DeclareMathOperator{\gcsm}{gcsm}
+\DeclareMathOperator{\lcsm}{lcsm}
+\DeclareMathOperator{\tr}{tr}
+
+\RequirePackage{amsfonts}
+\newcommand{\boldbeta}{\boldsymbol{\beta}}
+\newcommand{\boldtheta}{\boldsymbol{\theta}}
+\newcommand{\boldvarphi}{\boldsymbol{\varphi}}
+\newcommand{\boldtau}{\boldsymbol{\tau}}
+\newcommand{\boldxi}{\boldsymbol{\xi}}
+\newcommand{\boldmu}{\boldsymbol{\mu}}
+\newcommand{\boldmuhat}{\boldsymbol{\hat{\mu}}}
+\newcommand{\bolda}{\mathbf{a}}
+\newcommand{\boldx}{\mathbf{x}}
+\newcommand{\boldA}{\mathbf{A}}
+
+\newcommand{\abs}[1]{\lvert #1 \rvert}
+\newcommand{\inner}[1]{\langle #1 \rangle}
+
+\hyphenation{Wa-gen-ius}
+
+% remove room for headers, add to textheight
+
+  \addtolength{\textheight}{\headheight}
+  \addtolength{\textheight}{\headsep}
+  \setlength{\headheight}{0 pt}
+  \setlength{\headsep}{0 pt}
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{- 2 in}
+\setlength{\topmargin}{0.25 pt}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \footskip}
+
+\setlength{\textwidth}{\paperwidth}
+\addtolength{\textwidth}{- 2 in}
+\setlength{\oddsidemargin}{0.25 in}
+\setlength{\evensidemargin}{0.25 in}
+\addtolength{\textwidth}{- \oddsidemargin}
+\addtolength{\textwidth}{- \evensidemargin}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Commentary on Lande-Arnold Analysis} \\
+    By \\
+    Charles J. Geyer and Ruth G. Shaw \\
+    Technical Report No.~670 \\
+    School of Statistics \\
+    University of Minnesota \\
+%       April 20, 2005 \\
+    % only change from  original downloaded from conservancy.umn.edu
+    % which said \today but printed
+    May 14, 2008
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+A solution to the problem of estimating fitness landscapes was
+proposed by \citet{la}.  Another solution, which avoids problematic
+aspects of the Lande-Arnold methodology, was proposed by \citet*{aster2}.
+This technical report goes through Lande-Arnold theory in detail
+paying careful attention to problematic aspects.  The only completely
+new material is a theoretical analysis of when the best quadratic
+approximation to a fitness landscape, which is what the Lande-Arnold
+method estimates, is a good approximation to the actual fitness landscape.
+\end{abstract}
+
+\section{Introduction}
+
+\subsection{Fitness Landscapes}
+
+By ``fitness landscape'' we mean the conditional expectation of fitness $w$
+given a vector of phenotypic character variables $z$, considered as a function
+of those variables
+\begin{equation} \label{eq:fit}
+   g(z) = E(w \mid z).
+\end{equation}
+\citet{arnold} discusses this concept, calling it the ``adaptive landscape
+for phenotypic traits'' and attributing it to \citet{simpson} who modified
+the original ``adaptive landscape'' concept of \citet{wright}, which was
+the conditional expectation of  $w$ given a vector of genotypes.
+What we are calling the ``fitness landscape'' has also been called
+the ``individual selection surface'' by \citet{p+a}.
+
+Statisticians call a conditional expectation like \eqref{eq:fit}
+considered as a function
+of the conditioning variable a \emph{regression function}
+\citep[p.~95]{lindgren} to emphasize that the primary objective
+of a regression program is to estimate the regression function
+(the conditional expectation of the response variable given the predictor variables).
+This is clear in nonparametric regression \citep{gam,boaz} where
+the direct objective is to estimate the regression function, whatever
+it may be.  It is less clear in parametric regression, whether
+ordinary least squares (OLS), generalized linear model (GLM), or
+something else, because the attention of users is often focused
+on regression coefficients rather than on predicted values and how
+well the predicted values estimate the true unknown regression function.
+Nevertheless, especially when parametric and nonparametric approaches are
+being compared, the only criterion by which they can be compared is how
+well they estimate the regression function.
+
+\citet*{gws} introduced a new class of statistical models, called
+\emph{aster models}, designed specifically for modeling fitness.
+They are a generalization of GLM that can be used to estimate fitness
+landscapes, if fitness satisfies the assumptions for them, which it may
+do.  \citet*{aster2} give examples of
+several kinds of life history analysis using aster models,
+including two in which fitness landscapes are estimated.
+
+Napoleon famously said ``If you want to take Vienna, take Vienna.''
+Our main advice in this paper is just as direct: if you want to estimate
+the fitness landscape, estimate the fitness landscape.
+Aster models enable us to do just that.
+
+\subsection{Lande-Arnold Analysis} \label{sec:l-a}
+
+\citet{la} offered a methodology that uses OLS regression to
+estimate quantities related to the fitness landscape, and it has since been
+very widely used.
+It makes only very weak assumptions about the distribution of $w$,
+but makes the strong assumption that $z$ is multivariate normal.
+
+\subsubsection{Parameters}
+
+First, define
+\begin{equation} \label{eq:q}
+   Q(\alpha, \beta, \gamma)
+   =
+   E \bigl\{ (w - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z)^2 \bigr\},
+\end{equation}
+where $\alpha$ is a scalar, $\beta$ a vector, and $\gamma$ a symmetric matrix.
+Let $\alpha_1$ and $\beta_1$ be the values
+that minimize $Q(\alpha, \beta, 0)$, which we assume to be unique, and
+let $\alpha_2$, $\beta_2$, and $\gamma_2$ be the values
+that minimize $Q(\alpha, \beta, \gamma)$, which we
+also assume to be unique.  Then
+\begin{subequations}
+\begin{align}
+   g_1(z) & = \alpha_1 + z^T \beta_1
+   \label{eq:best-too}
+   \\
+   g_2(z) & = \alpha_2 + z^T \beta_2 + \tfrac{1}{2} z^T \gamma_2 z
+   \label{eq:best}
+\end{align}
+\end{subequations}
+are the \emph{best linear approximation}
+and the \emph{best quadratic approximation} \citep{p+a}
+to the fitness landscape $g(z)$, where ``best'' means minimizing \eqref{eq:q}.
+
+Second, define
+\begin{subequations}
+\begin{align}
+    \beta_3 & = E\{ \nabla g(z) \}
+    \label{eq:beta}
+    \\
+    \gamma_3 & = E\{ \nabla^2 g(z) \}
+    \label{eq:gamma}
+\end{align}
+\end{subequations}
+where $\nabla g(z)$ denotes
+the vector of partial derivatives $\partial g(z) / \partial z_i$
+and $\nabla^2 g(z)$ denotes the matrix of second
+partial derivatives $\partial^2 g(z) / \partial z_i \partial z_j$.
+
+Third, define
+\begin{subequations}
+\begin{align}
+   \beta_4 & = \Sigma^{-1} \cov(w, z)
+   \label{eq:beta-dagger}
+   \\
+   \gamma_4 & = \Sigma^{-1} \cov(w, z z^T) \Sigma^{-1}
+   \label{eq:gamma-dagger}
+\end{align}
+\end{subequations}
+where $\Sigma = \var(z)$.
+Each of these betas is a vector, and each of these gammas is
+a symmetric matrix, in both cases the dimension being the same as for $z$.
+
+We have $\beta_1 = \beta_4$ whenever these quantities are well defined.
+Under the assumption that $z$ is multivariate normal with non-singular
+variance matrix $\alpha_1$, $\beta_1$, $\alpha_2$,
+$\beta_2$, and $\gamma_2$ are uniquely defined and
+$\beta_1 = \beta_3 = \beta_4$ and $\gamma_2 = \gamma_3 = \gamma_4$.
+Under the same assumption plus the additional assumption that $E(z) = 0$,
+we have $\beta_1 = \beta_2 = \beta_3 = \beta_4$.
+All of these identities were shown by \citet{la}.
+
+\citet{la} do not distinguish between these different betas and gammas,
+because they work under the assumptions just given that make them all equal.
+They call any of the betas the \emph{directional selection gradient}.
+They call any of the gammas
+the \emph{stabilizing or disruptive selection gradient}.
+It is important to understand, however, that if $z$ is not multivariate normal,
+then all of these betas and gammas can be different
+(except $\beta_1 = \beta_4$ holds without normality)
+and it is necessary to be clear about which are being discussed.
+
+The pairs $\beta_2$ and $\gamma_2$ and $\beta_3$ and $\gamma_3$
+have relationships to the fitness landscape that are inherent in their
+definitions.  The pair $\beta_4$ and $\gamma_4$ is loosely related
+to selection.  In selection not involving differential reproduction,
+the term $\cov(w, z)$ is the change in the mean of $z$ before and after
+selection.  Conversely if we suppose a quantitative genetic model with
+additive genetic effect $x$ that is conditionally independent of $w$ given
+$z$, then $\beta_4$ is part of the change of mean of $x$ before and after
+selection.  There are similar, though looser, connections between $\gamma_4$
+and the change of variance before and after selection.
+Details are given in Section~\ref{sec:differential}.
+\citet{la} argue that the betas and gammas are more direct
+indicators of selection than any of these changes in means and variances
+due to selection.  For example, a component of $z$ not under direct selection
+will nevertheless be correlated with $w$ if it is correlated with other
+components of $z$ that are directly selected.  The betas and gammas, being more
+directly related to the fitness landscape, more directly measure the effect
+of fitness on phenotype.
+
+\subsubsection{Estimators}
+
+\citet{la} propose using OLS regression to estimate these quantities.
+Define
+\begin{equation} \label{eq:qn}
+   Q_n(\alpha, \beta, \gamma)
+   =
+   \sum_{i = 1}^n (w_i - \alpha - z_i^T \beta
+   - \tfrac{1}{2} z_i^T \gamma z_i)^2,
+\end{equation}
+where $(w_i, z_i)$ are observed fitness and phenotype vectors for $n$
+individuals,
+let $\hat{\alpha}_1$ and $\hat{\beta}_1$ denote the minimizers
+of $Q_n(\alpha, \beta, 0)$, and let $\hat{\alpha}_2$, $\hat{\beta}_2$,
+and $\hat{\gamma}_2$ denote the minimizers of \eqref{eq:qn}.
+We call attention to the obvious estimators $\hat{\beta}_4$ and $\hat{\gamma}_4$
+obtained by plugging empirical variances and covariances into
+\eqref{eq:beta-dagger} and \eqref{eq:gamma-dagger} in place of theoretical
+variances and covariances.  One always has $\hat{\beta}_1 = \hat{\beta}_4$,
+an algebraic identity, but generally $\hat{\beta}_1 \neq \hat{\beta}_2$ and
+$\hat{\gamma}_2 \neq \hat{\gamma}_4$, even if the distribution of $z$ is
+multivariate normal and $E(z) = 0$.
+\citet{la} note that $\hat{\beta}_1 \neq \hat{\beta}_2$ and propose using
+orthogonal polynomials to force equality here.  However,
+even if $\beta_1 = \beta_2$, estimators are never equal to the parameters they
+estimate, so there is no reason to force equality between $\hat{\beta}_1$
+and $\hat{\beta}_2$.  When one considers that in real data $z$ is never
+exactly multivariate normal, so $\beta_1 \neq \beta_2$, it is clearly
+inadvisable to change the definitions of $\hat{\beta}_2$ and $\hat{\gamma}_2$
+so that they are no longer natural estimators of $\beta_2$ and $\gamma_2$.
+
+If our inference is conditional on $z$, then
+by the Gauss-Markov theorem \citet[p.~510]{lindgren}
+$\hat{\alpha}_1$, $\hat{\beta}_1$, $\hat{\alpha}_2$, $\hat{\beta}_2$,
+and $\hat{\gamma}_2$ are best linear
+unbiased estimators (BLUE) of their corresponding parameters,
+where BLUE means they have the smallest
+variance of all linear unbiased estimators.
+Moreover, if we define the corresponding estimates of the best linear
+and quadratic approximations, which are the functions
+\begin{align}
+   \hat{g}_1(z) & = \hat{\alpha}_1 + z^T \hat{\beta}_1
+   \label{eq:best-too-hat}
+   \\
+   \hat{g}_2(z) & = \hat{\alpha}_2 + z^T \hat{\beta}_2
+   + \tfrac{1}{2} z^T \hat{\gamma}_2 z
+   \label{eq:best-hat}
+\end{align}
+then $\hat{g}_i(z)$ is the BLUE of $g_i(z)$
+where BLUE means they have the smallest
+variance of all linear unbiased estimators
+(for $i = 1$ and $i = 2$ and for all $z$).
+
+These estimators, however, have no other desirable properties.
+When nothing is assumed about the conditional distribution of $w$ given $z$
+(and \citealp{la}, make no such assumptions) nothing can be said about
+the sampling distributions of the estimators $\hat{\beta}_1$, $\hat{\beta}_2$,
+and $\hat{\gamma}_2$,
+and no confidence intervals or hypothesis tests for them can be derived.
+In particular, the confidence intervals and hypothesis tests that are printed
+out by OLS software have no validity.
+
+This is well understood \citep[see][and references
+cited therein]{ms,st}.  Any attempt to transform $w$ to make it more normal,
+for example, doing OLS regression of $\log(1 + w)$ on $z$ is biologically
+wrong \citep{st}.
+To estimate the fitness landscape, one must regress $w$ (untransformed) on $z$
+because the fitness landscape is the conditional expectation of $w$
+(untransformed) given $z$.
+Moreover, the distribution of $w$ often has a large atom at zero
+resulting from individuals that die before reproducing,
+and no transformation can make that atom go away.  Hence no transformation
+of $w$ can be even approximately normal.
+
+  If $z$ fails to be multivariate
+normal, then the OLS estimators have no known relationship
+to \eqref{eq:beta}, \eqref{eq:gamma}, and \eqref{eq:gamma-dagger}.
+One might hope for approximate equalities
+$\beta_1 \approx \beta_2 \approx \beta_3 \approx \beta_4$
+and $\gamma_2 \approx \gamma_3 \approx \gamma_4$ if $z$ is only
+approximately multivariate normal, but the argument of \citet{la} involves
+first and second partial derivatives of the probability density function
+of the multivariate normal distribution and the fact that third central
+moments of that distribution are zero and that fourth central moments
+have a relationship to the variance matrix given by the unnumbered displayed
+equation in \citet{la} following their equation (17).
+Thus one could only expect these approximate equalities
+if the first and second partial derivatives of the probability density function
+and the third and fourth central moments of $z$ agree closely with those
+of a multivariate normal distribution having mean zero and variance matrix
+equal to that of $z$.
+This is a very strong requirement.  Since statistical methodology for
+transformation to multivariate normality is rather crude \citep*{a+g+w,riani},
+there is no way these assumptions can be achieved in practice.
+
+\subsubsection{A Digression about the Applicability of Least Squares}
+
+\citet[pp.~1212--1213]{la} include a curious defense of their use of
+OLS regression
+\begin{quotation}
+In view of [their equation] (4), the vector $\beta = P^{-1} s$
+[our equation \eqref{eq:beta-dagger}, hence our $\beta_4$]
+is a set of partial regression coefficients of relative fitness on the
+characters \citep[eq.~27.42]{ks3}.
+Under quite general conditions,
+the method of least squares indicates that the element $\beta_i$
+gives the slope of the straight line that best describes the
+dependence of relative fitness on character $z_i$,
+after removing the residual effects of
+other characters on fitness \citep[Ch.~27.15]{ks3}.
+There is no need to assume that the actual regressions of fitness
+on the characters are linear, or that the characters have a multivariate
+normal distribution. For this reason, the partial regression coefficients
+$\beta$ provide a general solution to the problem of measuring the forces
+of directional selection acting directly on the characters.
+\end{quotation}
+
+To anyone who has taken a modern course in regression,
+from, say, \citet{weisberg}, the notion that there is no need to assume
+actual regression function has the form incorporated in the model
+(``no need to assume \ldots that the actual regressions \ldots are linear'')
+seems to completely misunderstand linear regression.
+However, the cited reference \citep[Ch.~27.15]{ks3} does seem to say
+something of the sort
+\begin{quotation}
+In our discussion from [Section] 27.8 onwards we have taken the regression
+relationship to be exactly linear, of type (27.18).  Just as in [Section] 26.8,
+we now consider the question of fitting regression relationships of this
+type to observed populations, whose regressions are almost never exactly
+linear, and by the same reasoning as there, we are led to the Method
+of Least Squares. [Some mathematical details of OLS regression follow.]
+\ldots (27.44) is identical with (27.19).
+Thus, as in [Section] 26.8, we reach the conclusion that the Least Squares
+approximation gives us the same regression coefficients as in the case
+of exact linearity of regression.
+
+It follows that all of the results of this chapter are valid when we fit
+regressions by Least Squares to observed populations.
+\end{quotation}
+Thus \citet{ks3} do seem to also argue that it is not necessary to
+assume ``the regression relationship [is] exactly linear'' but what is
+their argument?  Actually, they have two.  The argument of their
+Section~26.8, which is referred to in their Section~27.15 cited by
+Lande and Arnold and quoted above, culminates in
+\begin{quotation}
+We have thus reached the conclusion that the calculation of an approximate
+regression line by the Method of Least Squares gives results which are the
+same as the correct ones in the case of exact linearity of regression.
+\end{quotation}
+which is echoed in their Section~27.15.  This essentially says that
+when the regression function is exactly linear, that is, specialized
+to fitness landscapes, when $g = g_1$, then OLS does the right thing,
+but this is not in dispute.  What about when the fitness landscape
+is not linear, when $g \neq g_1$, what does this argument say about
+that case?  Nothing!
+
+The second argument of Section~27.15 of \citet{ks3} is in the part
+``\ldots (27.44) is identical with (27.19)'' in our quotation above
+that makes no sense without reference to a large amount of the notation
+of Kendall and Stuart, which we do not wish to repeat.  The gist of
+this argument is that when the regression function is linear it is
+given by their equation (27.18), which in our notation is
+\begin{equation} \label{eq:linear-conditional-expectation}
+   g(z) = E(w \mid z) = \alpha + \beta_1 z_1 + \cdots \beta_k z_k
+\end{equation}
+(except that Kendall and Stuart are assuming $\alpha = 0$ at this point),
+and the terminology Kendall and Stuart use for the $\beta_i$ is
+\emph{partial regression coefficients}, introduced just before the cited
+equation (27.18).  In the case where the response $w$ and the
+predictors $z_i$ are jointly multivariate normal, the partial regression
+coefficients are given by equation (27.19) in Kendall and Stuart as
+a function of second moments of the distribution.
+In the case where they are not jointly multivariate normal
+(27.19) is taken to be the definition of partial regression coefficients
+in the last sentence of Section~27.8 in Kendall and Stuart.
+Now returning to Section~27.15 in Kendall and Stuart, their equation (27.44)
+gives the definition of the OLS regression coefficients, also as
+a function of second moments of the joint distribution of response and
+predictors, their equation (27.44).  This agreement between OLS estimates
+and partial regression coefficients is the second argument
+of Kendall and Stuart.
+
+But this second argument also misses the point.  The arbitrary definition
+of partial regression coefficients in the case where the response and
+predictors are not jointly multivariate normal decouples them from any
+relationship with conditional expectation.  Thus OLS does indeed estimate
+``partial regression coefficients'' but, when the regression function
+fails to be linear, so \eqref{eq:linear-conditional-expectation} does not
+hold, these estimates $\beta$ have nothing to do with the regression function.
+Returning to fitness landscapes, when the actual fitness landscape $g(z)$ is
+not linear and so not equal to its best linear approximation $g_1(z)$, then
+the slope $\beta_1$ of the approximation need have no connection with the
+actual fitness landscape.  One would think this is obvious.  If $\beta_1$
+tells us everything we need to know about the actual fitness landscape,
+why even consider the best quadratic approximation?  Perhaps because this
+argument is wrongheaded?
+
+The current edition of Kendall and Stuart \citep{ks6} seems to agree with us.
+Sections~28.12 and~28.13 in the sixth edition correspond to Section~27.15 in
+the third edition cited by Lande and Arnold.  Section~28.13 says
+\begin{quotation}
+Although there is a difference in interpretation between the linear
+regressions in [Section] 28.9 and 28.12, we see that the functional form
+of $\beta$ is the same and that the LS estimators derived from (28.32) or
+(28.34) are the same as the ML estimators we obtain from the multinormal
+case.  It follows that the results of this chapter apply whenever the least
+squares argument can be invoked.  In particular, the approximate linear
+regression derived in [Section] 28.12 is often considered to be \emph{the}
+regression function, without further qualification; this may be a questionable
+assumption.
+
+The equivalence is also used to justify the use of partial correlations,
+whatever the underlying distribution.  However, it should be noted that
+whereas zero partial correlations imply conditional independence for the
+multinormal, this is \emph{not} true in general.
+\end{quotation}
+We take ``may be a questionable assumption'' and ``however, it should be
+noted'' to be academic weasel wording for wrong or at least wrongheaded.
+
+We consider this Section~27.15 of \citet{ks3}, the one cited by
+\citet{la}, to be the tail end of a century of excuses for
+using the normal distribution in situations where it was inappropriate.
+It is hard to imagine a statistician trained after 1973 saying something
+like what \citet{ks3} say.  Since 1973 we have had the nonparametrics
+revolution, which deals with arbitrary regression functions,
+and the robustness revolution, which deals with non-normal response,
+and the categorical and GLM revolutions, which deal with discrete
+response, and the bootstrap revolution,
+which deals with arbitrary data.  No statistician trained in all of these
+wants an excuse for not using any of them and sticking with what was
+available in 1973.
+
+In this technical report we are particularly focused on using aster models
+to improve estimation of fitness landscapes, but even if one were to reject
+our approach, there are many other areas of modern statistics that can
+potentially contribute to this area.  There is no reason to limit oneself
+to methods available in 1973.
+
+\section{Lande-Arnold Theory}
+
+\subsection{Best Quadratic Approximation}
+
+The best quadratic approximation to the fitness landscape
+is given by \eqref{eq:best} when
+$\alpha_2$, $\beta_2$, and $\gamma_2$ are as defined in the accompanying text.
+The reason why this approximation is given this name is explained in
+Section~\ref{sec:another} below.
+
+\subsubsection{Existence and Uniqueness of Solutions}
+
+By linearity and monotonicity of expectation, the function
+$Q(\alpha, \beta, \gamma)$ defined by \eqref{eq:q} is
+a convex quadratic function of its arguments assuming second moments
+of $w$ and fourth moments of $z$ exist.
+This means solutions $\alpha_2$, $\beta_2$, and $\gamma_2$ exist.
+Solutions will be unique if the linear equations that determine a solution,
+obtained by setting \eqref{eq:q1}, \eqref{eq:q2}, and \eqref{eq:q3} equal
+to zero, have unique solutions.
+
+\subsubsection{Solutions}
+
+To find the solutions we need
+\begin{subequations}
+\begin{align}
+   \frac{\partial Q(\alpha, \beta, \gamma)}{\partial \alpha}
+   & =
+   - 2 E \bigl\{ w - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z \bigr\}
+   \label{eq:q1}
+   \\
+   \frac{\partial Q(\alpha, \beta, \gamma)}{\partial \beta_i}
+   & =
+   - 2 E \bigl\{ (w - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z) z_i
+   \bigr\}
+   \label{eq:q2}
+   \\
+   \frac{\partial Q(\alpha, \beta, \gamma)}{\partial \gamma_{j k}}
+   & =
+   - E \bigl\{ (w - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z) z_j z_k
+   \bigr\}
+   \label{eq:q3}
+\end{align}
+\end{subequations}
+
+\paragraph{Predictors Centered} \label{sec:quad}
+
+\citet{la} assume that $z$ is multivariate normal with mean
+vector zero and non-singular variance matrix $\Sigma$.
+Note that \eqref{eq:q2} involves third moments of $z$
+and \eqref{eq:q3} involves fourth moments.
+By symmetry the odd moments are zero.  The second moments are
+components of the matrix $\Sigma$.  The fourth moments are given
+by equation (26) in \citet{anderson}
+\begin{equation} \label{eq:four}
+   E(z_i z_j z_k z_l)
+   =
+   \sigma_{i j} \sigma_{k l} + \sigma_{i k} \sigma_{j l}
+   + \sigma_{i l} \sigma_{j k}
+\end{equation}
+where the little sigmas are the components of $\Sigma$.
+
+Say $E(w) = \eta$.
+Setting \eqref{eq:q1} equal to zero gives
+$$
+   \eta - \alpha - \tfrac{1}{2} \tr(\gamma \Sigma)
+   = 0
+$$
+(the term involving only first moments of $z$ drops out)
+and solving for $\alpha$ gives
+\begin{equation} \label{eq:alpha}
+   \alpha
+   =
+   \eta - \tfrac{1}{2} \tr(\gamma \Sigma)
+\end{equation}
+
+Setting \eqref{eq:q2} equal to zero gives
+$$
+   E \bigl\{ (w - z^T \beta) z_i \bigr\} = 0
+$$
+(the terms involving only first and third moments of $z$ drop out).
+Rewriting this in vector form gives
+$$
+   \cov(w, z) = E(z z^T \beta) = \Sigma \beta
+$$
+and solving for $\beta$ gives
+\begin{equation} \label{eq:beta-arrgh}
+   \beta = \Sigma^{-1} \cov(w, z)
+\end{equation}
+
+Setting \eqref{eq:q3} equal to zero gives
+$$
+   E \bigl\{ (w - \alpha - \tfrac{1}{2} z^T \gamma z) z_j z_k
+   \bigr\}
+   = 0
+$$
+(the terms involving only third moments of $z$ drop out).
+Plugging in \eqref{eq:alpha} gives
+\begin{equation} \label{eq:foo}
+   E \bigl\{ (w - \eta + \tfrac{1}{2} \tr(\gamma, \Sigma)
+   - \tfrac{1}{2} z^T \gamma z) z_j z_k \bigr\}
+   = 0
+\end{equation}
+By \eqref{eq:four}
+\begin{align*}
+   E \bigl\{ (z^T \gamma z) z_j z_k \bigr\}
+   & =
+   \sum_{i l} \gamma_{i l} E(z_i z_j z_k z_l)
+   \\
+   & =
+   \sum_{i l} \gamma_{i l} \bigl[
+   \sigma_{i j} \sigma_{k l} + \sigma_{i k} \sigma_{j l}
+   + \sigma_{i l} \sigma_{j k} \bigr]
+   \\
+   & =
+   2 (\Sigma \gamma \Sigma)_{j k}
+   + \tr(\gamma \Sigma) \sigma_{j k}
+\end{align*}
+where the first term on the last line means the $j, k$ term of the
+matrix $\Sigma \gamma \Sigma$.  Plugging this back into \eqref{eq:foo} gives
+$$
+   E \bigl\{ (w - \eta) z_j z_k \bigr\}
+   - (\Sigma \gamma \Sigma)_{j k}
+   = 0
+$$
+Rewriting this in vector form gives
+$$
+   \cov(w, z z^T) = \Sigma \gamma \Sigma
+$$
+and solving for $\gamma$ gives
+\begin{equation} \label{eq:gamma-arrgh}
+   \gamma = \Sigma^{-1} \cov(w, z z^T) \Sigma^{-1}
+\end{equation}
+Equations \eqref{eq:beta-arrgh} and \eqref{eq:gamma-arrgh} appear
+in \citet{la}.
+
+Equations \eqref{eq:beta-arrgh} and \eqref{eq:gamma-arrgh} are
+the completion of proofs that $\beta_2 = \beta_4$ and $\gamma_2 = \gamma_4$
+in the notation of Section~\ref{sec:l-a}.  Note that the assumptions
+required for this are that $z$ be multivariate normal with mean vector zero
+and non-singular variance matrix.
+
+\paragraph{Predictors Not Centered}
+
+Now we investigate what would happen if we did not assume $E(z) = 0$ but
+did still assume $z$ was multivariate normal with non-singular variance
+matrix $\Sigma$.  Say $E(z) = \mu$.  Then $y = z - \mu$ is as $z$ was before.
+The best quadratic approximation to
+$$
+   h(y) = E(w \mid y)
+$$
+is
+$$
+   h_{\text{quad}}(y) = \alpha' + y^T \beta' + \tfrac{1}{2} y^T \gamma' y
+$$
+where $\alpha'$ is given by \eqref{eq:alpha} and $\beta'$ and $\gamma'$
+are given by \eqref{eq:beta-arrgh} and \eqref{eq:gamma-arrgh} with $z$ replaced by $y$.
+By translation equivariance
+\begin{align*}
+   g_{\text{quad}}(z)
+   & =
+   h_{\text{quad}}(z - \mu)
+   \\
+   & =
+   \alpha' + (z - \mu)^T \beta' + \tfrac{1}{2} (z - \mu)^T \gamma' (z - \mu)
+   \\
+   & =
+   \alpha' - \mu^T \beta' + \tfrac{1}{2} \mu^T \gamma' \mu
+   + z^T \beta' - z^T \gamma' \mu
+   + \tfrac{1}{2} z^T \gamma' z
+\end{align*}
+from which we see that
+\begin{subequations}
+\begin{align}
+   \alpha_2 & = \alpha' - \mu^T \beta' + \tfrac{1}{2} \mu^T \gamma' \mu
+   \label{eq:alpha-relate}
+   \\
+   \beta_2 & = \beta' - \gamma' \mu
+   \label{eq:beta-relate}
+   \\
+   \gamma_2 & = \gamma'
+   \label{eq:gamma-relate}
+\end{align}
+\end{subequations}
+So the values of $\alpha$ and $\beta$ change depending on whether or not
+$z$ is centered at zero, but the value of $\gamma$ does not change.
+If we think geometrically, the relation
+$g_{\text{quad}}(z) = h_{\text{quad}}(z - \mu)$ says the two
+quadratic approximations are essentially the same when we take
+the shift of the domain into account.
+
+\subsubsection{Another Formulation} \label{sec:another}
+
+In this section we consider why the minimizer
+of the function $Q(\alpha, \beta, \gamma)$ defined by \eqref{eq:q} is
+called the best quadratic approximation to the fitness landscape $g(z)$.
+That name should be given to \eqref{eq:best} when
+$\alpha_2$, $\beta_2$, and $\gamma_2$ are as defined to be the minimizers of
+\begin{equation} \label{eq:q-twiddle}
+   \widetilde{Q}(\alpha, \beta, \gamma)
+   =
+   E \bigl\{ \bigl( g(z) - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z
+   \bigr)^2 \bigr\}
+\end{equation}
+so that $E \bigl\{ \bigl( g(z) - g_2(z) \bigr)^2 \bigr\}$ is as small as
+possible.  However, there is no difference between these two definitions
+of the best quadratic approximation because
+\begin{align*}
+   Q(\alpha, \beta, \gamma)
+   & =
+   E \bigl\{ (w - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z)^2 \bigr\}
+   \\
+   & =
+   E \bigl\{
+   \bigl( w - g(z) + g(z) - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z
+   \bigr)^2 \bigr\}
+   \\
+   & =
+   E \bigl\{ \bigl( w - g(z) \bigr)^2 \bigr\}
+   + 2
+   E \bigl\{ \bigl( w - g(z) \bigr)
+   \bigl( g(z) - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z \bigr) \bigr\}
+   \\
+   & \qquad
+   +
+   E \bigl\{ \bigl( g(z) - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z
+   \bigr)^2 \bigr\}
+   \\
+   & =
+   E \bigl\{ \bigl( w - g(z) \bigr)^2 \bigr\}
+   + \widetilde{Q}(\alpha, \beta, \gamma)
+\end{align*}
+because
+\begin{align*}
+   E \bigl\{ \bigl( w - g(z) \bigr) &
+   \bigl( g(z) - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z \bigr) \bigr\}
+   \\
+   & =
+   E \bigl[
+   E \bigl\{ \bigl( w - g(z) \bigr)
+   \bigl( g(z) - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z \bigr)
+   \bigm| z \bigr\}
+   \bigr]
+   \\
+   & =
+   E \bigl[
+   \bigl( g(z) - \alpha - z^T \beta - \tfrac{1}{2} z^T \gamma z \bigr)
+   E \bigl\{ w - g(z) \bigm| z \bigr\}
+   \bigr]
+\end{align*}
+is zero because $E \bigl\{ w - g(z) \bigm| z \bigr\} = 0$.
+Thus $Q(\alpha, \beta, \gamma)$ and $\widetilde{Q}(\alpha, \beta, \gamma)$
+are minimized at exactly the same values.
+
+\subsection{Best Linear Approximation}
+
+The best linear approximation is given by \eqref{eq:best-too} when
+$\alpha_1$ and $\beta_1$ are as defined in the accompanying text.
+The reason why this approximation is given this name is explained in
+Section~\ref{sec:another} above.
+
+\subsubsection{Existence and Uniqueness of Solutions}
+
+By linearity and monotonicity of expectation, the function
+$Q(\alpha, \beta, 0)$ obtained by constraining $\gamma = 0$ in \eqref{eq:q}
+is
+a convex quadratic function of its arguments assuming second moments
+of $w$ and $z$ exist.
+This means solutions $\alpha_1$ and $\beta_1$ exist.
+Solutions will be unique if the linear equations that determine a solution,
+obtained by setting \eqref{eq:qtoo1} and \eqref{eq:qtoo2} equal
+to zero, have unique solutions.
+
+\subsubsection{Solutions}
+
+To find the solutions we need
+\begin{subequations}
+\begin{align}
+   \frac{\partial Q(\alpha, \beta, 0)}{\partial \alpha}
+   & =
+   - 2 E \bigl\{ w - \alpha - z^T \beta \bigr\}
+   \label{eq:qtoo1}
+   \\
+   \frac{\partial Q(\alpha, \beta, 0)}{\partial \beta_i}
+   & =
+   - 2 E \bigl\{ (w - \alpha - z^T \beta ) z_i
+   \bigr\}
+   \label{eq:qtoo2}
+\end{align}
+\end{subequations}
+
+In this section we make no assumptions about the distribution of $z$
+(other than existence and non-singularity of certain moments).
+Setting \eqref{eq:qtoo1} equal to zero gives
+$$
+   \eta - \alpha - \mu^T \beta = 0
+$$
+where $\mu = E(z)$, and solving for $\alpha$ gives
+\begin{equation} \label{eq:alpha-too}
+   \alpha
+   =
+   \eta - \mu^T \beta
+\end{equation}
+
+Setting \eqref{eq:qtoo2} equal to zero gives
+$$
+   E \bigl\{ (w - \alpha - z^T \beta ) z_i \bigr\} = 0
+$$
+Rewriting this in vector form gives
+$$
+   E(w z) - \alpha \mu - E(z z^T) \beta = 0
+$$
+Plugging in \eqref{eq:alpha-too} gives
+$$
+   E(w z) - \eta \mu - \bigl[ E(z z^T) - \mu \mu^T \bigr] \beta
+   =
+   \cov(w, z) - \Sigma \beta
+   =
+   0
+$$
+and solving for $\beta$ gives \eqref{eq:beta-arrgh}.
+
+This completes the proof that $\beta_1 = \beta_4$
+in the notation of Section~\ref{sec:l-a}.  Note that no assumptions
+about the distribution of $z$ were used except for the existence
+of second moments and non-singularity of $\Sigma$.
+
+\subsection{Selection Gradients} \label{sec:select}
+
+Now we look at another part of the argument of \citet{la}.
+Define $\beta_3$ and $\gamma_3$ by \eqref{eq:beta} and \eqref{eq:gamma}.
+By integration by parts, an argument called Stein's lemma \citep{stein}
+by statisticians, we have
+\begin{align*}
+   \beta_3
+   & =
+   - \int g(z) \nabla f(z) \, d z
+   \\
+   & =
+   \Sigma^{-1} \int z g(z) f(z) \, d z
+   \\
+   & =
+   \Sigma^{-1} \cov\{ g(z), z \}
+\end{align*}
+which agrees with \eqref{eq:beta-arrgh} by use of
+the iterated expectation theorem.
+Throughout this section we assume $z$ is multivariate normal with
+non-singular variance matrix $\Sigma$ but make
+no other assumptions about the marginal distribution of $z$.  We do need
+some weak assumptions about the conditional distribution of $w$ given $z$.
+The assumption used by \citet{la}, that $g(z)$ is a bounded function, is
+overly strong; see \citet{stein} for minimal conditions.
+Also
+\begin{align*}
+   \gamma_3
+   & =
+   \int g(z) \nabla^2 f(z) \, d z
+   \\
+   & =
+   \int \bigl[ \Sigma^{-1} z z^T \Sigma^{-1}
+   - \Sigma^{1} \bigr] g(z) f(z) \, d z
+   \\
+   & =
+   \Sigma^{-1} \cov\{ g(z), z z^T \} \Sigma^{-1}
+\end{align*}
+which agrees with \eqref{eq:gamma-arrgh} by use of the iterated expectation theorem.
+
+This completes the proof that $\beta_3 = \beta_4$ and $\gamma_3 = \gamma_4$
+in the notation of Section~\ref{sec:l-a}.  Note that the assumptions
+required for this are that $z$ be multivariate normal with
+non-singular variance matrix.
+
+Also note that this argument does not need the assumption $E(z) = 0$.
+It is clear from geometric considerations
+that $\beta_3$ and $\gamma_3$ defined by \eqref{eq:beta}
+and \eqref{eq:gamma} would not change
+if the domain (the space where $z$ takes values) is shifted by $\mu$.
+The relation $g(z) = h(z - \mu)$ implies
+$\nabla g(z) = \nabla h(z - \mu)$ and
+$\nabla^2 g(z) = \nabla^2 h(z - \mu)$.
+Hence $E\{ \nabla g(z) \} = E\{ \nabla h(y)\}$ and
+$E\{ \nabla^2 g(z) \} = E\{ \nabla^2 h(y)\}$,
+where $y = z - \mu$.
+
+Hence in this section shifting the mean does not change the values of
+$\beta_3$ and $\gamma_3$, but in Section~\ref{sec:quad} shifting the mean does
+change the value of $\beta_2$.  Thus we have $\beta_2 = \beta_3$
+only when $E(z) = 0$,
+which, presumably, is one reason why \citet{la} made this
+assumption, the other reason being to make $\beta_1 = \beta_2$.
+
+\subsection{Selection Differentials} \label{sec:differential}
+
+In this section we assume $E(w) = 1$ instead of $E(w) = \eta$ we had before.
+This assumption is announced by calling $w$ \emph{relative fitness}.
+The remainder of this chapter only concerns $\beta_4$ and $\gamma_4$ defined
+by \eqref{eq:beta-dagger} and \eqref{eq:gamma-dagger} and their relationship
+to selection.
+
+\subsubsection{Directional Selection}
+
+\paragraph{Phenotypic}
+
+The difference between the average value of $z$ before selection and
+``after selection but before reproduction'' \citep[p.~46]{l+w} is
+\begin{equation} \label{eq:robertson-price}
+   E(w z) - E(z) = \cov(w, z).
+\end{equation}
+Note that this quantity appears in \eqref{eq:beta-arrgh}.
+\citet{l+w} call \eqref{eq:robertson-price}
+the \emph{Robertson-Price identity},
+and \citet{la} call it ``a multivariate generalization  of the results of
+Robertson (1966) [cited in \citet{pr72}] and \citet{pr70,pr72}.''
+It is not clear
+what the phrase ``after selection but before reproduction'' can
+mean in natural populations where selection includes differential reproduction,
+but the mathematical meaning of the left hand side
+of \eqref{eq:robertson-price} is clear: the difference between the weighted
+average of phenotype values, weighted according to relative fitness, and
+the unweighted average.  That this may be an important quantity for describing
+selection, we do not dispute, whether or not it corresponds in reality to
+a difference of average phenotype values at any two specified points in
+the life cycle.
+
+In fact what \citet{pr72} calls ``type I selection'' is more general
+than what is discussed by \citet{la} and \citet{l+w}, it being
+``a far broader problem category than one might at first assume''
+but ``intended mainly for use in deriving general relations and constructing
+theories, and to clarify understanding of selection phenomena, rather
+than for numerical calculation'' (both quotations from \citealp{pr72}).
+The reason for the discrepancy between the narrow applicability of
+the theory in \citet{la} and the broad applicability of \citet{pr72}
+is that the theory in \citet{pr72} is more general: 
+our \eqref{eq:robertson-price} corresponds to (A 13) in \citet{pr72}
+but this is only a limited special case of his (A 11) which contains
+an extra term on the right-hand side.  This extra term, which is hard
+to estimate, accounts of the theory of (A 11) being not for numerical
+calculation, where the limited special case can be so used.
+
+\paragraph{Genetic}
+
+Now suppose a quantitative genetic model
+$$
+   z = x + e
+$$
+where $x$ is the vector of additive genetic effects, $e$ is everything
+else (environmental, non-additive genetic, and gene-environment interaction
+effects), and $x$ and $e$ are assumed to be independent with
+\begin{align*}
+   x & \sim \text{Normal}(\mu, G)
+   \\
+   e & \sim \text{Normal}(0, E)
+\end{align*}
+where $G$ is the ``G matrix'' (additive genetic variance-covariance matrix)
+and $E$ is another variance-covariance matrix.  This makes the regression
+of breeding
+values $x$ on phenotypic characters $z$ linear and homoscedastic
+(Lande and Arnold, 1983, equation (3b)).  More precisely,
+the conditional distribution of $x$ given $z$ is multivariate normal
+with
+\begin{subequations}
+\begin{align}
+   E(x \mid z) & = \mu + G \Sigma^{-1} (z - \mu)
+   \label{exz}
+   \\
+   \var(x \mid z) & = G - G \Sigma^{-1} G
+   \label{vxz}
+\end{align}
+\end{subequations}
+\citep[equations (5) and (6) of Section~2.5]{anderson}.
+
+We also need to assume that $x$ and $w$ are conditionally independent
+given $z$, which is a very strong assumption.  An equivalent way to state
+this is that the conditional distribution of $w$ given $x$ and $z$ does
+not actually depend on $x$, that is, genotypic characters $x$ influence
+fitness only through the values of the phenotypic characters $z$.
+
+Then the difference of genotypic values before selection and after selection
+but before reproduction is
+\begin{equation} \label{eq:doit}
+\begin{split}
+   E(w x) - E(x)
+   & =
+   E\{ E(w x \mid z) \} - \mu
+   \\
+   & =
+   E\{ E(w \mid z) E( x \mid z) \} - \mu
+   \\
+   & =
+   E\{ E(w \mid z) [ \mu + G \Sigma^{-1} (z - \mu) ] \} - \mu
+   \\
+   & =
+   E\{ E(w [ \mu + G \Sigma^{-1} (z - \mu) ] \mid z) \} - \mu
+   \\
+   & =
+   E\{ w [ \mu + G \Sigma^{-1} (z - \mu) ] \} - \mu
+   \\
+   & =
+   G \Sigma^{-1} \cov(w, z)
+\end{split}
+\end{equation}
+which is equation (6a) in \citet{la}.
+The conditional independence of $x$ and $w$ given $z$ is the second
+equality in \eqref{eq:doit}.  Note that the right-hand
+side here is again related to \eqref{eq:beta-arrgh}.
+
+\subsubsection{Stabilizing and Disruptive Selection}
+
+\paragraph{Phenotypic}
+
+If we play the same game with variance instead of means, the variance
+``after selection, but before reproduction'' is
+$$
+   E\{w (z - \zeta) (z - \zeta)^T \}
+$$
+where $\zeta = E(w z)$ is the mean ``after selection but before reproduction''.
+To follow \citet{la} we need a notation
+for \eqref{eq:robertson-price}.  They use $s = \cov(w, z)$ and we will
+follow them.  Thus we are using Greek letters for all parameters except
+for $E$, $G$ and $s$.  Then $\zeta = \mu + s$, and
+\begin{align*}
+   E\{w (z - \zeta) (z - \zeta)^T \}
+   & =
+   E\{w (z - \mu - s) (z - \mu - s)^T \}
+   \\
+   & =
+   E\{w (z - \mu) (z - \mu)^T \}
+   -
+   2 E\{w (z - \mu) \} s^T
+   + s s^T
+   \\
+   & =
+   E\{w (z - \mu) (z - \mu)^T \} - s s^T
+\end{align*}
+and the stabilizing or disruptive selection differential is
+\begin{equation} \label{eq:stable-pheno}
+\begin{split}
+   E\{w (z - \zeta) (z - \zeta)^T \} - \var(z)
+   & =
+   E\{w (z - \mu) (z - \mu)^T \} - s s^T - \Sigma
+   \\
+   & =
+   \cov\{ w, (z - \mu) (z - \mu)^T \} - s s^T
+\end{split}
+\end{equation}
+which is equation (13a) in \citet{la}.
+In the case $\mu = 0$, note that \eqref{eq:stable-pheno}
+contains $\cov(w, z z^T)$ which also
+appears in \eqref{eq:gamma-arrgh}, which was derived under the assumption $\mu = 0$.
+
+\paragraph{Genetic}
+
+If we play the same game with genotypes $x$ rather than phenotypes $z$,
+the quantity we want to obtain is
+\begin{equation} \label{todo}
+   E\{w (x - \xi) (x - \xi)^T \} - \var(x)
+\end{equation}
+where
+\begin{equation} \label{xi}
+   \xi = E(w x) = \mu + G \Sigma^{-1} \cov(w, z) = \mu + G \Sigma^{-1} s.
+\end{equation}
+Now
+\begin{equation} \label{eq:doit-too}
+\begin{split}
+   E\{w (x - \xi) (x - \xi)^T \}
+   & =
+   E\{w (x - \xi) (x - \xi)^T \mid z \}
+   \\
+   & =
+   E\{ E(w \mid z) E[ (x - \xi) (x - \xi)^T \mid z ] \}
+   \\
+   & =
+   E\{ w E[ (x - \xi) (x - \xi)^T \mid z ] \}
+\end{split}
+\end{equation}
+The conditional independence of $x$ and $w$ given $z$ is the second
+equality in \eqref{eq:doit-too}.  And
+$$
+   E[ (x - \xi) (x - \xi)^T \mid z ]
+   =
+   \var(x \mid z) + E(x - \xi \mid z) E(x - \xi \mid z)^T
+$$
+where $\var(x \mid z)$ is given by \eqref{vxz} and from \eqref{exz}
+and \eqref{xi} we have
+\begin{align*}
+   E(x - \xi \mid z)
+   & =
+   \mu + G \Sigma^{-1} (z - \mu) - \xi
+   \\
+   & =
+   \mu + G \Sigma^{-1} (z - \mu) - (\mu + G \Sigma^{-1} s)
+   \\
+   & =
+   G \Sigma^{-1} (z - \mu - s)
+   \\
+   & =
+   G \Sigma^{-1} (z - \zeta)
+\end{align*}
+Hence
+$$
+   E[ (x - \xi) (x - \xi)^T \mid z ]
+   =
+   G - G \Sigma^{-1} G
+   +
+   G \Sigma^{-1} (z - \zeta) (z - \zeta)^T \Sigma^{-1} G
+$$
+and \eqref{todo} becomes
+\begin{equation} \label{eq:stable-geno}
+\begin{split}
+   E\{w (x - \xi) & (x - \xi)^T \} - \var(x)
+   \\
+   & =
+   E\{ w E[ (x - \xi) (x - \xi)^T \mid z ] \} - G
+   \\
+   & =
+   E\{ w [ G - G \Sigma^{-1} G
+   +
+   G \Sigma^{-1} (z - \zeta) (z - \zeta)^T \Sigma^{-1} G ] \} - G
+   \\
+   & =
+   - G \Sigma^{-1} G
+   +
+   G \Sigma^{-1} E\{ w (z - \zeta) (z - \zeta)^T \} \Sigma^{-1} G
+   \\
+   & =
+   - G \Sigma^{-1} G
+   +
+   G \Sigma^{-1} \bigl[ \cov\{ w, (z - \mu) (z - \mu)^T \} - s s^T
+   + \Sigma \bigr] \Sigma^{-1} G
+   \\
+   & =
+   G \Sigma^{-1} \bigl[ \cov\{ w, (z - \mu) (z - \mu)^T \} - s s^T
+   \bigr] \Sigma^{-1} G
+\end{split}
+\end{equation}
+where the next to last equality plugs in \eqref{eq:stable-pheno}.
+This agrees with equation (12) of \citet{la}.
+
+\subsubsection{Discussion of Selection Differentials}
+
+The phenotypic directional selection differential \eqref{eq:robertson-price}
+is part of the formula for $\beta_4$ given by \eqref{eq:beta-dagger}.
+Conversely, the formula for $\beta_4$ is part of the formula for the
+genetic directional selection differential given by \eqref{eq:doit}.
+
+The phenotypic stabilizing or disruptive selection differential
+\eqref{eq:stable-pheno} has some relationship to the formula for $\gamma_4$
+given by \eqref{eq:gamma-dagger}, although the relationship is rather vague:
+the covariance term in \eqref{eq:stable-pheno} is equal to the covariance
+term in \eqref{eq:gamma-dagger} in the case $E(z) = 0$, but the other parts
+of these expressions differ.
+Conversely, the formula for $\gamma_4$ is part of the formula for the
+genetic stabilizing or disruptive selection differential given
+by \eqref{eq:stable-geno} in the case $E(z) = 0$.
+
+As seen from our use of ``part of the formula'' in three cases and
+and even vaguer relationship in the fourth case, the connection between
+$\beta_4$ and $\gamma_4$ and these selection differentials is rather vague.
+Moreover, \citet{la} argue that the betas and gammas are more direct
+indicators of selection than these selection differentials.  Consider
+the phenotypic directional selection differential $\cov(w, z)$.  A component
+of $z$ that is not under direct selection will nevertheless be correlated with
+$w$ if it is correlated with other components of $z$ that are under direct
+selection.  Conversely, if a component of $z$, say $z_k$, is not under direct
+selection, then the fitness landscape $g(z)$ is not a function of $z_k$
+and $\partial g(z) / \partial z_k = 0$ and the $k$-th component of $\beta_3$
+given by \eqref{eq:beta} will be zero.
+
+From our point of view, this last argument tells us we should focus on
+the fitness landscape itself.  The various betas and gammas do not provide
+as much information as good estimates of the fitness landscape.  Nor
+do the selection differentials discussed in this section.
+
+\section{Lande-Arnold Analysis versus Fitness Landscapes} \label{sec:versus}
+
+\subsection{Multivariate}
+
+Suppose $z$ is multivariate normal with mean vector $\mu_1$ and variance
+matrix (variance-covariance matrix, dispersion matrix) $\Sigma_1$.
+The density of $z$ is
+\begin{equation} \label{eq:density1}
+   f(z)
+   =
+   c_1 \exp\left\{ - \tfrac{1}{2} (z - \mu_1)' \Sigma_1^{-1} (z - \mu_1)
+   \right\}
+\end{equation}
+where $c_1$ is a constant.
+Suppose, for reasons of mathematical convenience (to obtain an example we
+can analyze) the relative fitness landscape has the same form
+\begin{equation} \label{eq:landscape}
+   g(z)
+   =
+   c_2 \exp\left\{ - \tfrac{1}{2} (z - \mu_2)' \Sigma_2^{-1} (z - \mu_2)
+   \right\}
+\end{equation}
+where $c_2$ is another constant, $\Sigma_2$ is a symmetric matrix, not
+necessarily positive definite (more on this below), and and $\mu_2$ is
+an arbitrary vector.  Then
+\begin{equation} \label{eq:density3}
+   f(z) g(z)
+   =
+   c_3 \exp\left\{ - \tfrac{1}{2} (z - \mu_3)' \Sigma_3^{-1} (z - \mu_3)
+   \right\}
+\end{equation}
+where
+\begin{subequations}
+\begin{align}
+   \Sigma^{-1}_3 & = \Sigma^{-1}_1 + \Sigma^{-1}_2
+   \label{eq:sigma-complicated}
+   \\
+   \mu_3 & = \Sigma_3 (\Sigma^{-1}_1 \mu_1 + \Sigma^{-1}_2 \mu_2)
+   \label{eq:mu-complicated}
+\end{align}
+\end{subequations}
+and $c_3$ is another constant.  In order that $g(z)$ be the relative
+fitness landscape, $f(z) g(z)$ must integrate to one, so $c_3$ is
+the normalizing constant of the multivariate normal density with
+mean vector $\mu_3$ and variance matrix $\Sigma_3$.
+Also $\Sigma_3$ must be positive definite.  This places a complicated
+requirement on $\Sigma_2$ via \eqref{eq:sigma-complicated}.
+Although, $\Sigma_2$
+need not be positive definite, it must combine with $\Sigma_1$ to produce
+a positive definite $\Sigma_3$.
+
+Now let us assume $\mu_1 = 0$ so that from the theory in the preceding
+chapter we have $\beta_1 = \beta_2 = \beta_3 = \beta_4$
+and $\gamma_2 = \gamma_3 = \gamma_4$ so we need not
+distinguish which betas and gammas we mean and shall just write $\beta$
+and $\gamma$ with no subscripts for the rest of this chapter.
+
+Differentiating \eqref{eq:landscape} we get
+\begin{subequations}
+\begin{align}
+   \nabla g(z)
+   & =
+   - g(z) \Sigma^{-1}_2 (z - \mu_2)
+   \label{eq:deriv-first}
+   \\
+   \nabla^2 g(z)
+   & =
+   g(z) \Sigma^{-1}_2 (z - \mu_2) (z - \mu_2)' \Sigma^{-1}_2
+   - g(z) \Sigma^{-1}_2
+   \label{eq:deriv-second}
+\end{align}
+\end{subequations}
+Then using the formulas \eqref{eq:beta} and \eqref{eq:gamma} and the
+fact that \eqref{eq:density3} is a normal probability density we can
+now calculate
+\begin{subequations}
+\begin{align}
+   \beta
+   & =
+   - \Sigma^{-1}_2 (\mu_3 - \mu_2)
+   \label{eq:beta-complicated}
+   \\
+   \gamma
+   & =
+   \Sigma^{-1}_2 \Sigma_3 \Sigma^{-1}_2
+   +
+   \Sigma^{-1}_2 (\mu_2 - \mu_3) (\mu_2 - \mu_3)' \Sigma^{-1}_2
+   -
+   \Sigma^{-1}_2
+   \label{eq:gamma-complicated}
+\end{align}
+\end{subequations}
+It should be clear from the complexity of these formulas that the relationship
+between the function $g(z)$ and $\beta$ and $\gamma$ is anything but simple.
+
+Whether the fitness landscape $g(z)$ has a maximum, a minimum, or a saddle
+point at $\mu_2$ depends on the signature
+(the numbers of positive, negative, and zero eigenvalues) of
+the matrix $\Sigma_2$.  If the matrix $\gamma$ is to provide the
+same information, it must have the same signature, and this need not happen.
+
+\subsection{Univariate}
+
+Let us simplify to the case where $z$ is univariate.  We keep the assumption
+$\mu_1 = 0$.  Also we replace $\Sigma_i$ by $v_i$.
+Here $v$ is for ``variance'' but recall that $v_2$ is not required
+to be positive, although $v_1$ and $v_3$ are required to be positive.
+Then \eqref{eq:beta-complicated} and \eqref{eq:gamma-complicated} become
+\begin{subequations}
+\begin{align}
+   \beta
+   & =
+   - \frac{\mu_3 - \mu_2}{v_2}
+   \label{eq:beta-simple}
+   \\
+   \gamma
+   & =
+   \frac{v_3 - v_2 + (\mu_2 - \mu_3)^2}{v_2^2}
+   =
+   \frac{v_3 - v_2}{v_2^2} + \beta^2
+   \label{eq:gamma-simple}
+\end{align}
+\end{subequations}
+and \eqref{eq:sigma-complicated} and \eqref{eq:mu-complicated} become
+\begin{subequations}
+\begin{align}
+   \frac{1}{v_3} & = \frac{1}{v_1} + \frac{1}{v_2}
+   \label{eq:sigma-simple}
+   \\
+   \mu_3 & = \frac{v_3 \mu_2}{v_2}
+   \label{eq:mu-simple}
+\end{align}
+\end{subequations}
+(recall $\mu_1 = 0$).  Plugging \eqref{eq:sigma-simple}
+and \eqref{eq:mu-simple} into \eqref{eq:beta-simple}
+and \eqref{eq:gamma-simple} gives
+\begin{subequations}
+\begin{align}
+   \beta
+   & =
+   \frac{\mu_2}{v_1 + v_2}
+   \label{eq:beta-ultra-simple}
+   \\
+   \gamma
+   & =
+   - \frac{1}{v_1 + v_2} + \beta^2
+   \label{eq:gamma-ultra-simple}
+\end{align}
+\end{subequations}
+Clearly, in this simple case $\beta$ has the ``right sign'' (same as
+$\mu_2$), but $\gamma$ need not have the right sign (same as $v_2$).
+
+This is just a particular, easy to analyze, special case.
+In general, if one does not know the functional form of the fitness landscape
+$g(z)$, one has no knowledge of the relationship between $g(z)$ and $\beta$
+and $\gamma$ even when we assume that $z$ is multivariate normal with mean
+zero so all of the betas are equal and all of the gammas are equal.
+In even more generality, when one does not know the distribution of $z$,
+one has no knowledge of the relationship between $g(z)$ and any of the
+four betas and three gammas, none of which are equal
+except $\beta_1 = \beta_4$.
+
+\subsection{Normalizing Constants}
+
+We were a bit cavalier in the preceding two sections about the constants
+$c_1$, $c_2$, and $c_3$.  They are not needed to calculate $\alpha$, $\beta$,
+and $\gamma$ and the best quadratic approximation.  However, if we want
+to compare the best quadratic approximation with the actual fitness landscape
+$g(z)$, then we need to know $c_2$.  So we calculate that here.
+
+First, from the definition of the normal density
+\begin{align*}
+   c_1 & = (2 \pi)^{- d / 2} \det(\Sigma_1)^{- 1 / 2}
+   \\
+   c_3 & = (2 \pi)^{- d / 2} \det(\Sigma_3)^{- 1 / 2}
+\end{align*}
+where $d$ is the dimension of $z$ and $\det$ indicates the determinant.
+
+Hence, combining \eqref{eq:density1}, \eqref{eq:landscape},
+and \eqref{eq:density3}, we obtain
+\begin{multline*}
+   c_3 \exp\left\{ - \tfrac{1}{2} (z - \mu_3)' \Sigma_3^{-1} (z - \mu_3)
+   \right\}
+   \\
+   =
+   c_1 c_2 \exp\left\{ - \tfrac{1}{2} (z - \mu_1)' \Sigma_1^{-1} (z - \mu_1)
+   - \tfrac{1}{2} (z - \mu_2)' \Sigma_2^{-1} (z - \mu_2) \right\}
+\end{multline*}
+This must hold for all $z$, hence for $z = 0$, that is,
+\begin{equation*}
+   c_3 \exp\left\{ - \tfrac{1}{2} \mu_3' \Sigma_3^{-1} \mu_3 \right\}
+   =
+   c_1 c_2 \exp\left\{ - \tfrac{1}{2} \mu_1' \Sigma_1^{-1} \mu_1
+   - \tfrac{1}{2} \mu_2' \Sigma_2^{-1} \mu_2 \right\}
+\end{equation*}
+Hence
+$$
+   c_2
+   =
+   \frac{c_3}{c_1}
+   \exp\left\{ - \tfrac{1}{2} \mu_3' \Sigma_3^{-1} \mu_3
+   + \tfrac{1}{2} \mu_1' \Sigma_1^{-1} \mu_1
+   + \tfrac{1}{2} \mu_2' \Sigma_2^{-1} \mu_2 \right\}
+$$
+which simplifies in the univariate case with $\mu_1 = 0$ to
+$$
+   c_2
+   =
+   \sqrt{\frac{v_1}{v_3}}
+   \exp\left\{ - \mu_3^2 / 2 v_3 + \mu_2^2 / 2 v_2 \right\}
+$$
+which, plugging in \eqref{eq:mu-simple},
+further simplifies to
+\begin{equation} \label{eq:c2}
+   c_2
+   =
+   \sqrt{\frac{v_1}{v_3}}
+   \exp\left\{ \mu_2^2 (v_2 - v_3) / 2 v_2^2 \right\}
+\end{equation}
+
+\subsection{Examples}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+ps.options(pointsize = 15)
+pdf.options(pointsize = 15)
+@
+
+We give a few examples of the theory in the preceding sections.
+First example
+<<first-setup>>=
+v1 <- 1
+mu2 <- 0
+v2 <- 2
+
+beta <- mu2 / (v1 + v2)
+gamma <- beta^2 - 1 / (v1 + v2)
+alpha <- 1 - gamma * v1 / 2
+v3 <- 1 / (1 / v1 + 1 / v2)
+c2 <- sqrt(v1 / v3) * exp(mu2^2 * (v2 - v3) / (2 * v2^2))
+# c2 <- sqrt(v1 / v3) * exp(mu2^2 / (2 * (v1 + v2)))
+@
+Figure~\ref{fig:1} (page~\pageref{fig:1}) is made by the following code
+<<label=f1show,include=FALSE>>=
+zlim <- 3
+foo <- function(z) alpha + beta * z + gamma * z^2 / 2
+bar <- function(z) c2 * exp(- (z - mu2)^2 / (2 * v2))
+zzzz <- seq(-zlim, zlim, 0.01)
+ylim <- c(min(foo(zzzz), bar(zzzz)), max(foo(zzzz), bar(zzzz)))
+
+curve(foo, col = "magenta", ylab = "relative fitness", xlab = "z",
+    from = -3, to = 3, ylim = ylim, lwd = 2)
+curve(bar, col = "green3", add = TRUE, lwd = 2)
+@
+\begin{figure}
+\begin{center}
+<<label=f1,fig=TRUE,echo=FALSE>>=
+<<f1show>>
+@
+\end{center}
+\caption{Fitness landscape (green) and its best quadratic approximation
+(magenta).}
+\label{fig:1}
+\end{figure}
+
+Second example
+<<second-setup>>=
+v1 <- 1
+mu2 <- 1
+v2 <- 2
+
+beta <- mu2 / (v1 + v2)
+gamma <- beta^2 - 1 / (v1 + v2)
+alpha <- 1 - gamma * v1 / 2
+v3 <- 1 / (1 / v1 + 1 / v2)
+c2 <- sqrt(v1 / v3) * exp(mu2^2 * (v2 - v3) / (2 * v2^2))
+# c2 <- sqrt(v1 / v3) * exp(mu2^2 / (2 * (v1 + v2)))
+@
+Figure~\ref{fig:2} (page~\pageref{fig:2}) is made by the following code
+<<label=f2show,include=FALSE>>=
+foo <- function(z) alpha + beta * z + gamma * z^2 / 2
+bar <- function(z) c2 * exp(- (z - mu2)^2 / (2 * v2))
+ylim <- c(min(foo(zzzz), bar(zzzz)), max(foo(zzzz), bar(zzzz)))
+
+curve(foo, col = "magenta", ylab = "relative fitness", xlab = "z",
+    from = -3, to = 3, ylim = ylim, lwd = 2)
+curve(bar, col = "green3", add = TRUE, lwd = 2)
+@
+\begin{figure}
+\begin{center}
+<<label=f2,fig=TRUE,echo=FALSE>>=
+<<f1show>>
+@
+\end{center}
+\caption{Fitness landscape (green) and its best quadratic approximation
+(magenta).}
+\label{fig:2}
+\end{figure}
+
+Third example
+<<third-setup>>=
+v1 <- 1
+mu2 <- 2
+v2 <- 2
+
+beta <- mu2 / (v1 + v2)
+gamma <- beta^2 - 1 / (v1 + v2)
+alpha <- 1 - gamma * v1 / 2
+v3 <- 1 / (1 / v1 + 1 / v2)
+c2 <- sqrt(v1 / v3) * exp(mu2^2 * (v2 - v3) / (2 * v2^2))
+# c2 <- sqrt(v1 / v3) * exp(mu2^2 / (2 * (v1 + v2)))
+@
+Figure~\ref{fig:3} (page~\pageref{fig:3}) is made by the following code
+<<label=f3show,include=FALSE>>=
+foo <- function(z) alpha + beta * z + gamma * z^2 / 2
+bar <- function(z) c2 * exp(- (z - mu2)^2 / (2 * v2))
+ylim <- c(min(foo(zzzz), bar(zzzz)), max(foo(zzzz), bar(zzzz)))
+
+curve(foo, col = "magenta", ylab = "relative fitness", xlab = "z",
+    from = -3, to = 3, ylim = ylim, lwd = 2)
+curve(bar, col = "green3", add = TRUE, lwd = 2)
+@
+\begin{figure}
+\begin{center}
+<<label=f3,fig=TRUE,echo=FALSE>>=
+<<f1show>>
+@
+\end{center}
+\caption{Fitness landscape (green) and its best quadratic approximation
+(magenta).}
+\label{fig:3}
+\end{figure}
+
+\section{Discussion}
+
+The main goal of the authors is, admittedly, to foster their own approach
+to estimation of fitness landscapes \citep{aster2}, but the main goal of
+this particular document is to delve deeply into the theory of Lande-Arnold
+analysis to see what it does and what it cannot possibly do, not without
+being changed into something completely different.
+
+We, of course, emphasize quite different points from those emphasized by
+\citet{la}.  We stress the following.  \citet{la} introduce $\beta$
+the \emph{directional selection gradient} and $\gamma$
+the \emph{stabilizing or disruptive selection gradient}, but we point
+out that they really define four betas and three gammas, and they are
+quite distinct except when the phenotypic covariates are exactly multivariate
+normal.  Since there is no existing methodology for transforming data to
+exact multivariate normality, these betas and gammas are best thought of
+as distinct parameters.  Partly because it directly competes with aster
+analysis, we find the notion of best quadratic approximation \citet{p+a},
+which involves $\beta_2$ and $\gamma_2$, the interpretation of Lande-Arnold
+analysis that is most interesting.  This does also seem to be the
+interpretation of interest to most of the huge literature citing \citet{la}.
+
+As we show in Section~\ref{sec:versus}, if one looks carefully at how
+best quadratic approximation (BQA) actually approximates functions that are
+possible fitness landscapes, one sees that, although BQA is not uniformly
+bad, it can be very bad approximation in some circumstances.  Since the
+Lande-Arnold method estimates the BQA of the fitness landscape rather than
+the fitness landscape itself and since the BQA can be a badly biased
+approximation of the fitness landscape, one can never know from looking at
+the BQA alone (much less its OLS estimate) what features of the BQA are
+reflective of the actual fitness landscape and what features of the BQA
+are approximation artifacts.  Thus one can never know how safe it is to
+interpret a particular aspect of the BQA as reflecting the underlying biology,
+since it may be only an artifact of the bias of the BQA.
+
+This is not a mere theoretical quibble.  To date only one real data set has
+been analyzed using both the Lande-Arnold method and the newer aster method
+\citep{aster2}, and in this example Lande-Arnold analysis
+indicates distruptive selection for one phenotypic character whereas
+aster analysis indicates stabilizing selection for that character.
+This is exactly what is illustrated in Figure~\ref{fig:3} where the
+true fitness landscape (green curve) has a maximum near the right side
+of the figure and the BQA (magenta curve) has a minimum somewhere off
+the left side of the plot.  In the terminology of Lande and Arnold,
+the BQA indicates disruptive selection whereas the actual fitness landscape
+exhibits only stabilizing selection: by construction, the fitness landscape
+has a single local maximum, which is also the global maximum, at $z = 2$,
+what else can one call this?
+Of course, the selection is mainly directional, but between stabilizing
+and disruptive, stabilizing is the correct choice.
+
+Section~\ref{sec:versus} gives a large family
+of examples, multivariate as well as univariate, that one can play with
+to see exactly what biases BQA induces in various situations.
+So long as no one had looked at the biases of BQA in detail, it was possible
+to maintain the illusion that BQA usually was good enough approximation.
+Now that the issue has been raised and thoroughly explored, the illusion
+has been destroyed.  Now one must consider in each application of the
+Lande-Arnold method how bad the biases of BQA may be.  Furthermore, to the
+extent that one is interested in the other parameters, that we called
+$\beta_3$ and $\gamma_3$ and $\beta_4$ and $\gamma_4$, one must consider
+how different they may be from $\beta_2$ and $\gamma_2$, which are what
+the Lande-Arnold procedure estimate unbiasedly.
+
+\begin{thebibliography}{}
+
+\bibitem[Anderson(2003)]{anderson}
+Anderson, T.~W. (2003).
+\emph{An Introduction to Multivariate Statistical Analysis}, 3rd ed.
+\newblock Hoboken: John Wiley.
+
+%%%% TR only? %%%%%
+% \bibitem[Akaike(1973)]{aic}
+% Akaike, H. (1973).
+% \newblock Information theory and an extension of the maximum
+%     likelihood principle.
+% \newblock \emph{Second International Symposium on Information Theory},
+%     267--281.
+
+\bibitem[Andrews et al.(1971)Andrews, Gnanadesikan, and Warner]{a+g+w}
+Andrews, D.~F., Gnanadesikan, R. and Warner, J.~L. (1971).
+\newblock Transformations of multivariate data.
+\newblock \emph{Biometrics}, \textbf{27}, 825--840. 
+
+\bibitem[Arnold(2003)]{arnold}
+Arnold, S.~J. (2003).
+\newblock Performance surfaces and adaptive landscapes.
+\newblock \emph{Integrative and Comparative Biology}, \textbf{43}, 367--375.
+
+% \bibitem[Azzalini and Dalla Valle(1996)]{skew-normal}
+% Azzalini, A. and Dalla Valle A. (1996).
+% \newblock The multivariate skew-normal distribution.
+% \newblock \emph{Biometrika}, \textbf{83}, 715--726.
+
+% \bibitem[Barndorff-Nielsen(1978)]{barndorff}
+% Barndorff-Nielsen, O.~E. (1978).
+% \newblock \emph{Information and Exponential Families}.
+% \newblock Chichester: John Wiley.
+
+% \bibitem[Bishop, Fienberg and Holland(1975)]{bish}
+% Bishop, Y.~M.~M., Fienberg, S.~E. and Holland, P.~W. (1975)
+% \newblock \emph{Discrete Multivariate Analysis: Theory and Practice}.
+% \newblock MIT Press.
+
+\bibitem[Bowman and Azzalini(1997)]{boaz}
+Bowman, A.~W. and Azzalini, A. (1997).
+\newblock \emph{Applied Smoothing Techniques for Data Analysis:
+    The Kernel Approach with S-Plus Illustrations}.
+\newblock New York: Oxford University Press.
+
+% \bibitem[Burnham and Anderson(2002)]{b+a}
+% Burnham, K.~P. and Anderson, D.~R. (2002).
+% \newblock \emph{Model Selection and Multimodel Inference: A Practical
+%     Information-Theoretic Approach}, 2nd ed.
+% \newblock New York: Springer-Verlag.
+
+% \bibitem[Cook(2007)]{cook}
+% Cook, R. D. (2007).
+% \newblock Fisher lecture: Dimension reduction in regression (with discussion).
+% \newblock \emph{Statistical Science}, in press.
+% \newblock \url{http://www.imstat.org/sts/future_papers.html}
+
+% \bibitem[Cox(1968)]{cox}
+% Cox, D.~R. (1968).
+% \newblock Notes on some aspects of regression analysis.
+% \newblock \emph{Journal of the Royal Statistical Society, Ser. A},
+%     \textbf{131}, 265--279.
+
+% \bibitem[Davison and Snell(1991)]{ds}
+% Davison, A.~C., and Snell, E.~J. (1991).
+% \newblock Residuals and diagnostics.
+% \newblock In \emph{Statistical Theory and Modelling: In honour
+%     of Sir David Cox, FRS\@.}  D.~V. Hinkley, N. Reid, E.~J. Snell (eds.)
+% \newblock Chapman \& Hall.
+
+% \bibitem[Efron(2004)]{efron}
+% Efron, B. (2004).
+% \newblock The estimation of prediction error: Covariance penalties
+%     and cross-validation (with discussion).
+% \newblock \emph{Journal of the American Statistical Association}, \textbf{99},
+%     619--642.
+
+% \bibitem[Etterson and Shaw(2001)]{es}
+% Etterson, J.~R., and Shaw, R.~G. (2001).
+% \newblock Constraint to adaptive evolution in response to global warming.
+% \newblock \emph{Science}, \textbf{294}, 151--154.
+
+% \bibitem[Furnival and Wilson(1974)]{leaps}
+% Furnival, G.~M. and Wilson, R.~W., Jr. (1974).
+% \newblock Regressions by Leaps and Bounds
+% \newblock \emph{Technometrics}, \textbf{16}, 499--511.
+% \newblock Reprinted, \emph{Technometrics}, \textbf{42}, 69--79.
+
+% \bibitem[Geyer(1994)]{g}
+% Geyer, C.~J. (1994).
+% \newblock On the convergence of Monte Carlo maximum likelihood calculations.
+% \newblock \emph{J. Roy.\ Statist.\ Soc.\ Ser.\ B}, \textbf{56}, 261--274.
+
+% \bibitem[Geyer and Shaw(2007)]{g+s}
+% Geyer, C.~J. and Shaw, R.~G. (2007).
+% \newblock Estimating fitness landscapes using aster models.
+
+\bibitem[Geyer et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S. and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, \textbf{94} 415--426.
+\newblock \url{http://www.stat.umn.edu/geyer/aster}.
+
+% \bibitem[Hjort and Claeskens(2003)]{h+c}
+% Hjort N.~L. and Claeskens G. (2003).
+% \newblock Frequentist model average estimators.
+% \newblock \emph{Journal of the American Statistical Association},
+%     \textbf{98}, 879--899.
+
+% \bibitem[Lande and Arnold(1983)]{l+a}
+% Lande, R. and Arnold, S.~J. (1983).
+% \newblock The measurement of selection on correlated characters.
+% \newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+% \bibitem[Hand(1981)]{hand}
+% Hand, D.~J. (1981).
+% \newblock Branch and bound in statistical data analysis.
+% \newblock \emph{The Statistician}, \textbf{30}, 1--13. 
+
+\bibitem[Hastie and Tibshirani(1990)]{gam}
+Hastie, T.~J. and Tibshirani, R.~J. (1990).
+\newblock \emph{Generalized Additive Models}.
+\newblock Boca Raton: Chapman \& Hall / CRC Press.
+
+% \bibitem[Hjort and Claeskens(2003)]{hjort}
+% Hjort N.~L. and Claeskens G. (2003).
+% \newblock Frequentist model average estimators.
+% \newblock \emph{Journal of the American Statistical Association},
+%     \textbf{98}, 879--899.
+
+% \bibitem[Hoeting et al.(1999)Hoeting, Madigan, Raftery, and Volinsky]{bma}
+% Hoeting, J.~A., Madigan, D., Raftery, A.~E., and Volinsky, C.~T. (1999).
+% \newblock Bayesian model averaging: A tutorial (with discussion).
+% \newblock \emph{Statistical Science}, \textbf{19}, 382--417.
+% \newblock Corrected version available at
+%     \url{http://www.stat.washington.edu/www/research/online/1999/hoeting.pdf}.
+
+\bibitem[Kendall and Stuart(1973)]{ks3}
+Kendall, M.~G. and Stuart, A. (1973).
+\newblock \emph{Advanced Theory of Statistics}, vol.~2, 3rd ed.
+\newblock London, Griffin.
+
+\bibitem[Lande and Arnold(1983)]{la}
+Lande, R. and Arnold, S.~J. (1983).
+\newblock The measurement of selection on correlated characters.
+\newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+\bibitem[Lindgren(1993)]{lindgren}
+Lindgren, B.~W. (1993).
+\newblock \emph{Statistical Theory}, 4th ed.
+\newblock New York: Chapman \& Hall.
+
+\bibitem[Lynch and Walsh(1998)]{l+w}
+Lynch, M. and Walsh, B. (1998).
+\newblock \emph{Genetics and Analysis of Quantitative Traits}.
+\newblock Sunderland, MA: Sinauer Associates.
+
+% \bibitem[Madigan and Raftery(1994)]{occam}
+% Madigan, D. and Raftery, A.~E. (1994).
+% \newblock Model selection and accounting for model uncertainty in
+%     graphical models using Occam's window.
+% \newblock \emph{Journal of the American Statistical Association},
+%     \textbf{89}, 1535--1546. 
+
+% \bibitem[Martin et al.(2005)Martin, Wintle, Rhodes, Kuhnert, Field, Low-Choy,
+%     Tyre and Possingham]{martin}
+% Martin, T.~G., Wintle, B.~A., Rhodes, J.~R., Kuhnert, P.~M., Field, S.~A.,
+%     Low-Choy, S.~J., Tyre, A.~J. and Possingham, H.~P. (2005).
+% \newblock Zero tolerance ecology: improving ecological inference
+%     by modelling the source of zero observations.
+% \newblock \emph{Ecol. Lett.}, \textbf{8}, 1235--46.
+
+% \bibitem[McCullagh and Nelder(1989)]{mn}
+% McCullagh, P., and Nelder, J.~A. (1989).
+% \newblock \emph{Generalized Linear Models}, 2nd ed.
+% \newblock Chapman \& Hall.
+
+\bibitem[Mitchell-Olds and Shaw(1987)]{ms}
+Mitchell-Olds, T., and Shaw, R.~G. (1987).
+\newblock Regression analysis of natural selection: Statistical inference
+    and biological interpretation.
+\newblock \emph{Evolution}, \textbf{41}, 1149--1161.
+
+\bibitem[Phillips and Arnold(1989)]{p+a}
+Phillips, P.~C. and Arnold, S.~J. (1989).
+\newblock Visualizing multivariate selection.
+\newblock \emph{Evolution}, \textbf{43}, 1209--1222.
+
+\bibitem[Price(1970)]{pr70}
+Price, G.~R. (1970).
+\newblock Selection and covariance.
+\newblock \emph{Nature}, \textbf{227}, 520--521.
+
+\bibitem[Price(1972)]{pr72}
+Price, G.~R. (1972).
+\newblock Extension of covariance selection mathematics.
+\newblock \emph{Annals of Human Genetics}, \textbf{35}, 485--490.
+
+% \bibitem[R Development Core Team(2007)]{rcore}
+% R Development Core Team (2007).
+% \newblock R: A language and environment for statistical computing.
+% \newblock R Foundation for Statistical Computing, Vienna, Austria.
+% \newblock \url{http://www.R-project.org}.
+
+\bibitem[Riani(2004)]{riani}
+Riani, M. (2004).
+\newblock Robust multivariate transformations to normality: Constructed
+    variables and likelihood ratio tests.
+\newblock \emph{Statistical Methods \& Applications}, \textbf{13}, 179--196.
+
+% \bibitem[Rousseeuw(1984)]{rousseeuw}
+% Rousseeuw, P.~J. (1984).
+% \newblock Least median of squares regression.
+% \newblock \emph{Journal of the American Statistical Association},
+%     \textbf{79}, 871--880. 
+
+% \bibitem[Schwarz(1978)]{schwarz}
+% Schwarz, G. (1978).
+% \newblock Estimating the dimension of a model.
+% \newblock \emph{Annals of Statistics}, \textbf{6}, 461--464.
+
+\bibitem[Shaw, et al.(2008) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2008).
+\newblock Unifying life history analysis for inference of fitness and
+    population growth.
+\newblock \emph{American Naturalist}, in press.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+% \bibitem[Shaw, et al.(2007a) Shaw, Geyer, Wagenius, Hangelbroek, and
+%     Etterson]{aster2tr}
+% Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+%     Etterson, J.~R. (2007a).
+% \newblock Supporting data analysis for ``Unifying life history analysis
+%     for inference of fitness and population growth''.
+% \newblock University of Minnesota School of Statistics Technical Report
+%     No.~658
+% \newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+% \bibitem[Shaw, et al.(2007b) Shaw, Geyer, Wagenius, Hangelbroek, and
+%     Etterson]{aster2tr2}
+% Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+%     Etterson, J.~R. (2007b).
+% \newblock More supporting data analysis for ``Unifying life history analysis
+%     for inference of fitness and population growth''.
+% \newblock University of Minnesota School of Statistics Technical Report
+%     No.~661
+% \newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Simpson(1944)]{simpson}
+Simpson, G.~G. (1944).
+\newblock \emph{Tempo and Mode in Evolution}.
+\newblock New York: Columbia University Press.
+
+\bibitem[Stanton and Thiede(2005)]{st}
+Stanton, M.~L. and Thiede, D.~A. (2005).
+\newblock Statistical convenience vs biological insight: consequences
+    of data transformation
+    for the analysis of fitness variation in heterogeneous environments
+\newblock \emph{New Phytologist}, \textbf{166}, 319--338.
+
+\bibitem[Stein(1981)]{stein}
+Stein, C.~M. (1981).
+\newblock Estimation of the mean of a multivariate normal distribution.
+\newblock {Annals of Statistics}, \textbf{9}, 1135--1151. 
+
+\bibitem[Stuart et al.(1999)]{ks6}
+Stuart, A., Ord, J.~K. and Arnold, S. (1999).
+\newblock \emph{Kendall's Advanced Theory of Statistics}, vol.~2A, 6th ed.
+\newblock London, Arnold.
+
+% \bibitem[Sugiura(1978)]{sugiura}
+% Sugiura, N. (1978).
+% \newblock Further analysis of the data by Akaike's information criterion
+%     and the finite corrections.
+% \newblock \emph{Communications in Statistics, Theory and Methods}, \textbf{A7},
+%     13--26.
+
+% \bibitem[Sung and Geyer(2006)]{sg}
+% Sung, Y.~J., and Geyer, C.~J. (2006).
+% \newblock Monte Carlo likelihood inference for missing data models.
+% \newblock Submitted.
+% \newblock \url{http://www.stat.umn.edu/geyer/bernor}.
+
+% \bibitem[Venables and Ripley(2002)]{v+r}
+% Venables, W.~N. and Ripley, B.~D. (2002).
+% \newblock \emph{Modern Applied Statistics with S}, 4th ed.
+% \newblock New York: Springer-Verlag.
+
+% \bibitem[Volinsky, et al.(1997)Volinsky, Madigan, Raftery and Kronmal]{volinsky}
+% Volinsky, C.~T., Madigan, D., Raftery, A.~E. and Kronmal, R.~A. (1997).
+% \newblock Bayesian model averaging in proportional hazard models: Assessing
+%     the risk of a stroke.
+% \newblock \emph{Applied Statistics}, \textbf{46}, 433--448. 
+
+\bibitem[Weisberg(2005)]{weisberg}
+Weisberg, S. (2005).
+\newblock \emph{Applied Linear Regression}, 3rd ed.
+\newblock Wiley, New York.
+
+\bibitem[Wright(1932)]{wright}
+Wright, S. (1932).
+\newblock The roles of mutation, inbreeding, crossbreeding,and selection
+    in evolution.
+\newblock \emph{Proceedings of the Sixth International Congress on Genetics}.
+
+\end{thebibliography}
+
+\end{document}
+

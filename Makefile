@@ -2,7 +2,8 @@
 %.pdf : %.tex
 	latexmk -pdf $<
 
-all: tr698r.pdf tr696.pdf tr692.pdf tr675r.pdf tr674r.pdf tr671r.pdf
+all: tr698r.pdf tr696.pdf tr692.pdf tr675r.pdf tr674r.pdf tr671r.pdf \
+        tr670.pdf
 
 tr698r.pdf :
 	cd tr698 && $(MAKE)
