@@ -1,0 +1,569 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+\DeclareMathOperator{\var}{var}
+
+\newcommand{\boldbeta}{{\boldsymbol{\beta}}}
+\newcommand{\boldbetahat}{{\boldsymbol{\hat{\beta}}}}
+\newcommand{\boldtheta}{{\boldsymbol{\theta}}}
+\newcommand{\boldphi}{{\boldsymbol{\varphi}}}
+\newcommand{\boldxi}{{\boldsymbol{\xi}}}
+\newcommand{\boldmu}{{\boldsymbol{\mu}}}
+\newcommand{\boldA}{{\mathbf{A}}}
+\newcommand{\boldb}{{\mathbf{b}}}
+\newcommand{\boldw}{{\mathbf{w}}}
+\newcommand{\boldx}{{\mathbf{x}}}
+\newcommand{\boldy}{{\mathbf{y}}}
+\newcommand{\boldz}{{\mathbf{z}}}
+
+\hyphenation{Wa-gen-ius}
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{- 2 in}
+\setlength{\topmargin}{0.25 pt}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \footskip}
+
+\setlength{\textwidth}{\paperwidth}
+\addtolength{\textwidth}{- 2 in}
+\setlength{\oddsidemargin}{0.25 in}
+\setlength{\evensidemargin}{0.25 in}
+\addtolength{\textwidth}{- \oddsidemargin}
+\addtolength{\textwidth}{- \evensidemargin}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Hypothesis Tests and Confidence Intervals
+    Involving \\ Fitness Landscapes fit by Aster Models} \\
+    By \\
+    Charles J. Geyer and Ruth G. Shaw \\
+    Technical Report No.~674 revised \\
+    School of Statistics \\
+    University of Minnesota \\
+    Original, March 24, 2009
+    \\
+    % only change from file downloaded from conservancy.umn.edu
+    % original said Revised, \today
+    Revised, January 9, 2010
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+This technical report explores some issues left open in
+Technical Reports~669 and~670 \citep{tr669,tr670}:
+for fitness landscapes fit using
+an aster models, we propose hypothesis tests of whether the landscape
+has a maximum and confidence regions for the location of the maximum.
+
+All analyses are done in R \citep{rcore} using the \texttt{aster}
+contributed package described by \citet*{gws} and \citet*{aster2}.
+Furthermore, all analyses are done using the \texttt{Sweave} function in R,
+so this entire technical report and all of the analyses reported in it
+are completely reproducible by anyone who has R with the \texttt{aster}
+package installed and the R noweb file specifying the document.
+
+The revision fixes one error in the confidence ellipsoids
+in Section~\ref{sec:regions} (a square root was forgotten so the
+regions in the original were too big).
+\end{abstract}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+ps.options(pointsize = 15)
+pdf.options(pointsize = 15)
+@
+
+\section{R Package Aster}
+
+We use R statistical computing environment \citep{rcore} in our analysis.
+It is free software and can be obtained from
+\url{http://cran.r-project.org}.  Precompiled binaries
+are available for Windows, Macintosh, and popular Linux distributions.
+We use the contributed package \verb@aster@.
+If R has been installed, but this package has
+not yet been installed, do
+\begin{verbatim}
+install.packages("aster")
+\end{verbatim}
+from the R command line
+(or do the equivalent using the GUI menus if on Apple Macintosh
+or Microsoft Windows).  This may require root or administrator privileges.
+
+Assuming the \verb@aster@ package has been installed, we load it
+<<library>>=
+library(aster)
+@
+<<baz,include=FALSE,echo=FALSE>>=
+baz <- library(help = "aster")
+baz <- baz$info[[1]]
+baz <- baz[grep("Version", baz)]
+baz <- sub("^Version: *", "", baz)
+bazzer <- paste(R.version$major, R.version$minor, sep = ".")
+@
+The version of the package used to make this document
+is \Sexpr{baz} (which is available on CRAN).
+The version of R used to make this document is \Sexpr{bazzer}.
+<<bazzer,include=FALSE,echo=FALSE>>=
+rm(baz, bazzer)
+@
+
+This entire document and all of the calculations shown were made using
+the R command \texttt{Sweave} and hence are exactly reproducible by
+anyone who has R and the R noweb (RNW) file from which it was created.
+Both the RNW file and and the PDF document produced from it are available at
+\url{http://www.stat.umn.edu/geyer/aster}.  For further details on
+the use of Sweave and R see Chapter~1 of the technical report by
+\citet{aster2tr} available at the same web site.
+
+Not only can one exactly reproduce the results in the printable document,
+one can also modify the parameters of the simulation and get different
+results.
+
+Finally, we set the seeds of the random number generator so that we
+obtain the same results every time.  To get different results,
+obtain the RNW file, change this statement, and reprocess
+using \texttt{Sweave} and \LaTeX.
+<<seed>>=
+set.seed(42)
+@
+
+\section{Data Structure}
+
+We use the data simulated in Technical Report~669
+\citep[herein after TR~669]{tr669},
+because this simulated data has features not present in any currently
+available real data and shows the full possibilities of aster modeling.
+<<data>>=
+data(sim)
+ls()
+@
+
+For a full description of the graphical structure of these data
+see Section~2.1 of TR~669.  For a full description of the variables
+and their conditional distributions see Section~2.2 of TR~669.
+For a full description of the sum of certain variables that is deemed
+the best surrogate of fitness for these data see Section~2.3 of TR~669.
+
+\section{Hypothesis Tests about Maxima}
+
+\subsection{Asymptotic}
+
+First, we consider asymptotic (large sample, approximate) tests based on
+the well known likelihood ratio test, which has asymptotic chi-square
+distribution.
+
+We fit the same model fit in TR~669 in which the unconditional canonical
+parameter corresponding to best surrogate of fitness is a quadratic function
+of phenotype data.  In short, fitness is quadratic on the canonical parameter
+scale.
+<<out6>>=
+out6 <- aster(resp ~ varb + 0 + z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2),
+    pred, fam, varb, id, root, data = redata)
+@
+We also fit the model in which fitness is linear on the canonical parameter
+scale.
+<<out5>>=
+out5 <- aster(resp ~ varb + 0 + z1 + z2,
+    pred, fam, varb, id, root, data = redata)
+@
+Then we compare these two models using the conventional likelihood ratio test.
+<<anova>>=
+anova(out5, out6)
+@
+<<foop,include=FALSE,echo=FALSE>>=
+foop <- anova(out5, out6)
+foopp <- foop[2, 5]
+foopexp <- floor(log10(foopp))
+foopfrac <- round(foopp / 10^foopexp, 1)
+@
+The $P$-value calculated here is highly statistically significantly
+($P = \Sexpr{foopfrac} \times 10^{\Sexpr{foopexp}}$).  It is a correct
+asymptotic approximation to the $P$-value for comparing the linear and
+quadratic models.  It says the quadratic model clearly fits better.
+
+A linear model cannot have a stationary point.  A quadratic model does
+have a stationary point.  Hence this is also a test of whether the fitness
+landscape has a stationary point, which may be a maximum, a minimum, or a
+saddle point.
+
+<<poof,include=FALSE,echo=FALSE>>=
+poofp <- foopp / 4
+poofexp <- floor(log10(poofp))
+pooffrac <- round(poofp / 10^poofexp, 1)
+@
+
+If we wish to turn this into a test for the presence of a maximum, we
+should make the alternative assert that the model is quadratic
+and the fitness surface has a maximum.  Since this requires both diagonal
+elements of the Hessian matrix
+to be negative, the coefficients of \verb@I(z1^2)@ and \verb@I(z2^2)@,
+this restricts the alternative to less than $1 / 4$ of the parameter space.
+Hence an appropriate $P$-value for this test is $1 / 4$ of the $P$-value for
+the general quadratic alternative, that is,
+($P = \Sexpr{pooffrac} \times 10^{\Sexpr{poofexp}}$).
+
+This test, although seemingly liberal, dividing the $P$-value of
+the conventional test by 4, or, more generally, by $2^p$ where $p$ is the
+number of phenotypic variables, should be (asymptotically) conservative.
+Our claim that
+the alternative is only $1 / 4$ of the parameter space, or $2^{- p}$ of
+the parameter space for general $p$ is conservative, since it only takes
+account of the diagonal elements of the Hessian matrix of the quadratic
+function and ignores the constraint that the Hessian matrix be positive
+semidefinite (which involves all elements of the Hessian matrix).
+Unfortunately, this argument is not completely rigorous because it ignores
+the variance-covariance matrix of the MLE.  Although the alternative hypothesis
+is geometrically less than $2^{- p}$ of the unrestricted alternative, we do
+not know that the probability assigned to that region is less than $2^{- p}$
+of the probability of the unrestricted alternative.  As we shall see in
+the following section, our correction does seem conservative for these data.
+
+\subsection{Parametric Bootstrap}
+
+Second, we consider a hypothesis test
+based on the distribution under the null hypothesis determined
+by simulation.  These are still large sample approximate in a weak sense
+in that we should simulate the distribution for the true unknown parameter
+vector $\boldbeta$ but cannot and must use our best approximation, which
+is the distribution for the parameter vector $\boldbetahat$ that is the
+MLE for the null hypothesis.  Since this only makes sense when
+$\boldbetahat$ is close to $\boldbeta$, this procedure is only approximate.
+To remind everyone of this fact, we call the procedure a parametric bootstrap
+rather than a simulation test.  However, this procedure is much less
+approximate than the procedure of the preceding section, because it does not
+use the chi-square approximation for the distribution of the test statistic
+but instead calculates its exact sampling distribution when $\boldbetahat$
+is the true parameter value.
+
+The test in the preceding section also does not fully account for the
+restriction that the Hessian matrix be
+negative definite.  Thus an even more correct $P$-value can be obtained
+using a parametric bootstrap that goes like this.
+<<pboot>>=
+nsim <- 249
+theta.boot <- predict(out5, parm.type = "canonical",
+    model.type = "conditional")
+nind <- length(unique(redata$id))
+theta.boot <- matrix(theta.boot, nrow = nind)
+phi.boot <- out6$coef * 0
+phi.boot[1:length(out5$coef)] <- out5$coef
+pvalsim <- double(nsim)
+eigmaxsim <- double(nsim)
+save.time <- proc.time()
+for (i in 1:nsim) {
+    ystar <- raster(theta.boot, pred, fam, root = theta.boot^0)
+    redatastar <- redata
+    redatastar$resp <- as.vector(ystar)
+    out6star <- aster(resp ~ varb + 0 + z1 + z2 + I(z1^2) +
+        I(z1*z2) + I(z2^2), pred, fam, varb, id, root,
+        parm = phi.boot, data = redatastar)
+    out5star <- aster(resp ~ varb + 0 + z1 + z2,
+        pred, fam, varb, id, root,
+        parm = out5$coef, data = redatastar)
+    Afoo <- matrix(NA, 2, 2)
+    Afoo[1, 1] <- out6star$coef["I(z1^2)"]
+    Afoo[2, 2] <- out6star$coef["I(z2^2)"]
+    Afoo[1, 2] <- out6star$coef["I(z1 * z2)"] / 2
+    Afoo[2, 1] <- out6star$coef["I(z1 * z2)"] / 2
+    pvalsim[i] <- anova(out5star, out6star)[2, 5]
+    eigmaxsim[i] <- max(eigen(Afoo, symmetric = TRUE,
+        only.values = TRUE)$values)
+}
+elapsed.time <- proc.time() - save.time
+pval.obs <- anova(out5, out6)[2, 5]
+pvalsim.corr <- pvalsim
+pvalsim.corr[eigmaxsim > 0] <- 1
+mean(c(pvalsim.corr, pval.obs) <= pval.obs)
+@
+<<elapsed-time,include=FALSE,echo=FALSE>>=
+emin <- floor(elapsed.time[1] / 60)
+esec <- round(elapsed.time[1] - 60 * emin, 1)
+@
+The parametric bootstrap $P$-value,
+here $P = \Sexpr{mean(c(pvalsim.corr, pval.obs) <= pval.obs)}$,
+cannot be lower than $1 / (n + 1)$, where $n$ is the number of simulations,
+here \texttt{nsim} = \Sexpr{nsim}.  We have gotten the lowest bootstrap
+$P$-value we could have with this number of simulations, which
+took \Sexpr{emin} minutes and \Sexpr{esec} seconds.
+
+Hence there is little point in using the parametric bootstrap here
+where the asymptotic $P$-value
+($P = \Sexpr{pooffrac} \times 10^{\Sexpr{poofexp}}$) is so small.
+If the asymptotic $P$-value were equivocal, somewhere in the vicinity of 0.05,
+then there would be much more reason to calculate a parametric bootstrap
+$P$-value, and the code above shows how to do it right.
+
+We can see that the correction of dividing the conventional $P$-value
+by $2^p$ is conservative here.  The fraction of the sample in which
+the matrix $A$ is negative definite is \Sexpr{round(mean(eigmaxsim < 0), 3)},
+a good deal less than $0.25$, which is the $2^{- p}$ correction.
+
+\section{Confidence Regions about Maxima} \label{sec:regions}
+
+Now we consider the MLE of the location of the maximum, which is
+calculated in TR~669 as
+<<max-out>>=
+Afoo <- matrix(NA, 2, 2)
+Afoo[1, 1] <- out6$coef["I(z1^2)"]
+Afoo[2, 2] <- out6$coef["I(z2^2)"]
+Afoo[1, 2] <- out6$coef["I(z1 * z2)"] / 2
+Afoo[2, 1] <- out6$coef["I(z1 * z2)"] / 2
+bfoo <- rep(NA, 2)
+bfoo[1] <- out6$coef["z1"]
+bfoo[2] <- out6$coef["z2"]
+cfoo <- solve(- 2 * Afoo, bfoo)
+cfoo
+@
+The explanation for this is that the estimated regression function,
+mapped to the natural parameter scale, is
+$$
+   g(\boldz) = c + \boldb^T \boldz + \boldz^T \boldA \boldz
+$$
+where $c$ is an arbitrary constant, $\boldb$ is the R vector \texttt{bfoo}
+above and $\boldA$ is the R matrix \texttt{Afoo} above.
+The first derivative vector is
+$$
+   \nabla g(\boldz) = \boldb^T + 2 \boldz^T \boldA
+$$
+and setting this equal to zero and solving for $\boldz$ gives
+$$
+   \boldz = - \tfrac{1}{2} \boldA^{-1} \boldb
+$$
+
+For future reference, we compute the maximum the simulation truth
+fitness landscape.
+<<max-true>>=
+Abar <- matrix(NA, 2, 2)
+Abar[1, 1] <- beta.true["I(z1^2)"]
+Abar[2, 2] <- beta.true["I(z2^2)"]
+Abar[1, 2] <- beta.true["I(z1 * z2)"] / 2
+Abar[2, 1] <- beta.true["I(z1 * z2)"] / 2
+bbar <- rep(NA, 2)
+bbar[1] <- beta.true["z1"]
+bbar[2] <- beta.true["z2"]
+cbar <- solve(- 2 * Abar, bbar)
+@
+
+In order to apply the multivariable delta method, we need to differentiate
+the function of the parameter $\beta$ that gives the maximum,
+$$
+   h(\boldbeta) = - \tfrac{1}{2} \boldA(\boldbeta)^{-1} \boldb(\boldbeta),
+$$
+where we have now written the matrix $\boldA$ and the vector $\boldb$ as
+functions of the regression coefficient vector $\boldbeta$, which they are,
+each component of $\boldA$ and each component of $\boldb$ being
+a component of $\boldbeta$.  The partial derivatives are
+$$
+   \frac{\partial h(\boldbeta)}{\partial \beta_i}
+   =
+   \tfrac{1}{2} \boldA(\boldbeta)^{-1}
+   \frac{\partial \boldA(\beta)^{-1}}{\partial \beta_i}
+   \boldA(\boldbeta)^{-1} \boldb(\boldbeta)
+   -
+   \tfrac{1}{2}
+   \boldA(\boldbeta)^{-1} \frac{\partial \boldb(\boldbeta)}{\partial \beta_i}
+$$
+The asymptotic variance of the components of $\boldbeta$ is the
+submatrix of the inverse Fisher information matrix corresponding to the
+components of $\boldbeta$ that enter into $\boldA(\boldbeta)$
+and $\boldb(\boldbeta)$
+<<ass-var>>=
+beta.sub.names <- c("I(z1^2)", "I(z2^2)", "I(z1 * z2)", "z1", "z2")
+beta.sub.idx <- match(beta.sub.names, names(out6$coef))
+asymp.var <- solve(out6$fisher)
+asymp.var <- asymp.var[beta.sub.idx, ]
+asymp.var <- asymp.var[ , beta.sub.idx]
+@
+The derivative matrix is set up as follows
+<<jacobian>>=
+jack <- matrix(NA, 2, 5)
+jack[ , 1] <- (1 / 2) * solve(Afoo) %*% matrix(c(1, 0, 0, 0), 2, 2) %*%
+    solve(Afoo) %*% cbind(bfoo)
+jack[ , 2] <- (1 / 2) * solve(Afoo) %*% matrix(c(0, 0, 0, 1), 2, 2) %*%
+    solve(Afoo) %*% cbind(bfoo)
+jack[ , 3] <- (1 / 2) * solve(Afoo) %*% matrix(c(0, 1, 1, 0), 2, 2) %*%
+    solve(Afoo) %*% cbind(bfoo)
+jack[ , 4] <- (- (1 / 2) * solve(Afoo) %*% matrix(c(1, 0), 2, 1))
+jack[ , 5] <- (- (1 / 2) * solve(Afoo) %*% matrix(c(0, 1), 2, 1))
+# eps <- 1e-6
+# jack.check <- matrix(NA, 2, 5)
+# jack.check[ , 1] <- (solve(- 2 * (Afoo + matrix(c(eps, 0, 0, 0), 2, 2)),
+#     bfoo) - cfoo) / eps
+# jack.check[ , 2] <- (solve(- 2 * (Afoo + matrix(c(0, 0, 0, eps), 2, 2)),
+#     bfoo) - cfoo) / eps
+# jack.check[ , 3] <- (solve(- 2 * (Afoo + matrix(c(0, eps, eps, 0), 2, 2)),
+#     bfoo) - cfoo) / eps
+# jack.check[ , 4] <- (solve(- 2 * Afoo, bfoo + matrix(c(eps, 0), 2, 1)) -
+#     cfoo) / eps
+# jack.check[ , 5] <- (solve(- 2 * Afoo, bfoo + matrix(c(0, eps), 2, 1)) -
+#     cfoo) / eps
+@
+Finally, we finish applying the delta method
+<<ass-var>>=
+asymp.var <- jack %*% asymp.var %*% t(jack)
+asymp.var
+@
+
+So now we plot a confidence region for the maximum based on the delta method
+calculation above.
+The following R statements make Figure~\ref{fig:nerf} (page~\pageref{fig:nerf})
+<<label=nerfshow,include=FALSE>>=
+par(mar = c(2, 2, 1, 1) + 0.1)
+plot(ladata$z1, ladata$z2, xlab = "", ylab = "", pch = 20,
+    axes = FALSE, xlim = range(ladata$z1, cfoo[1]),
+    ylim = range(ladata$z2, cfoo[2]))
+title(xlab = "z1", line = 1)
+title(ylab = "z2", line = 1)
+box()
+z1 <- cos(seq(0, 2 * pi, length = 101))
+z2 <- sin(seq(0, 2 * pi, length = 101))
+z <- rbind(z1, z2)
+points(cfoo[1], cfoo[2], col = "blue", pch = 19)
+fred <- eigen(asymp.var)
+sally <- fred$vectors %*% diag(sqrt(fred$values)) %*% t(fred$vectors)
+points(cbar[1], cbar[2], col = "green3", pch = 19)
+jane <- sqrt(qchisq(0.50, 2)) * sally %*% z
+lines(cfoo[1] + jane[1, ], cfoo[2] + jane[2, ], lwd = 2, lty = "dashed")
+# jane <- sqrt(qchisq(0.75, 2)) * sally %*% z
+# lines(cfoo[1] + jane[1, ], cfoo[2] + jane[2, ], col = "blue", lwd = 2,
+#     lty = "dotted")
+jane <- sqrt(qchisq(0.95, 2)) * sally %*% z
+lines(cfoo[1] + jane[1, ], cfoo[2] + jane[2, ], lwd = 2)
+@
+\begin{figure}
+\begin{center}
+<<label=nerf,fig=TRUE,echo=FALSE>>=
+<<nerfshow>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+location of MLE of maximum of the fitness landscape (blue), boundary of
+asymptotic 50\% confidence region for the maximum (dashed),
+and boundary of the asymptotic 95\% confidence region (solid).
+Also shown is the simulation truth maximum (green).}
+\label{fig:nerf}
+\end{figure}
+The confidence regions are rather large.
+One would need much larger sample sizes than the
+\Sexpr{nrow(ladata)} used here to get precise confidence intervals.
+
+One might think we should have a section on how to calculate a confidence
+region based on the parametric bootstrap rather than asymptotic normality,
+and this would be expected for a confidence interval.  However, it is
+an open research question how best to make a confidence region in this
+situation.  The elliptical (large sample, approximate, delta method)
+confidence regions shown in Figure~\ref{fig:nerf} get their shape from
+the asymptotic bivariate normal distribution of the two-dimensional vector
+(location of the maximum) being estimated.  A bivariate normal distribution
+has elliptical contours of its probability density function, hence elliptical
+confidence regions make sense.  If we drop the ``assumption'' of normality
+(not really an assumption but an asymptotic approximation), then there is
+no reason to make elliptical confidence regions.  In fact, the main point
+of parametric bootstrap confidence intervals is to drop the ``assumption''
+of normality and use intervals that are not centered at the MLE and reflect
+the skewness of the simulation distribution of the estimates.  So in order
+to do a parametric bootstrap right in this situation, we should also use
+a non-elliptical confidence region that reflects the non-normality of the
+simulation distribution of the estimates.  But how?  That is the open
+research question.  All of the bootstrap literature known to us is about
+confidence intervals, not about confidence regions.
+
+\begin{thebibliography}{}
+
+% \bibitem[Barndorff-Nielsen(1978)]{barndorff}
+% Barndorff-Nielsen, O.~E. (1978).
+% \newblock \emph{Information and Exponential Families}.
+% \newblock Chichester: John Wiley.
+
+% \bibitem[Brown(1986)]{brown}
+% Brown, L.~D. (1986).
+% \newblock \emph{Fundamentals of Statistical Exponential Families: with
+%     Applications in Statistical Decision Theory}.
+% \newblock Hayward, CA: Institute of Mathematical Statistics.
+
+\bibitem[Geyer and Shaw(2008a)]{tr669}
+Geyer, C.~J. and Shaw, R.~G. (2008a)
+\newblock Supporting Data Analysis for a talk to be given at Evolution 2008
+    University of Minnesota, June 20--24.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~669.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Geyer and Shaw(2008b)]{tr670}
+Geyer, C.~J. and Shaw, R.~G. (2008b)
+\newblock Commentary on Lande-Arnold Analysis.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~670.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Geyer et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S. and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, \textbf{94}, 415--426.
+
+% \bibitem[Lande and Arnold(1983)]{la}
+% Lande, R. and Arnold, S.~J. (1983).
+% \newblock The measurement of selection on correlated characters.
+% \newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+% \bibitem[Lindgren(1993)]{lindgren}
+% Lindgren, B.~W. (1993).
+% \newblock \emph{Statistical Theory}, 4th ed.
+% \newblock New York: Chapman \& Hall.
+
+% \bibitem[Phillips and Arnold(1989)]{p+a}
+% Phillips, P.~C. and Arnold, S.~J. (1989).
+% \newblock Visualizing multivariate selection.
+% \newblock \emph{Evolution}, \textbf{43}, 1209--1222.
+
+\bibitem[R Development Core Team(2008)]{rcore}
+R Development Core Team (2008).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+% \bibitem[Rockafellar and Wets(2004)]{raw}
+% Rockafellar, R.~T. and Wets, R. J.-B. (2004).
+% \newblock \emph{Variational Analysis}, corr.\ 2nd printing.
+% \newblock Berlin: Springer-Verlag.
+
+\bibitem[Shaw, et al.(2007) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2tr}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2007).
+\newblock Supporting data analysis for ``Unifying life history analysis
+    for inference of fitness and population growth''.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~658.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Shaw, et al.(2008) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2008).
+\newblock Unifying life history analysis for inference of fitness and
+    population growth.
+\newblock \emph{American Naturalist}, \textbf{172}, E35--–E47.
+
+\end{thebibliography}
+
+\end{document}
+
+\begin{center} \LARGE REVISED DOWN TO HERE \end{center}
