@@ -17,10 +17,11 @@ Done
 | [tr671r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr671r.pdf) | http://hdl.handle.net/11299/56219 | edited because needed R-2.10.0 |
 | | | emits warning about `RNGversion("2.5.0")` |
 | [tr670](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr670.pdf) | http://hdl.handle.net/11299/56218 | |
+| [tr669](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr669.pdf) | http://hdl.handle.net/11299/56204 | edited to fix plots |
+| | | emits warning about `RNGversion("2.7.0")` |
 
 To Do
 
-tr669  http://hdl.handle.net/11299/56204 edited to fix plots
 tr666  http://www.stat.umn.edu/geyer/aster/tr666/tr666.Rnw
 tr661  http://www.stat.umn.edu/geyer/aster/tr661/tr661.Rnw
 tr658  http://www.stat.umn.edu/geyer/aster/tr658/*
