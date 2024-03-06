@@ -9,20 +9,20 @@ Done
 
 | document | source | note |
 |----------|--------|------|
-| [tr698r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr698r.pdf) | http://hdl.handle.net/11299/172272 | |
-| [tr696](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr696.pdf) | http://hdl.handle.net/11299/152355 | |
-| [tr692](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr692.pdf) | http://hdl.handle.net/11299/135870 | edited to add library(trust) |
-| [tr675r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr675r.pdf) | http://hdl.handle.net/11299/56394 | |
-| [tr674r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr674r.pdf) | http://hdl.handle.net/11299/56328 | |
-| [tr671r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr671r.pdf) | http://hdl.handle.net/11299/56219 | edited because needed R-2.10.0 |
+| [tr698r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr698r.pdf) | https://hdl.handle.net/11299/172272 | |
+| [tr696](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr696.pdf) | https://hdl.handle.net/11299/152355 | |
+| [tr692](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr692.pdf) | https://hdl.handle.net/11299/135870 | edited to add library(trust) |
+| [tr675r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr675r.pdf) | https://hdl.handle.net/11299/56394 | |
+| [tr674r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr674r.pdf) | https://hdl.handle.net/11299/56328 | |
+| [tr671r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr671r.pdf) | https://hdl.handle.net/11299/56219 | edited because needed R-2.10.0 |
 | | | emits warning about `RNGversion("2.5.0")` |
-| [tr670](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr670.pdf) | http://hdl.handle.net/11299/56218 | |
-| [tr669](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr669.pdf) | http://hdl.handle.net/11299/56204 | edited to fix plots |
+| [tr670](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr670.pdf) | https://hdl.handle.net/11299/56218 | |
+| [tr669](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr669.pdf) | https://hdl.handle.net/11299/56204 | edited to fix plots |
 | | | emits warning about `RNGversion("2.7.0")` |
+| [tr666](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr666.pdf) | https://www.stat.umn.edu/geyer/aster/tr666/tr666.Rnw |
 
 To Do
 
-tr666  http://www.stat.umn.edu/geyer/aster/tr666/tr666.Rnw
 tr661  http://www.stat.umn.edu/geyer/aster/tr661/tr661.Rnw
 tr658  http://www.stat.umn.edu/geyer/aster/tr658/*
 tr644  sources not on-line, from ssh.stat.umn.edu:Old/Madrid/Notes/Aster/Paper

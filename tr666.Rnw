@@ -1,0 +1,552 @@
+
+\documentclass[11pt,twoside,notitlepage]{article}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+% remove room for headers, add to textheight
+
+  \addtolength{\textheight}{\headheight}
+  \addtolength{\textheight}{\headsep}
+  \setlength{\headheight}{0 pt}
+  \setlength{\headsep}{0 pt}
+
+% adjust so right and left hand pages have different margins
+% not sure why these particular numbers were picked or if they
+% still make sense
+
+  % \showthe\evensidemargin
+  % \showthe\oddsidemargin
+  % \showthe\textwidth
+
+  % \evensidemargin  15 pt
+  % \oddsidemargin 61.5 pt
+  % \textwidth 392.5 pt
+
+  \evensidemargin 28.75 pt
+  \oddsidemargin 75.25 pt
+  \textwidth 365 pt
+
+%%%%% NEW go with 1.25 inch margin on all sides
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{- 2 in}
+\setlength{\topmargin}{0.25 pt}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \footskip}
+
+\setlength{\oddsidemargin}{0.25 in}
+\setlength{\evensidemargin}{0.25 in}
+\addtolength{\textwidth}{- \oddsidemargin}
+\addtolength{\textwidth}{- \evensidemargin}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Yet More Supporting Data Analysis for \\
+    ``Unifying Life History Analysis for Inference \\
+    of Fitness and Population Growth''} \\
+    By \\
+    Ruth G. Shaw, Charles J. Geyer, Stuart Wagenius, \\
+    Helen H. Hangelbroek, and Julie R. Etterson \\
+    Technical Report No.~666 \\
+    School of Statistics \\
+    University of Minnesota \\
+%       April 20, 2005 \\
+    % original document downloaded from www.stat.umn.edu/geyer/aster
+    % had \today but printed in the PDF on that site
+    January 2, 2008
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+This technical report (TR) gives details of a data reanalysis backing
+up a paper having the same authors as this TR and having the title that
+is quoted in the title of this TR.  Two previous TR, 658 and 661, have the
+bulk of the supporting data analysis this paper.  This TR deals with one
+minor issue, Box-Cox transformation of predictor variables to make them
+more normal and the effect of such transformation on the estimation of
+fitness surfaces, in particular on Figure 3 of the paper, which is also
+Figure 14 of TR 661.
+The sole objective of this TR is to produce the analog of that figure
+using transformed predictors.
+\end{abstract}
+
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 70)
+ps.options(pointsize = 15)
+@
+
+\section{Discussion}
+
+Traditionally discussion goes at the end, but since the point of this
+technical report (TR) is very simple, we put it here.
+The job of this TR is to produce Figure~\ref{fig:surf3-too}.
+This figure is to be compared with Figure~3 in \citet*{aster2},
+which was produced as Figure~14 of TR~661 \citep{aster2tr2}
+
+The only difference between these two figures is that Figure~3 of the
+paper uses log transformation of the two predictor variables (the
+$x$- and $y$-axes of the plot) and Figure~\ref{fig:surf3-too} of this TR
+uses Box-Cox transformations.
+
+The point of the Box-Cox transformations is that Lande-Arnold theory
+\citep{la} requires joint multivariate normality of predictor variables.
+Aster theory does not, so as far as aster analysis is concerned, Figure~3
+of the paper with its more conventional log transformation is just fine.
+It did, however, occur to us that someone might raise the issue that
+we are being unfair to \citet{la} in not making our best effort to
+transform to multivariate normality.  There being no really good methods
+for transformation to multivariate normality \citep{a+g+w,riani}, we
+do Box-Cox transformation \citep[pp.~170--172]{bc,vr} of each predictor
+variable separately.  This, of course, need not even produce univariate
+normality of each variable separately; it merely does the best job
+of any power transformation of producing univariate normality.
+
+In this example, there seems to be little point to the Box-Cox transformation.
+Qualitatively, nothing changes.
+\begin{itemize}
+\item The aster estimate of the fitness surface still has a peak,
+    the best quadratic approximation (Lande-Arnold estimate) has a saddle.
+\item The peak of the fitness landscape is near the edge of the distribution
+    of predictor values, hence this should not be called ``stabilizing
+    selection'' on leaf number but ``directional selection.''
+\item The disagreement between the aster estimate (peak) and the Lande-Arnold
+    estimate (saddle) is entirely due to the inability of a quadratic function
+    to fit both a peak and a flat region.  Having to choose one or the other
+    it chooses a saddle as its best approximation to the flat region to the
+    left edge of the plot.
+\end{itemize}
+The Box-Cox transformation might have made a difference in all of these
+aspects, but in this particular example it did not.
+
+\section{Data and Box-Cox}
+
+We reanalyze a subset of the data analyzed by \citet{es}.
+These data are in the \texttt{chamae2} dataset in the \texttt{aster}
+contributed package to the R statistical computing environment.
+<<get-data>>=
+library(aster)
+data(chamae2)
+@
+
+The only difference between the analysis in this technical report (TR)
+and the corresponding analysis in TR 661 is that we do a Box-Cox
+transformation \citep[pp.~170--172]{bc,vr} of the predictor variables
+called SLA and LN in the paper but called LOGSLA and LOGLVS in the dataset.
+<<boxcox>>=
+sla <- 10^chamae2$LOGSLA
+lvs <- 10^chamae2$LOGLVS
+library(MASS)
+out.sla <- boxcox(sla ~ 1, plotit = FALSE)
+out.lvs <- boxcox(lvs ~ 1, plotit = FALSE)
+lambda.sla <- out.sla$x[out.sla$y == max(out.sla$y)]
+lambda.lvs <- out.lvs$x[out.lvs$y == max(out.lvs$y)]
+print(lambda.sla)
+print(lambda.lvs)
+chamae2$LOGSLA <- sla^lambda.sla
+chamae2$LOGLVS <- lvs^lambda.lvs
+@
+Figure~\ref{fig:boxcox-sla} (page~\pageref{fig:boxcox-sla})
+shows the Box-Cox plot for SLA.
+\begin{figure}
+\begin{center}
+<<label=boxcox-sla,fig=TRUE,echo=FALSE>>=
+boxcox(sla ~ 1)
+@
+\end{center}
+\caption{Box-Cox Plot for SLA.}
+\label{fig:boxcox-sla}
+\end{figure}
+Figure~\ref{fig:boxcox-lvs} (page~\pageref{fig:boxcox-lvs})
+shows the Box-Cox plot for LN.
+\begin{figure}
+\begin{center}
+<<label=boxcox-lvs,fig=TRUE,echo=FALSE>>=
+boxcox(lvs ~ 1)
+@
+\end{center}
+\caption{Box-Cox Plot for LN.}
+\label{fig:boxcox-lvs}
+\end{figure}
+
+These data are already in ``long'' format, no need to use the \texttt{reshape}
+function on them to do aster analysis.  We will, however, need the
+``wide'' format for Lande-Arnold analysis.  So we do that, before
+making any changes (we will add newly defined variables) to \texttt{chamae2}.
+<<wide-too>>=
+chamae2w <- reshape(chamae2, direction = "wide", timevar = "varb",
+    v.names = "resp", varying = list(levels(chamae2$varb)))
+names(chamae2w)
+@
+
+\section{Aster Analysis}
+
+We need to choose the non-exponential-family parameter (size)
+for the negative binomial distribution, since the \verb@aster@ package
+only does maximum likelihood for exponential family parameters.
+We start with the following value, which was chosen with knowledge
+of the maximum likelihood estimate for this parameter, which we find
+in Section~\ref{sec:mle-too}.  The value that is found then is written
+out to a file and loaded here if the file exists, so after several
+runs (of \texttt{Sweave}) we are reading in here the maximum likelihood
+value of this non-exponential-family parameter.
+<<setup-aster-families-too>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("chamae2-alpha.rda"))
+options(show.error.messages = TRUE, warn = 0)
+ok <- exists("alpha.fruit")
+if (! ok) {
+    alpha.fruit <- 3.0
+}
+print(alpha.fruit)
+@
+
+Then we set up the aster model framework.
+<<setup-aster-too>>=
+vars <- c("fecund", "fruit")
+pred <- c(0, 1)
+famlist <- list(fam.bernoulli(),
+    fam.truncated.negative.binomial(size = alpha.fruit, truncation = 0))
+fam <- c(1,2)
+@
+
+We make up new predictors that apply only to the variable \texttt{fruit}.
+<<out6-too>>=
+foo <- as.numeric(as.character(chamae2$varb) == "fruit")
+chamae2$LOGLVSfr <- chamae2$LOGLVS * foo
+chamae2$LOGSLAfr <- chamae2$LOGSLA * foo
+chamae2$STG1Nfr <- chamae2$STG1N * foo
+@
+
+Now we fit the model called \texttt{out7} in TR 661, which is the one
+used for fitness surface estimation.  The only difference is that
+here we have transformed the predictor variables.
+<<out7-too>>=
+out7 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + I(LOGLVSfr^2) +
+    I(LOGSLAfr^2) + I(LOGLVSfr * LOGSLAfr) + STG1Nfr,
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out7, info.tol = 1e-10)
+@
+
+\subsection{Maximum Likelihood Estimation of Size} \label{sec:mle-too}
+
+The \verb@aster@ function does not calculate the correct likelihood
+when the size parameters are considered unknown, because it drops
+terms that do not involve the exponential family parameters.
+However, the full log likelihood is easily calculated in R.
+<<full-too>>=
+x <- out7$x
+logl <- function(alpha.fruit, theta, x) {
+    x.fecund <- x[ , 1]
+    theta.fecund <- theta[ , 1]
+    p.fecund <- 1 / (1 + exp(- theta.fecund))
+    logl.fecund <- sum(dbinom(x.fecund, 1, p.fecund, log = TRUE))
+    x.fruit <- x[x.fecund == 1, 2]
+    theta.fruit <- theta[x.fecund == 1, 2]
+    p.fruit <- (- expm1(theta.fruit))
+    logl.fruit <- sum(dnbinom(x.fruit, size = alpha.fruit,
+        prob = p.fruit, log = TRUE) - pnbinom(0, size = alpha.fruit,
+        prob = p.fruit, lower.tail = FALSE, log = TRUE))
+    logl.fecund + logl.fruit
+}
+@
+We then calculate the profile likelihood for the size parameter
+\verb@alpha.fruit@ maximizing over the other parameters,
+evaluating the profile log likelihood on a grid of points.
+We do not do this if the results would be the same as we got last time
+and have stored in the variable \verb@logl.seq@.
+\label{pg:ok1}
+<<full-gas-too>>=
+ok <- exists("alpha.fruit.save") && (alpha.fruit.save == alpha.fruit) &&
+    exists("coef.save") && isTRUE(all.equal(coef.save, coefficients(out7)))
+print(ok)
+alpha.fruit.seq <- seq(1.5, 4.5, 0.25)
+if (! ok) {
+logl.seq <- double(length(alpha.fruit.seq))
+    for (i in 1:length(alpha.fruit.seq)) {
+        famlist.seq <- famlist
+        famlist.seq[[2]] <- fam.truncated.negative.binomial(size =
+            alpha.fruit.seq[i], truncation = 0)
+        out7.seq <- aster(out7$formula, pred, fam, varb, id, root,
+            data = chamae2, famlist = famlist.seq, parm = out7$coefficients)
+        theta.seq <- predict(out7.seq, model.type = "cond",
+            parm.type = "canon")
+        dim(theta.seq) <- dim(x)
+        logl.seq[i] <- logl(alpha.fruit.seq[i], theta.seq, x)
+    }
+}
+
+##### interpolate #####
+alpha.foo <- seq(min(alpha.fruit.seq), max(alpha.fruit.seq), 0.01)
+logl.foo <- spline(alpha.fruit.seq, logl.seq, n = length(alpha.foo))$y
+imax <- seq(along = alpha.foo)[logl.foo == max(logl.foo)]
+alpha.fruit.save <- alpha.fruit
+alpha.fruit <- alpha.foo[imax]
+coef.save <- coefficients(out7)
+##### save #####
+if (! ok) {
+    save(alpha.fruit, alpha.fruit.save, coef.save, logl.seq,
+        file = "chamae2-alpha.rda", ascii = TRUE)
+}
+@
+At the end of this chunk we save the maximum likelihood estimate
+in a file which is read in at the beginning of this document.
+We also save some extra information so there is no need to do this
+step every time if there is no change in the alpha.
+
+Figure~\ref{fig:contour-too} (page~\pageref{fig:contour-too})
+shows the profile log likelihood for the size parameter.
+\begin{figure}
+\begin{center}
+<<label=contour-too,fig=TRUE,echo=FALSE>>=
+plot(alpha.fruit.seq, logl.seq - max(logl.foo),
+    ylab = "log likelihood", xlab = expression(alpha))
+lines(alpha.foo, logl.foo - max(logl.foo))
+points(alpha.foo[imax], 0, pch = 19)
+@
+\end{center}
+\caption{Profile log likelihood for size parameter for the (zero-truncated)
+negative binomial distribution of fruit.  Hollow dots are points at which
+the log likelihood was evaluated exactly.  Curve is the interpolating
+spline.  Solid dot is maximum likelihood estimate.}
+\label{fig:contour-too}
+\end{figure}
+
+\subsection{The Fitness Landscape}
+
+We calculate for just one value of \verb@BLK@ and \verb@STG1N@.
+<<which-too>>=
+theblk <- "1"
+thestg <- 1
+@
+
+Figure~\ref{fig:surf-too} (page~\pageref{fig:surf-too})
+shows the scatter plots of the two phenotypic variables
+(\verb@LOGLVS@ and \verb@LOGSLA@, labeled \verb@LN@ and \verb@SLA@ because
+that is what they are called in the paper).  It is made by the following
+code.
+<<label=figsurftoo-too,include=FALSE>>=
+xlab <- quote(LN^2)
+xlab[[3]] <- lambda.lvs
+xlab <- as.expression(xlab)
+ylab <- quote(SLA^2)
+ylab[[3]] <- lambda.sla
+ylab <- as.expression(ylab)
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = xlab, ylab = ylab)
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf-too,fig=TRUE,echo=FALSE>>=
+<<figsurftoo-too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables.}
+\label{fig:surf-too}
+\end{figure}
+
+The point of making the plot Figure~\ref{fig:surf-too} is that we want
+to add contour lines showing the estimated fitness landscape.  To
+do that we first start with a grid of points across the figure.
+<<surf1-too>>=
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+z <- matrix(NA, nx, ny)
+x <- seq(ufoo[1], ufoo[2], length = nx)
+y <- seq(ufoo[3], ufoo[4], length = ny)
+xx <- outer(x, y^0)
+yy <- outer(x^0, y)
+xx <- as.vector(xx)
+yy <- as.vector(yy)
+n <- length(xx)
+@
+
+Then we create an appropriate \verb@newdata@ argument for
+the \verb@predict.aster@ function to ``predict'' at
+these points
+<<surf2-too>>=
+newdata <- data.frame(
+    BLK = factor(rep(theblk, n), levels = levels(chamae2$BLK)),
+    STG1N = rep(thestg, n), LOGLVS = xx, LOGSLA = yy, fecund = rep(1, n),
+    fruit = rep(3, n))
+renewdata <- reshape(newdata, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+renewdata <- data.frame(renewdata, root = 1)
+foo <- as.numeric(as.character(renewdata$varb) == "fruit")
+renewdata$LOGLVSfr <- renewdata$LOGLVS * foo
+renewdata$LOGSLAfr <- renewdata$LOGSLA * foo
+renewdata$STG1Nfr <- renewdata$STG1N * foo
+@
+@
+Then we predict the unconditional mean value parameter $\tau$,
+for which the ``fruit'' component is expected fitness.
+<<surf3-too>>=
+tau <- predict(out7, newdata = renewdata, varvar = varb, idvar = id,
+    root = root)
+tau <- matrix(tau, nrow = nrow(newdata), ncol = ncol(out7$x))
+dimnames(tau) <- list(NULL, vars)
+zfit <- tau[ , "fruit"]
+@
+
+Figure~\ref{fig:surf2-too} (page~\pageref{fig:surf2-too}),
+which is made by the following code, shows it.
+<<label=figsurf2too-too,include=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = xlab, ylab = ylab, pch = ".")
+zfit <- matrix(zfit, nrow = length(x))
+contour(x, y, zfit, add = TRUE)
+contour(x, y, zfit, levels = c(5, 10, 25), add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf2-too,fig=TRUE,echo=FALSE>>=
+<<figsurf2too-too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables with contours of fitness
+landscape estimated by the aster model.}
+\label{fig:surf2-too}
+\end{figure}
+
+\subsection{Lande-Arnold Analysis}
+
+In contrast to the aster analysis, the Lande-Arnold analysis is very simple.
+<<ols-too>>=
+lout <- lm(fruit ~ LOGLVS + LOGSLA + STG1N + I(LOGLVS^2) +
+    I(LOGLVS * LOGSLA) + I(LOGSLA^2), data = chamae2w)
+summary(lout)
+@
+
+Figure~\ref{fig:surf3-too} (page~\pageref{fig:surf3-too}),
+which is made by the following code, shows the best quadratic approximation
+to the fitness landscape fit above by multiple regression together with
+the estimate from the aster model from Figure~\ref{fig:surf2-too}.
+It is made by the following code, first the prediction
+<<ols-predict-too>>=
+zzols <- predict(lout, newdata = data.frame(LOGLVS = xx, LOGSLA = yy,
+    STG1N = rep(thestg, length(xx))))
+@
+<<label=figsurf3too-too,include=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = xlab, ylab = ylab, pch = ".")
+contour(x, y, zfit, add = TRUE)
+contour(x, y, zfit, levels = c(5, 10, 25), add = TRUE)
+zzols <- matrix(zzols, nrow = length(x))
+contour(x, y, zzols, add = TRUE, lty = "dotted")
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf3-too,fig=TRUE,echo=FALSE>>=
+<<figsurf3too-too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables with contours of fitness
+landscape estimated by the aster model (solid) and the best quadratic
+approximation (dotted).}
+\label{fig:surf3-too}
+\end{figure}
+
+Note that fitness is a positive quantity.  Hence the negative contours
+in the best quadratic approximation are nonsense, although they are the
+inevitable result of approximating a surface that is not close to quadratic
+with a quadratic function.  Note also that the best quadratic approximation
+has a saddle point and no maximum, whereas it appears that the actual fitness
+landscape does have a maximum, albeit near the edge of the distribution
+of phenotypes.
+Apparently, the saddle point is the result of the quadratic function
+trying to be nearly flat on the left hand side of the figure (a quadratic
+function cannot have an asymptote; the saddle point is the next best thing).
+A quadratic function cannot have both a saddle point and a maximum; it has
+to choose one or the other.  Unfortunately, least squares makes the wrong
+choice from the biological point of view.  It is more important to get the
+maximum right than the flat spot (where fitness is close to zero).
+
+\begin{thebibliography}{}
+
+\bibitem[Andrews et al.(1971)Andrews, Gnanadesikan, and Warner]{a+g+w}
+Andrews, D.~F., Gnanadesikan, R. and Warner, J.~L. (1971).
+\newblock Transformations of multivariate data.
+\newblock \emph{Biometrics}, \textbf{27}, 825--840.
+
+\bibitem[Box and Cox(1964)]{bc}
+Box, G.~E.~P. and Cox, D.~R. (1964).
+\newblock An analysis of transformations (with discussion).
+\newblock \emph{Journal of the Royal Statistical Society, Series B},
+    \textbf{26}, 211--252. 
+
+\bibitem[Etterson(2004)]{etterson}
+Etterson, J.~R. (2004)
+\newblock Evolutionary potential of \emph{Chamaecrista fasciculata} in
+    relation to climate change.  I. Clinal patterns of selection along
+    an environmental gradient in the great plains.
+\newblock \emph{Evolution}, \textbf{58}, 1446--1458.
+
+\bibitem[Etterson and Shaw(2001)]{es}
+Etterson, J.~R., and Shaw, R.~G. (2001).
+\newblock Constraint to adaptive evolution in response to global warming.
+\newblock \emph{Science}, \textbf{294}, 151--154.
+
+\bibitem[Geyer, et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S. and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, \textbf{94} 415--426.
+
+\bibitem[Lande and Arnold(1983)]{la}
+Lande, R. and Arnold, S.~J. (1983).
+\newblock The measurement of selection on correlated characters.
+\newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+\bibitem[R Development Core Team(2006)]{rcore}
+R Development Core Team (2006).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+\bibitem[Riani(2004)]{riani}
+Riani, M. (2004).
+\newblock Robust multivariate transformations to normality: Constructed
+    variables and likelihood ratio tests.
+\newblock \emph{Statistical Methods \& Applications}, \textbf{13}, 179--196.
+
+\bibitem[Shaw, et al.(submitted) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (submitted).
+\newblock Unifying life history analysis for inference of fitness and
+    population growth.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Shaw, et al.(2007) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2tr2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2007).
+\newblock More supporting data analysis for ``Unifying life history analysis
+    for inference of fitness and population growth''.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~661
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Venables and Ripley(2002)]{vr}
+Venables, W.~N. and Ripley, B.~D. (2002).
+\newblock \emph{Modern Applied Statistics with S}, 4th ed.
+\newblock New York: Springer-Verlag.
+
+\end{thebibliography}
+
+\end{document}
+
