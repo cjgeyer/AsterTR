@@ -1,0 +1,517 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{indentfirst}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+\DeclareMathOperator{\cov}{cov}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Aster Models and Lande-Arnold Beta} \\
+    By \\
+    Charles J. Geyer and Ruth G. Shaw \\
+    Technical Report No.~675 \\
+    School of Statistics \\
+    University of Minnesota \\
+    Original January 9, 2010 \\
+    % only change to file downloaded from conservancy.umn.edu
+    % original said Revised \today
+    Revised January 13, 2010
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+\citet{la} proposed an estimate of beta, the directional selection gradient,
+by ordinary least squares (OLS).  Aster models \citep*{aster1,aster2} estimate
+exactly the same beta, so providing no improvement over the Lande-Arnold
+method in point estimation of this quantity.  Aster models do provide correct
+confidence intervals, confidence regions, and hypothesis tests
+for beta; in contrast, such procedures derived from
+OLS are often invalid because the assumptions for OLS are grossly incorrect.
+This revision fixes a bug which made the figure incorrect in the original.
+\end{abstract}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+ps.options(pointsize = 15)
+pdf.options(pointsize = 15)
+@
+
+We use data simulated in \citet{tr669} and available in the dataset \texttt{sim}
+in the R contributed package \texttt{aster}.  Fitness landscapes for these
+data are computed in \citet{tr669}.  Confidence regions for the maximum of
+the fitness landscape are computed in \citet{tr674}.  Here we compute
+confidence regions for Lande-Arnold beta.
+
+First we compute beta, which is found by OLS regression of relative fitness
+(fitness divided by average fitness) on centered phenotypic predictor variables.
+<<beta-data>>=
+library(aster)
+data(sim)
+w <- ladata$y / mean(ladata$y)
+z1 <- ladata$z1 - mean(ladata$z1)
+z2 <- ladata$z2 - mean(ladata$z2)
+@
+The vector \texttt{w} is relative fitness.  Vectors \texttt{z1} and \texttt{z2}
+are centered phenotypic predictor variables.
+<<beta>>=
+bout <- lm(w ~ z1 + z2)
+summary(bout)
+@
+Because we are using relative fitness the intercept term is known to be 1
+Thus we refit fixing the intercept to be one (because the degrees of freedom
+are so large, this has negligible effect on standard errors).
+\label{pg:lasummary}
+<<beta-fix-intercept>>=
+bout <- lm(w ~ 0 + z1 + z2, offset = rep(1, length(w)))
+summary(bout)
+beta <- as.numeric(bout$coefficients)
+print(beta)
+@
+
+Now we convince ourselves that the ``observed equals expected'' property
+of maximum likelihood estimation in exponential families implies that the
+best linear approximation (BLA) of the fitness landscape estimated
+by the aster model is the same as the same as the BLA fit by the Lande-Arnold
+method.
+<<aster-model>>=
+out6 <- aster(resp ~ varb + 0 + z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2),
+   pred, fam, varb, id, root, data = redata)
+summary(out6)
+@
+This is the aster model fit in \citet{tr669}.  Note that this fitness landscape
+is quadratic on the canonical parameter scale.  We are not trying to fit a
+linear fitness landscape.  Rather we are trying to estimate the fitness
+landscape as best we can.
+
+Now we get the fitness landscape itself.  The aster model has the dependence
+graph shown in \citet[Section~2.1]{tr669}.  There are 25 fitness component
+variables measured for each individual, of which only the last 4, number of
+seeds germinated in each of four time periods contribute directly to observed
+fitness (the other variables contribute indirectly in being predecessors,
+predecessors of predecessors, etc.\ of these four).
+<<aster-fitness>>=
+pout6 <- predict(out6)
+pout6 <- matrix(pout6, nrow = nrow(out6$x), ncol = ncol(out6$x))
+colnames(pout6) <- colnames(out6$x)
+mufit <- pout6[ , grep("germ", colnames(pout6))]
+mufit <- apply(mufit, 1, "sum")
+length(mufit)
+@
+Now \texttt{mufit} is the (MLE of) expected fitness for each individual.
+When divided by its mean, it gives the (MLE of) expected relative fitness
+for each individual.
+We check that OLS regression of this on \texttt{z1} and \texttt{z2} giving
+the BLA of (the MLE of) the fitness landscape is the same as the Lande-Arnold
+beta.
+<<aster-beta-check>>=
+wmu <- mufit / mean(mufit)
+wmout <- lm(wmu ~ z1 + z2)
+all.equal(beta, as.numeric(wmout$coefficients[-1]))
+@
+
+Because this is a simulated dataset, we know the simulation truth fitness
+landscape, which is given by the R object \texttt{mu.true} in the \texttt{sim}
+dataset.  So we treat \texttt{mu.true} as we did \texttt{pout6} above, to
+get the simulation truth beta.
+<<beta-true>>=
+wmu.true <- matrix(mu.true, nrow = nrow(out6$x), ncol = ncol(out6$x))
+wmu.true <- wmu.true[ , grep("germ", colnames(pout6))]
+wmu.true <- apply(wmu.true, 1, "sum")
+wmu.true <- wmu.true / mean(wmu.true)
+wmout.true <- lm(wmu.true ~ z1 + z2)
+beta.true <- as.vector(wmout.true$coefficients[-1])
+print(beta.true)
+@
+
+Summarizing where we are at this point, \texttt{beta.true} is the true
+(simulation truth) unknown (in real data unknown, in simulated data known)
+parameter value, the slope of the BLA of the
+relative fitness landscape, and \texttt{beta} is its MLE using the aster model.
+Of course, \texttt{beta} is also the MLE under the assumption that relative
+fitness is exactly homoscedastic normal, which is, of course, grossly
+incorrect.  Confidence intervals for beta derived from the aster model
+are correct; those derived from OLS are invalid.
+
+We now proceed to find confidence intervals for the components of beta
+and a confidence region for the vector beta derived from the aster model
+and the asymptotics of maximum likelihood estimation.
+
+First we look at another way of estimating beta, using what
+\citet{la} call the ``multivariate generalization of the results of
+Robertson (1966) and Price (1970, 1972) [see \citet{la} for citations]''
+$$
+   \beta = P^{-1} \cov(w, z),
+$$
+where $z$ is the random vector of phenotypic predictor values and
+$P$ is its variance-covariance matrix.
+This shows we can estimate beta as follows
+<<robertson-price>>=
+z <- cbind(z1, z2, deparse.level = 0)
+zvarinv <- solve(t(z) %*% z / nrow(z))
+zwcov <- t(z) %*% cbind(mufit) / nrow(z)
+all.equal(beta, as.numeric(zvarinv %*% zwcov) / mean(mufit))
+@
+
+Now we want to do the same calculation starting with \verb@predict(out6)@
+<<yet-another>>=
+mu <- predict(out6)
+amat <- matrix(0, nrow = length(mufit), ncol = length(mu)) 
+blank <- matrix(0, nrow = nrow(pout6), ncol = ncol(pout6))
+blank.idx <- grep("germ", colnames(pout6))
+for (i in 1:nrow(amat)) {
+    boom <- blank
+    boom[i, blank.idx] <- 1 
+    amat[i, ] <- as.vector(boom)
+}
+all.equal(mufit, as.vector(amat %*% mu))
+bmat <- zvarinv %*% t(z) %*% amat / nrow(z)
+all.equal(beta, as.numeric(bmat %*% mu) / mean(as.numeric(amat %*% mu)))
+cmat <- apply(amat, 2, sum) / nrow(z)
+cmat <- rbind(cmat)
+all.equal(beta, as.numeric(bmat %*% mu) / as.numeric(cmat %*% mu))
+dmat <- rbind(bmat, cmat, deparse.level = 0)
+all.equal(beta, as.numeric(dmat %*% mu)[1:2] / as.numeric(dmat %*% mu)[3])
+
+d3way <- array(as.vector(t(dmat)), dim = c(dim(out6$modmat)[1:2], nrow(dmat)))
+dout <- predict(out6, amat = d3way, se.fit = TRUE)
+all.equal(beta, dout$fit[1:2] / dout$fit[3])
+@
+If we denote the R object \verb@dout$fit@ as the vector $\zeta$ in mathematical
+notation, then
+$$
+   \beta_i = \zeta_i / \zeta_3, \qquad i = 1, 2.
+$$
+This is a non-linear transformation $\zeta \to \beta$ that has Jacobian
+matrix
+$$
+   \begin{pmatrix}
+   1 / \zeta_3 & 0 & - \zeta_1 / \zeta_3^2
+   \\
+   0 & 1 / \zeta_3 & - \zeta_2 / \zeta_3^2
+   \end{pmatrix}
+$$
+constructed in R as
+<<jacobian>>=
+zeta1 <- dout$fit[1]
+zeta2 <- dout$fit[2]
+zeta3 <- dout$fit[3]
+
+jacobian <- rbind( c( 1 / zeta3, 0, - zeta1 / zeta3^2 ),
+                   c( 0, 1 / zeta3, - zeta2 / zeta3^2 ) )
+@
+Because of this nonlinearity, which arises from the fact that we measure
+actual fitness not relative fitness, hence must estimate it by dividing
+actual fitness by mean fitness, OLS would not calculate correct standard
+errors even if actual fitness were homoscedastic normal.  Our next step
+takes this issue into account correctly.
+
+The function \texttt{predict.aster} does not give
+the full variance-covariance matrix for ``predicted values''
+like \verb@dout$fit@.  It does, however, give a component \texttt{gradient}
+which is $\partial \zeta / \partial \beta$ and can be used to calculate
+the asymptotic variance-covariance matrix for $\zeta$
+<<dvar>>=
+dvar <- dout$gradient %*% solve(out6$fisher) %*% t(dout$gradient)
+all.equal(dout$se.fit, sqrt(diag(dvar)))
+print(dvar)
+@
+Then the delta method is applied to get the asymptotic variance-covariance
+matrix for $\beta$
+<<bvar>>=
+bvar <- jacobian %*% dvar %*% t(jacobian)
+print(bvar)
+@
+The diagonal elements give standard errors for beta
+<<beta-se>>=
+foo <- cbind(beta, sqrt(diag(bvar)))
+colnames(foo) <- c("beta", "se(beta)")
+print(foo)
+@
+If one compares these standard errors (derived from the aster model)
+with the putative (and erroneous) standard errors derived from OLS
+(page~\pageref{pg:lasummary}), one sees that the putative OLS standard
+errors are larger than correct standard errors based on a defensible
+statistical model.  A 95\% confidence interval for $\beta_2$ is
+$(\Sexpr{round(beta[2] - qnorm(0.975) * summary(bout)$coefficients[2,2], 3)},
+\Sexpr{round(beta[2] + qnorm(0.975) * summary(bout)$coefficients[2,2], 3)})$
+based on OLS and
+$(\Sexpr{round(beta[2] - qnorm(0.975) * sqrt(bvar[2,2]), 3)},
+\Sexpr{round(beta[2] + qnorm(0.975) * sqrt(bvar[2,2]), 3)})$
+based on the aster model.  The $P$-value for the two-tailed test with
+null hypothesis $\beta_2 = 0$ is
+$P = \Sexpr{round(summary(bout)$coefficients[2, 4], 3)}$
+based on OLS and
+($P =
+\Sexpr{round(2 * pnorm(abs(foo[2, 1] / foo[2, 2]), lower.tail = FALSE), 3)}$)
+using the aster model.  The incorrect OLS confidence interval is wider than
+it should be, and the incorrect OLS $P$-value is larger than it should be.
+
+One might draw the lesson from this one example that OLS standard errors
+are always conservative, but there is no mathematics to justify this.
+The OLS standard errors (in the context of Lande-Arnold analysis)
+are just wrong and should never be used.
+
+We can also make an elliptical confidence region that accounts for the
+correlation of the components of $\beta$.
+The following R statements make Figure~\ref{fig:one} (page~\pageref{fig:one})
+<<label=figshow,include=FALSE>>=
+fred <- eigen(bvar, symmetric = TRUE)
+sally <- fred$vectors %*% diag(sqrt(fred$values)) %*% t(fred$vectors)
+zoo1 <- cos(seq(0, 2 * pi, length = 101))
+zoo2 <- sin(seq(0, 2 * pi, length = 101))
+zoo <- rbind(zoo1, zoo2)
+jane <- sqrt(qchisq(0.95, 2)) * sally %*% zoo
+
+par(mar = c(5, 4, 1, 1) + 0.1)
+plot(beta[1] + jane[1, ], beta[2] + jane[2, ], type = "l",
+    xlab = expression(beta[1]), ylab = expression(beta[2]),
+    ylim = range(c(0, beta[2] + jane[2, ])))
+points(beta[1], beta[2], pch = 19)
+points(beta.true[1], beta.true[2])
+jane <- sqrt(qchisq(0.50, 2)) * sally %*% zoo
+lines(beta[1] + jane[1, ], beta[2] + jane[2, ], lty = "dashed")
+@
+\begin{figure}
+\begin{center}
+<<label=fig,fig=TRUE,echo=FALSE>>=
+<<figshow>>
+@
+\end{center}
+\caption{Confidence ellipses for beta.
+Solid curve is boundary of 95\% confidence region, dashed curve is boundary of
+50\% confidence region, solid dot is location of MLE for beta, hollow dot is
+location of simulation truth value of beta.}
+\label{fig:one}
+\end{figure}
+
+Note that in Figure~\ref{fig:one} the 95\% confidence ellipse does not
+cross either coordinate axis.  This says $\beta_1$ is statistically
+significantly greater than zero and $\beta_2$ is statistically significantly
+less than zero (at the 0.05 significance level), even accounting for doing
+two tests.
+
+If one were going to use beta to plug into the multivariate breeder's equation
+(mean response to selection equals $G \beta$, where $G$ is the
+variance-covariance matrix of the breeding values derived from a quantitative
+genetics model) one could use the variance-covariance matrix for $\hat{\beta}$
+(the matrix \texttt{bvar}) with another application of the delta method
+involving the asymptotic variance-covariance matrix of $G$ (if it is also
+estimated from data) to get a variance-covariance matrix for the response
+to selection.
+
+
+\begin{thebibliography}{}
+
+\bibitem[Geyer and Shaw(2008)]{tr669}
+Geyer, C.~J., and Shaw, R.~G. (2008).
+\newblock Supporting data analysis for a talk to be given at Evolution 2008
+    University of Minnesota, June 20--24.
+\newblock Technical Report No.~669.  School of Statistics,
+    University of Minnesota.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}.
+
+\bibitem[Geyer and Shaw(2010)]{tr674}
+Geyer, C.~J., and Shaw, R.~G. (2010).
+\newblock Hypothesis Tests and Confidence Intervals Involving Fitness
+    Landscapes fit by Aster Models.
+\newblock Technical Report No.~674 revised.  School of Statistics,
+    University of Minnesota.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}.
+
+\bibitem[Geyer et al.(2007)Geyer, Wagenius and Shaw]{aster1}
+Geyer, C.~J., Wagenius, S., and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika} 94:415--426.
+
+\bibitem[Lande and Arnold(1983)]{la}
+Lande, R., and Arnold, S.~J. (1983).
+\newblock The measurement of selection on correlated characters.
+\newblock \emph{Evolution} 37:1210--1226.
+
+\bibitem[Shaw, et al.(2008)Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2008).
+\newblock Unifying life history analysis for inference of fitness and
+    population growth.
+\newblock \emph{American Naturalist} 172:E35--E47.
+
+\end{thebibliography}
+
+\end{document}
+
+ library(aster)
+ data(sim)
+
+ lout <- lm(y ~ z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2), data = ladata)
+ summary(lout)
+
+ lout.foo <- lm(y ~ I(z1^2) + I(z1*z2) + I(z2^2), data = ladata)
+ summary(lout.foo)
+
+ lout$coefficients[grep("I.z", names(lout$coefficients))]
+ lout.foo$coefficients[grep("I.z", names(lout.foo$coefficients))]
+
+ # So referee 1 is full of ****!  Leaving out beta in estimating gamma
+ # is totally bogus.
+
+ rm(lout.foo)
+
+ # now fit aster model
+
+ out6 <- aster(resp ~ varb + 0 + z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2),
+    pred, fam, varb, id, root, data = redata)
+ summary(out6)
+
+ pout6 <- predict(out6)
+ pout6 <- matrix(pout6, nrow = nrow(out6$x), ncol = ncol(out6$x))
+ colnames(pout6) <- colnames(out6$x)
+ mufit <- pout6[ , grep("germ", colnames(pout6))]
+ mufit <- apply(mufit, 1, "sum")
+ 
+ mout <- lm(mufit ~ z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2), data = ladata)
+ summary(mout)
+
+ all.equal(lout$coefficients, mout$coefficients)
+ all.equal(ladata$y, mufit)
+
+ # now work just with beta
+
+ lout <- lm(y ~ z1 + z2, data = ladata)
+ summary(lout)
+
+ mout <- lm(mufit ~ z1 + z2, data = ladata)
+ summary(mout)
+
+ all.equal(lout$coefficients, mout$coefficients)
+
+ # now how do we get valid confidence intervals for this beta ??????
+
+ # first what is beta, not that
+
+ z1 <- ladata$z1 - mean(ladata$z1)
+ z2 <- ladata$z2 - mean(ladata$z2)
+ w <- ladata$y / mean(ladata$y)
+
+ wout <- lm(w ~ 0 + z1 + z2)
+ summary(wout)
+ wout.too <- lm(w ~ z1 + z2)
+ summary(wout.too)
+ all.equal(wout$coefficients, wout.too$coefficients[-1])
+ beta <- as.numeric(wout$coefficients)
+ print(beta)
+
+ wmu <- mufit / mean(mufit)
+ wmout <- lm(wmu ~ 0 + z1 + z2)
+ all.equal(beta, as.numeric(wmout$coefficients))
+ wmout.too <- lm(mufit ~ 0 + z1 + z2)
+ all.equal(beta, as.numeric(wmout.too$coefficients) / mean(mufit))
+
+ # simulation truth beta
+
+ wmu.true <- matrix(mu.true, nrow = nrow(out6$x), ncol = ncol(out6$x))
+ wmu.true <- wmu.true[ , grep("germ", colnames(pout6))]
+ wmu.true <- apply(wmu.true, 1, "sum")
+ wmu.true <- wmu.true / mean(wmu.true)
+ wmout.true <- lm(wmu.true ~ 0 + z1 + z2)
+ beta.true <- as.vector(wmout.true$coefficients)
+ print(beta)
+ print(beta.true)
+
+ # now try Price
+
+ z <- cbind(z1, z2, deparse.level = 0)
+ zvarinv <- solve(t(z) %*% z / nrow(z))
+ zwcov <- t(z) %*% cbind(mufit) / nrow(z)
+ all.equal(beta, as.numeric(zvarinv %*% zwcov) / mean(mufit))
+
+ mu <- predict(out6)
+ amat <- matrix(0, nrow = length(mufit), ncol = length(mu)) 
+ blank <- matrix(0, nrow = nrow(pout6), ncol = ncol(pout6))
+ blank.idx <- grep("germ", colnames(pout6))
+ for (i in 1:nrow(amat)) {
+     boom <- blank
+     boom[i, blank.idx] <- 1 
+     amat[i, ] <- as.vector(boom)
+ }
+ all.equal(mufit, as.vector(amat %*% mu))
+ bmat <- zvarinv %*% t(z) %*% amat / nrow(z)
+ all.equal(beta, as.numeric(bmat %*% mu) / mean(as.numeric(amat %*% mu)))
+ cmat <- apply(amat, 2, sum) / nrow(z)
+ cmat <- rbind(cmat)
+ all.equal(beta, as.numeric(bmat %*% mu) / as.numeric(cmat %*% mu))
+ dmat <- rbind(bmat, cmat, deparse.level = 0)
+ all.equal(beta, as.numeric(dmat %*% mu)[1:2] / as.numeric(dmat %*% mu)[3])
+
+ d3way <- array(as.vector(t(dmat)), dim = c(dim(out6$modmat)[1:2], nrow(dmat)))
+ dout <- predict.aster(out6, amat = d3way, se.fit = TRUE)
+ all.equal(beta, dout$fit[1:2] / dout$fit[3])
+
+ dim(dout$gradient)
+ dvar <- dout$gradient %*% solve(out6$fisher) %*% t(dout$gradient)
+ all.equal(dout$se.fit, sqrt(diag(dvar)))
+ print(dvar)
+
+ mu1 <- dout$fit[1]
+ mu2 <- dout$fit[2]
+ mu3 <- dout$fit[3]
+
+ jacobian <- rbind( c( 1 / mu3, 0, - mu1 / mu3^2 ),
+                    c( 0, 1 / mu3, - mu2 / mu3^2 ) )
+
+ ##### asymptotic variance of beta #####
+ asymp.var <- jacobian %*% dvar %*% t(jacobian)
+
+ beta
+ asymp.var
+
+ fred <- eigen(asymp.var, symmetric = TRUE)
+ sally <- fred$vectors %*% diag(sqrt(fred$values)) %*% t(fred$vectors)
+ zoo1 <- cos(seq(0, 2 * pi, length = 101))
+ zoo2 <- sin(seq(0, 2 * pi, length = 101))
+ zoo <- rbind(zoo1, zoo2)
+ jane <- sqrt(qchisq(0.95, 2)) * sally %*% zoo
+
+ plot(beta[1] + jane[1, ], beta[2] + jane[2, ], type = "l", xlab = "beta1",
+     ylab = "beta2")
+ points(beta[1], beta[2])
+ points(beta.true[1], beta.true[2], pch = 19, col = "blue")
+ jane <- sqrt(qchisq(0.50, 2)) * sally %*% zoo
+ lines(beta[1] + jane[1, ], beta[2] + jane[2, ], lty = "dashed")
+
+ ##### check against mvrnorm
+
+ Mfoo <- matrix(c(3, 2, 2, 2), 2, 2)
+ afoo <- c(0, 0)
+ library(MASS)
+
+ xout <- mvrnorm(200, afoo, Mfoo)
+ fred <- eigen(Mfoo)
+ sally <- fred$vectors %*% diag(sqrt(fred$values)) %*% t(fred$vectors)
+ zoo1 <- cos(seq(0, 2 * pi, length = 101))
+ zoo2 <- sin(seq(0, 2 * pi, length = 101))
+ zoo <- rbind(zoo1, zoo2)
+ jane <- sqrt(qchisq(0.95, 2)) * sally %*% zoo
+
+ xlim <- range(c(xout[ , 1], jane[1, ]))
+ ylim <- range(c(xout[ , 2], jane[2, ]))
+ plot(xout[ , 1], xout[ , 2], xlab = "x1", ylab = "x2",
+     xlim = xlim, ylim = ylim)
+ lines(jane[1, ], jane[2, ])
+
+ xout <- mvrnorm(1e4, afoo, Mfoo)
+ blurfle <- apply(xout %*% solve(Mfoo) * xout, 1, "sum")
+ hist(blurfle, freq = FALSE)
+ curve(dchisq(x, df = 2), add = TRUE)
+

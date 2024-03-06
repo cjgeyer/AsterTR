@@ -59,8 +59,9 @@
     Technical Report No.~696 \\
     School of Statistics \\
     University of Minnesota \\
-%    July 30, 2012 \\
-    \today
+    % \today
+    % only change from file downloaded from conservancy.umn.edu
+    July 10, 2013
   \end{center}
   \thispagestyle{empty}
   \cleardoublepage
