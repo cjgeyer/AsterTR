@@ -7,14 +7,14 @@ to work with current version of R.
 
 Done
 
-| document | source |
-|----------|--------|
-| [tr698r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr698/tr698r.pdf) | http://hdl.handle.net/11299/172272 |
+| document | source | note |
+|----------|--------|------|
+| [tr698r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr698/tr698r.pdf) | http://hdl.handle.net/11299/172272 | |
+| [tr696]( http://hdl.handle.net/11299/152355) | http://hdl.handle.net/11299/152355 | | 
+| [tr692](http://hdl.handle.net/11299/135870) | http://hdl.handle.net/11299/135870 | edited to add library(trust) |
 
 To Do
 
-tr696  http://hdl.handle.net/11299/152355
-tr692  http://hdl.handle.net/11299/135870 edited to add library(trust)
 tr675r http://hdl.handle.net/11299/56394
 tr674r http://hdl.handle.net/11299/56328
 tr671r http://hdl.handle.net/11299/56219 edited because needs R-2.10.0

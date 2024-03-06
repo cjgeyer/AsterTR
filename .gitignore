@@ -1,9 +1,12 @@
 cache/
 figure/
-hornworm.rda
+*.rda
 *.aux
 *.fdb_latexmk
 *.fls
 *.log
 *.tex
 techreport.v2.pdf
+tr698/tr698r.pdf
+tr*-fig*.pdf
+Rplots.pdf

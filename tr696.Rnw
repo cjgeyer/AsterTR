@@ -1,0 +1,463 @@
+
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usepackage{indentfirst}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage[utf8]{inputenc}
+
+\hyphenation{Wa-gen-ius}
+
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\cl}{cl}
+
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\set}[1]{\{\, #1 \,\}}
+\newcommand{\inner}[1]{\langle #1 \rangle}
+\newcommand{\abs}[1]{\lvert #1 \rvert}
+\newcommand{\norm}[1]{\lVert #1 \rVert}
+
+\newcommand{\fatdot}{\,\cdot\,}
+
+\newcommand{\opand}{\mathbin{\rm and}}
+\newcommand{\opor}{\mathbin{\rm or}}
+
+% \setlength{\textheight}{\paperheight}
+% \addtolength{\textheight}{- 2 in}
+% \setlength{\topmargin}{0.25 pt}
+% \setlength{\headheight}{0 pt}
+% \setlength{\headsep}{0 pt}
+% \addtolength{\textheight}{- \topmargin}
+% \addtolength{\textheight}{- \topmargin}
+% \addtolength{\textheight}{- \footskip}
+
+% \setlength{\textwidth}{\paperwidth}
+% \addtolength{\textwidth}{- 2 in}
+% \setlength{\oddsidemargin}{0.25 in}
+% \setlength{\evensidemargin}{0.25 in}
+% \addtolength{\textwidth}{- \oddsidemargin}
+% \addtolength{\textwidth}{- \evensidemargin}
+
+\addtolength{\textheight}{\headsep}
+\addtolength{\textheight}{\headheight}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Aster Models with Random Effects
+    and Additive Genetic Variance for Fitness} \\
+    By \\
+    Charles J. Geyer and Ruth G. Shaw \\
+    Technical Report No.~696 \\
+    School of Statistics \\
+    University of Minnesota \\
+%    July 30, 2012 \\
+    \today
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+This technical report is a minor supplement to the paper \citet{reaster}
+and its accompanying technical report \citet{tr}.  It shows how to move
+variance components from the canonical parameter scale to the mean value
+parameter scale.  This is useful in estimating
+additive genetic variance for fitness, and that appears in Fisher's fundamental
+theorem of natural selection, which predicts the rate of increase in fitness
+via natural selection.
+\end{abstract}
+
+\section{R}
+
+Assuming the \verb@aster@ package has been installed, we load it
+<<library>>=
+library(aster)
+@
+<<baz,include=FALSE,echo=FALSE>>=
+baz <- library(help = "aster")
+baz <- baz$info[[1]]
+baz <- baz[grep("Version", baz)]
+baz <- sub("^Version: *", "", baz)
+bazzer <- paste(R.version$major, R.version$minor, sep = ".")
+@
+The version of the package used to make this document
+is \Sexpr{baz}.
+The version of R used to make this document is \Sexpr{bazzer}.
+
+\section{Data and Aster Model Fits}
+
+We use data on the partridge pea (\emph{Chamaecrista fasciculata})
+described in Section~8 of \citet{tr} and
+contained in the dataset \texttt{chamae3}
+in the R contributed package \texttt{aster}.  For each individual, two
+response variables are observed, connected by the following graphical model
+$$
+\begin{CD}
+   1
+   @>\text{Ber}>>
+   y_1
+   @>\text{0-Poi}>>
+   y_2
+\end{CD}
+$$
+$y_1$ being an indicator of whether any fruits were produced,
+$y_2$ being the count of the number of fruits produced,
+the unconditional distribution of $y_1$ being Bernoulli,
+and the conditional distribution of $y_2$ given $y_1$ being
+zero-truncated Poisson.
+
+We load the data
+<<pea-data>>=
+data(chamae3)
+names(chamae3)
+levels(chamae3$varb)
+@
+Then set up the graphical model
+<<pea-model>>=
+pred <- c(0, 1)
+fam <- c(1, 3)
+sapply(fam.default(), as.character)[fam]
+@
+
+First we subset the data, looking at each site-population pair separately.
+Make a list whose components are nine
+data frames (the data for the separate analyses).
+<<pea-subset>>=
+names(chamae3)
+site <- as.character(chamae3$SITE)
+pop <- as.character(chamae3$POP)
+usite <- sort(unique(site))
+upop <- sort(unique(pop))
+usite
+upop
+rsite <- rep(usite, times = length(upop))
+rpop <- rep(upop, each = length(usite))
+cbind(rsite, rpop)
+nsitepop <- paste(rsite, rpop, sep = "")
+nsitepop
+
+subdata <- list()
+for (i in seq(along = rsite))
+    subdata[[nsitepop[i]]] <- droplevels(subset(chamae3,
+        site == rsite[i] & pop == rpop[i]))
+length(subdata)
+sapply(subdata, nrow)
+sapply(subdata, function(x) unique(x$SITE))
+sapply(subdata, function(x) unique(x$POP))
+@
+We see we have successfully done the subsetting.
+
+Following Section~8.6 in \citet{tr} we look at only two subsets
+(merely to illustrate the method): the Kansas
+population in the Kansas site and in the Oklahoma site. These are the
+\texttt{"K2"} and \texttt{"O2"} elements of the \texttt{sublist} made above.
+<<subsub>>=
+subsubdata <- subdata[c("K2", "O2")]
+names(subsubdata)
+sapply(subsubdata, class)
+@
+
+Then we do the analysis.  Since this analysis takes quite a bit of time,
+we save the results and load them from a file if they are already done.
+<<pea-reaster>>=
+suppressWarnings(foo <- try(load("subsubout.rda"), silent = TRUE))
+done <- (! inherits(foo, "try-error"))
+done
+if (! done) {
+    subsubout <- lapply(subsubdata, function(x) reaster(resp ~ varb + fit:BLK,
+        list(sire = ~ 0 + fit:SIRE, dam = ~ 0 + fit:DAM),
+        pred, fam, varb, id, root, data = x))
+    save(subsubout, file = "subsubout.rda")
+}
+names(subsubout)
+sapply(subsubout, class)
+@
+The summaries for these analyses are shown in Appendix~B of \citet{tr} and
+so need not be shown here.
+
+\section{Mapping Variance Components}
+
+\subsection{Theory}
+
+So now we need to figure out how to map canonical parameters to mean value
+parameters.  The only tool for this in the \texttt{aster} package being the 
+function \texttt{predict.aster}.  Start with the formula, equation (3) in
+\citet{tr},
+$$
+   \varphi = a + M \alpha + Z b
+$$
+where $\varphi$ is the saturated model canonical parameter vector,
+where $a$ is a known vector, $M$ and $Z$ are known matrices,
+$b$ is a normal random vector with mean vector zero and variance matrix $D$.
+The vector $a$ is called the offset vector and the matrices $M$ and $Z$
+are called the model matrices for fixed and random effects, respectively.
+The transformation from the canonical to mean value parameter vector,
+equation (1) in \citet{tr}, is
+\begin{subequations}
+\begin{equation} \label{eq:phi-to-mu}
+   \mu(\varphi) = c'(\varphi),
+\end{equation}
+where $c$ is the cumulant function of the saturated aster model exponential
+family.  And this transformation has derivative
+\begin{equation} \label{eq:phi-to-mu-deriv}
+   W(\varphi) = \mu'(\varphi) = c''(\varphi),
+\end{equation}
+\end{subequations}
+equation (2) in \citet{tr}.  The R function \texttt{predict.aster} calculates
+the transformation \eqref{eq:phi-to-mu} and, if asked for, the derivative
+\eqref{eq:phi-to-mu-deriv}.  More precisely, if given an origin $a$, a new
+model matrix $M_{\texttt{new}}$, another matrix $A$,
+and a regression coefficient vector $\alpha$,  it will calculate
+\begin{subequations}
+\begin{equation} \label{eq:phi-to-mu-general}
+   A^T \mu(a + M_{\text{new}} \alpha)
+\end{equation}
+and its derivative with respect to $\alpha$
+\begin{equation} \label{eq:phi-to-mu-general-deriv}
+   A^T W(a + M_{\text{new}} \alpha) M_{\text{new}}
+\end{equation}
+\end{subequations}
+\citep[Equations (19) and (20)]{aster}.  None of this description of
+what \texttt{predict.aster} does makes any mention of random effects,
+and as far as \texttt{predict.aster} knows, there are no random effects.
+It was designed to do fixed-effect aster models.  If we are going to
+get it to say anything useful about variance components, we are going
+to have to trick it.  We are going to have to find an $A$ and $M_{\text{new}}$
+so \eqref{eq:phi-to-mu-general} and \eqref{eq:phi-to-mu-general-deriv}
+tell us what we want to know.
+
+One last comment about the function \texttt{predict.aster}:
+when the optional argument
+\texttt{se.fit = TRUE} is given, this function returns a list,
+the \texttt{fit} component of which is \eqref{eq:phi-to-mu-general} and the
+\texttt{gradient} component of which is \eqref{eq:phi-to-mu-general-deriv}.
+The latter is undocumented.  The \texttt{gradient} component was initially
+designed for testing and debugging, but sometimes is useful in scientific
+inference, as in the current situation.
+
+The way the delta method works is to treat a nonlinear function as a linear
+one using the Taylor series up through first derivatives.   So if we linearize
+$A^T \mu(a + M \alpha + Z b)$, thought of as a function of $b$, and expanding
+around $b = 0$, we get
+$$
+   A^T \mu(a + M \alpha + Z b)
+   \approx
+   A^T \mu(a + M \alpha) + A^T W(a + M \alpha) Z b
+$$
+and the variance of this is what we want (variance of $b$ transferred to
+the mean value parameter scale), that is,
+\begin{equation} \label{eq:mean-value-first}
+   A^T W(a + M \alpha) Z D Z^T W(a + M \alpha) A.
+\end{equation}
+The first thing we observe is that on the canonical parameter scale the
+variance matrix $D$ of the random effect vector $b$ is diagonal (this is
+a limitation of the R function \texttt{reaster} and the paper \citet{reaster}
+it is based on), but \eqref{eq:mean-value-first} is a general variance matrix
+(not necessarily diagonal and not even usually diagonal).
+
+When computing ``additive genetic variance for fitness'' (which is a scalar
+quantity) the latter issue does not arise because $A$ is a column vector so
+\eqref{eq:mean-value-first} is a scalar (or a one-by-one matrix).
+
+More precisely, \eqref{eq:mean-value-first} is a scalar when we compute
+variance for fitness for one individual, which we make a (made-up) typical
+individual.
+
+\subsection{Practice}
+
+\subsubsection{Try 1}
+
+In aid of this we first fit an entirely fixed effects model,
+ignoring dam effects, which is the same as setting them to zero
+(evaluating for a ``typical dam effect'').
+<<assemble>>=
+mydata <- subsubdata[[1]]
+aout <- aster(resp ~ varb + fit : (BLK + SIRE),
+    pred, fam, varb, id, root, data = mydata)
+summary(aout)
+@
+Now we want to use as ``newdata'' the data for just one individual
+<<assemble-one>>=
+id <- mydata$id
+inies <- id == min(id)
+mynewdata <- mydata[inies, ]
+dim(mynewdata)
+@
+Now we do the prediction, which we want to do at the parameter values
+for the random effects fit.
+<<assemble-predict>>=
+rout <- subsubout[[1]]
+alpha.hat <- rout$alpha
+b.hat <- rout$b
+fred <- c(alpha.hat, b.hat)
+idx <- match(names(aout$coefficients), names(fred))
+idx
+head(fred[- idx])
+@
+We see the omitted regression cofficients in our fixed effects fit \texttt{aout}
+are not important.  We do not care that sire 2001 was dropped, because we are
+only going to predict for one ``generic'' sire and we do not care which.
+Similarly we deliberately dropped all the dams.
+<<assemble-predict-too>>=
+pout <- predict(aout, varvar = varb, idvar = id, root = root,
+    newdata = mynewdata, se.fit = TRUE, newcoef = fred[idx])
+foo <- pout$gradient
+rownames(foo) <- levels(chamae3$varb)
+colnames(foo) <- names(aout$coefficients)
+t(head(t(foo), n = 11))
+thegradient <- foo["fruit", "fit:SIRE2024"]
+thegradient
+@
+We see that there are only two different nonzero numbers in the gradient,
+one in the first row corresponding to the first component in the graph
+and one in the second row corresponding to the second component in the graph,
+which is our measure of fitness.  Thus we want the latter.
+
+Finally we can apply the delta method.  The additive genetic variance for
+fitness (or its best surrogate in these data, the sire variance transferred
+to the mean value parameter scale) is
+<<delta-one>>=
+thevariance1 <- thegradient^2 * rout$nu["sire"]
+thevariance1
+@
+
+\subsubsection{Try 2}
+
+In aid of repeating the preceding analysis, we make a function to do it.
+<<doit>>=
+doit <- function(mydata, rout)
+{
+    aout <- aster(resp ~ varb + fit : (BLK + SIRE),
+        pred, fam, varb, id, root, data = mydata)
+    id <- mydata$id
+    inies <- id == min(id)
+    mynewdata <- mydata[inies, ]
+
+    alpha.hat <- rout$alpha
+    b.hat <- rout$b
+    fred <- c(alpha.hat, b.hat)
+    idx <- match(names(aout$coefficients), names(fred))
+
+    pout <- predict(aout, varvar = varb, idvar = id, root = root,
+        newdata = mynewdata, se.fit = TRUE, newcoef = fred[idx])
+    foo <- pout$gradient
+    rownames(foo) <- levels(chamae3$varb)
+    bar <- foo["fruit", ]
+    bar <- bar[bar != 0]
+    baz <- unique(bar)
+    stopifnot(all.equal(max(baz), min(baz)))
+    baz[1]
+}
+@
+and then we try it out, seeing if it repeats the analysis of the preceding
+section.
+<<doit-try-1>>=
+thegradient.redo <- doit(subsubdata[[1]], subsubout[[1]])
+identical(thegradient, thegradient.redo)
+@
+
+\subsubsection{Try 3}
+
+And we apply this function to do the analysis for the other data set.
+<<doit-try-2>>=
+thegradient.too <- doit(subsubdata[[2]], subsubout[[2]])
+thegradient
+thegradient.too
+@
+These are the gradients of the mappings from the canonical parameter
+scale to the mean value parameter scale.
+<<doit-try-variances>>=
+thevariance2 <- thegradient.too^2 * subsubout[[1]]$nu["sire"]
+thevariance1
+thevariance2
+@
+These are the sire variance component for two different population-site
+combinations, both mapped to the mean value parameter scale.
+
+\section{Mean Fitness}
+
+To apply the fundamental theorem of natural selection we also need mean
+fitness.
+<<mean-fitness>>=
+meanfit1 <- with(subsubdata[[1]], mean(resp[as.character(varb) == "fruit"]))
+meanfit2 <- with(subsubdata[[2]], mean(resp[as.character(varb) == "fruit"]))
+meanfit1
+meanfit2
+@
+
+\section{Fundamental Theorem of Natural Selection}
+
+We can now apply Fisher's fundamental theorem of natural selection to predict 
+the rate of increase in fitness as the ratio of the additive genetic variance 
+for fitness to the mean fitness.  This evolutionary principle has been highly 
+influential conceptually but, as noted by 
+\citet{shaw-shaw}, has not been implemented empirically.
+For the mating design used in this experiment, dams nested
+within sires (NC I), quantitative genetic theory shows that the component of
+variance due to sires estimates $1/4$ of the additive genetic variance
+\citep[Chapter~9]{falconer}.
+<<ftns>>=
+4 * thevariance1 / meanfit1
+4 * thevariance2 / meanfit2
+@
+Thus, we predict that this Kansas population would increase in absolute fitness
+by about 5 fruits per plant, over a generation of selection in the Kansas site. 
+In the Oklahoma site, this population is predicted to increase in fitness 
+somewhat less, about 3 fruits per plant over one generation.  
+These predictions are made on
+the assumption that the environment within each site has the same effect on
+fitness each generation.
+Nevertheless, these estimates are important as quantitative predictors of the
+rate of change in fitness to be expected through genetic change due to
+natural selection under current environmental conditions.
+
+\begin{thebibliography}{}
+
+\bibitem[Falconer and Mackay(1996)]{falconer}
+Falconer, D.~S., and Mackay, T.~F.~C. (1996).
+\newblock \emph{Introduction to Quantitative Genetics}, 4th ed.
+\newblock Pearson Education Ltd., Harlow, U.~K.
+
+\bibitem[Geyer et~al.(2012)Geyer, Ridley, Latta, Etterson, and Shaw]{tr}
+Geyer, C.~J., Ridley, C.~E., Latta, R.~G., Etterson, J.~R., and
+    Shaw, R.~G. (2012).
+\newblock Aster Models with Random Effects via Penalized Likelihood.
+\newblock Technical Report 692, University of Minnesota School of Statistics.
+\newblock \url{http://purl.umn.edu/135870}.
+
+\bibitem[Geyer et~al.(in press)Geyer, Ridley, Latta, Etterson,
+    and Shaw]{reaster}
+Geyer, C.~J., Ridley, C.~E., Latta, R.~G., Etterson, J.~R., and
+    Shaw, R.~G. (in press).
+\newblock Local Adaptation and Genetic Effects on Fitness: Calculations
+    for Exponential Family Models with Random Effects.
+\newblock To appear in \emph{Annals of Applied Statistics}.
+
+\bibitem[Geyer, et~al.(2007)Geyer, Wagenius, and Shaw]{aster}
+Geyer, C.~J., Wagenius, S., and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika} \textbf{94} 415--426.
+
+% Hasn't this appeared on paper yet?  Or isn't it going to?
+% no volume or page numbers on the Nature web site I got this from.
+%Not yet, but with the doi (added), it's citable.
+\bibitem[Shaw and Shaw(2013)]{shaw-shaw}
+Shaw, R.~G., and Shaw, F.~H. (2013).
+\newblock Quantitative genetic study of the adaptive process.
+\newblock \emph{Heredity}, doi:10.1038/hdy.2013.42.
+
+
+\end{thebibliography}
+
+\end{document}
+

@@ -1,0 +1,3152 @@
+
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usepackage{indentfirst}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage[utf8]{inputenc}
+
+\hyphenation{Wa-gen-ius}
+
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\cl}{cl}
+
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\set}[1]{\{\, #1 \,\}}
+\newcommand{\inner}[1]{\langle #1 \rangle}
+\newcommand{\abs}[1]{\lvert #1 \rvert}
+\newcommand{\norm}[1]{\lVert #1 \rVert}
+
+\newcommand{\fatdot}{\,\cdot\,}
+
+\newcommand{\opand}{\mathbin{\rm and}}
+\newcommand{\opor}{\mathbin{\rm or}}
+
+% \setlength{\textheight}{\paperheight}
+% \addtolength{\textheight}{- 2 in}
+% \setlength{\topmargin}{0.25 pt}
+% \setlength{\headheight}{0 pt}
+% \setlength{\headsep}{0 pt}
+% \addtolength{\textheight}{- \topmargin}
+% \addtolength{\textheight}{- \topmargin}
+% \addtolength{\textheight}{- \footskip}
+
+% \setlength{\textwidth}{\paperwidth}
+% \addtolength{\textwidth}{- 2 in}
+% \setlength{\oddsidemargin}{0.25 in}
+% \setlength{\evensidemargin}{0.25 in}
+% \addtolength{\textwidth}{- \oddsidemargin}
+% \addtolength{\textwidth}{- \evensidemargin}
+
+\addtolength{\textheight}{\headsep}
+\addtolength{\textheight}{\headheight}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Aster Models with Random Effects
+    via Penalized Likelihood} \\
+    By \\
+    Charles J. Geyer, Caroline E. Ridley, Robert G. Latta, Julie R. Etterson,
+    and Ruth G. Shaw \\
+    Technical Report No.~692 \\
+    School of Statistics \\
+    University of Minnesota \\
+    July 30, 2012 \\
+%     \today
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+This technical report works out details of approximate maximum likelihood
+estimation for aster models with random effects.
+Fixed and random effects are estimated by penalized log likelihood.
+Variance components are estimated by integrating out the random effects
+in the Laplace approximation of the complete data likelihood following
+\citet{b+c}, which can be done analytically,
+and maximizing the resulting approximate missing data likelihood.
+A further approximation treats the second derivative matrix of the cumulant
+function of the exponential family where it appears in the approximate
+missing data log likelihood as a constant (not a function of parameters).
+Then first and second derivatives of the approximate missing data log
+likelihood can be done analytically.  Minus the second derivative matrix
+of the approximate missing data log likelihood is treated as approximate
+Fisher information and used to estimate standard errors.
+\end{abstract}
+
+\section{Theory} \label{sec:theo}
+
+Aster models \citep*{gws,aster2} have attracted much recent attention.
+Several researchers have raised the issue of incorporating random effects
+in aster models, and we do so here.
+
+\subsection{Complete Data Log Likelihood} \label{sec:complete}
+
+Although we are particularly interested in aster models \citep{gws}, our
+theory works for any exponential family model.  The log likelihood can
+be written
+$$
+   l(\varphi) = y^T \varphi - c(\varphi),
+$$
+where $y$ is the canonical statistic vector,
+$\varphi$ is the canonical parameter vector,
+and the cumulant function $c$ satisfies
+\begin{align}
+   \mu(\varphi) & = E_{\varphi}(y) = c'(\varphi)
+   \label{eq:moo}
+   \\
+   W(\varphi) & = \var_{\varphi}(y) = c''(\varphi)
+   \label{eq:w}
+\end{align}
+where $c'(\varphi)$ denotes the vector of first partial derivatives
+and $c''(\varphi)$ denotes the matrix of second partial derivatives.
+
+We assume a canonical affine submodel with random effects determined by
+\begin{equation} \label{eq:can-aff-sub}
+   \varphi = a + M \alpha + Z b,
+\end{equation}
+where $a$ is a known vector, $M$ and $Z$ are known matrices, $b$
+is a normal random vector with mean vector zero and
+variance matrix $D$.
+The vector $a$ is called the \emph{offset vector} and the matrices
+$M$ and $Z$ are called the \emph{model matrices} for fixed and random
+effects, respectively, in the terminology of the R function \texttt{glm}.
+(The vector $a$ is called the \emph{origin} in the terminology of the
+R function \texttt{aster}.  \emph{Design matrix} is alternative
+terminology for model matrix.)
+The matrix $D$ is assumed to be diagonal,
+so the random effects are independent random variables.
+The diagonal components of $D$ are called \emph{variance components}
+in the classical terminology of random effects models \citep{searle}.
+Typically the components of $b$ are divided into blocks having the same
+variance \citep[Section~6.1]{searle}, so there are only
+a few variance components but many random effects, but nothing in this
+document uses this fact.
+
+The unknown parameter vectors are $\alpha$ and $\nu$, where $\nu$ is
+the vector of variance components.  Thus $D$ is a function of $\nu$,
+although this is not indicated by the notation.
+
+The ``complete data log likelihood'' (i.~e., what the log likelihood would
+be if the random effect vector $b$ were observed) is
+\begin{equation} \label{eq:foo}
+   l_c(\alpha, b, \nu)
+   =
+   l(a + M \alpha + Z b)
+   - \tfrac{1}{2} b^T D^{- 1} b
+   - \tfrac{1}{2} \log \det(D)
+\end{equation}
+in case none of the variance components are zero.
+We deal with the case of zero variance components in Sections~\ref{sec:zero},
+\ref{sec:raw}, and~\ref{sec:roots} below.
+
+\subsection{Missing Data Likelihood}
+
+Ideally, inference about the parameters should be based on
+the \emph{missing data likelihood}, which is the complete data likelihood with
+random effects $b$ integrated out
+\begin{equation} \label{eq:bar}
+   L_m(\alpha, \nu) = \int e^{l_c(\alpha, b, \nu)} \, d b
+\end{equation}
+Maximum likelihood estimates (MLE) of $\alpha$ and $\nu$ are the values that
+maximize \eqref{eq:bar}.  However MLE are hard to find.  The integral in
+\eqref{eq:bar} cannot be done analytically, nor can it be done by numerical
+integration except in very simple cases.
+There does exist a large literature on doing such integrals
+by ordinary or Markov chain Monte Carlo
+\citep*{penttinen,thompson,g+t,mcmcml,promislow,shaw-geyer-shaw,booth-hobert,sung,hunter-et-al,okabayashi-geyer,hummel-et-al},
+but these methods take a great
+deal of computing time and are difficult for ordinary users to apply.
+We wish to avoid that route if at all possible.
+
+\subsection{A Digression on Minimization} \label{sec:minimize}
+
+The theory of constrained optimization (Section~\ref{sec:raw} below)
+has a bias in favor of minimization rather than maximization.
+The explication below will be simpler if we switch now from maximization
+to minimization (minimizing minus the log likelihood) rather than switch
+later.
+
+\subsection{Laplace Approximation} \label{sec:laplace}
+
+\citet{b+c} proposed to replace the integrand in \eqref{eq:bar} by
+its Laplace approximation, which is proportional to
+a normal probability density function
+so the random effects can be integrated out analytically.
+Let $b^*$ denote the result of maximizing \eqref{eq:foo} considered
+as a function of $b$ for fixed $\alpha$ and $\nu$.
+Then $- \log L_m(\alpha, \nu)$ is approximated by
+$$
+   q(\alpha, \nu)
+   =
+   \tfrac{1}{2} \log \det[\kappa''(b^*)] + \kappa(b^*)
+$$
+where
+\begin{align*}
+   \kappa(b)
+   & =
+   - l_c(a + M \alpha + Z b)
+   \\
+   \kappa'(b)
+   & =
+   - Z^T [ y + \mu(a + M \alpha + Z b) ] + D^{-1} b
+   \\
+   \kappa''(b)
+   & =
+   Z^T W(a + M \alpha + Z b) Z + D^{-1}
+\end{align*}
+Hence
+\begin{equation} \label{eq:log-pickle}
+\begin{split}
+   q(\alpha, \nu)
+   & =
+   - l_c(\alpha, b^*, \nu)
+   + \tfrac{1}{2} \log
+   \det\bigl[ \kappa''(b^*) \bigr]
+   \\
+   & =
+   - l(a + M \alpha + Z b^*)
+   + \tfrac{1}{2} (b^*)^T D^{-1} b^*
+   + \tfrac{1}{2} \log \det(D)
+   \\
+   & \qquad
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T W(a + M \alpha + Z b^*) Z + D^{-1} \bigr]
+   \\
+   & =
+   - l(a + M \alpha + Z b^*)
+   + \tfrac{1}{2} (b^*)^T D^{-1} b^*
+   \\
+   & \qquad
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T W(a + M \alpha + Z b^*) Z D + I \bigr]
+\end{split}
+\end{equation}
+where $I$ denotes the identity matrix of the appropriate dimension
+(which must be the same as the dimension of $D$ for the expression it
+appears in to make sense),
+where $b^*$ is a function of $\alpha$ and $\nu$
+and $D$ is a function of $\nu$, although this is not indicated by the
+notation, and where
+the last equality uses the rule sum of logs is log of product and
+the rule product of determinants is determinant of matrix product
+\citep[Theorem~13.3.4]{harville}.
+
+Since minus the log likelihood of an exponential family is a convex function
+\citep[Theorem~9.1]{barndorff} and the middle term on the right-hand side
+of \eqref{eq:foo} is a strictly convex function, it follows that
+\eqref{eq:foo} considered as a function of $b$ for fixed $\alpha$ and $\nu$
+is a strictly convex function.
+Moreover, this function has bounded level sets, because the first term
+on the right-hand side of \eqref{eq:foo} is bounded
+\citep[Theorems~4 and~6]{gdor} and the second term has bounded level sets.
+It follows that there is unique global minimizer
+\citep[Theorems~1.9 and~2.6]{raw}.
+Thus $b^*(\alpha, \nu)$ is well defined for all values
+of $\alpha$ and $\nu$.
+
+The key idea is to use \eqref{eq:log-pickle} as if it were the log likelihood
+for the unknown parameters ($\alpha$ and $\nu$), although it is only an
+approximation.  However, this is also problematic.  In doing likelihood
+inference using \eqref{eq:log-pickle} we need first and second derivatives
+of it (to calculate Fisher information), but $W$ is already
+the second derivative matrix of the cumulant function, so
+first derivatives of \eqref{eq:log-pickle} would involve third derivatives
+of the cumulant function and
+second derivatives of \eqref{eq:log-pickle} would involve fourth derivatives
+of the cumulant function.  There are no published
+formulas for derivatives higher than second of the aster model cumulant
+function nor does
+software (the R package \texttt{aster},
+\citealp{package-aster}) provide such ---
+the derivatives do, of course, exist because every cumulant function of
+a regular exponential family is infinitely differentiable at every
+point of the canonical parameter space \citep[Theorem~8.1]{barndorff} ---
+they are just not readily available.
+\citet{b+c} noted the same problem in the context of GLMM, and proceeded as
+if $W$ were a constant function of its argument, so all derivatives of $W$
+were zero.  This is not a bad approximation because ``in asymptopia'' the
+aster model log likelihood is exactly quadratic and $W$ is a constant function,
+this being a general property of likelihoods \citep{simple}.  Hence we adopt
+this idea too, more because we are forced to by the difficulty of
+differentiating $W$ than by our belief that we are ``in asymptopia.''
+
+This leads to the following idea.  Rather than basing inference on
+\eqref{eq:log-pickle}, we actually use
+\begin{equation} \label{eq:log-pickle-too}
+   q(\alpha, \nu)
+   =
+   - l(a + M \alpha + Z b^*)
+   + \tfrac{1}{2} (b^*)^T D^{-1} b^*
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T \widehat{W} Z D + I \bigr]
+\end{equation}
+where $\widehat{W}$ is a constant matrix (not a function of $\alpha$ and
+$\nu$).  This makes sense for any
+choice of $\widehat{W}$ that is symmetric and positive semidefinite,
+but we will choose $\widehat{W}$ that are close to
+$W(a + M \hat{\alpha} + Z \hat{b})$, where
+$\hat{\alpha}$ and $\hat{\nu}$ are the joint minimizers
+of \eqref{eq:log-pickle} and $\hat{b} = b^*(\hat{\alpha}, \hat{\nu})$.
+Note that \eqref{eq:log-pickle-too} is a redefinition of $q(\alpha, \nu)$.
+Hereafter we will no longer use the definition \eqref{eq:log-pickle}.
+
+\subsection{A Key Concept}
+
+Introduce
+\begin{equation} \label{eq:key}
+   p(\alpha, b, \nu)
+   =
+   - l(a + M \alpha + Z b)
+   + \tfrac{1}{2} b^T D^{-1} b
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T \widehat{W} Z D + I \bigr]
+\end{equation}
+where, as the left-hand side says, $\alpha$, $b$, and $\nu$ are all
+free variables and, as usual, $D$ is a function of $\nu$, although
+the notation does not indicate this.
+Since the terms that contain $b$ are the same in both \eqref{eq:foo}
+and \eqref{eq:key}, $b^*$ can also be defined as the result of
+minimizing \eqref{eq:key} considered
+as a function of $b$ for fixed $\alpha$ and $\nu$.
+Thus \eqref{eq:log-pickle-too} is a profile of \eqref{eq:key}
+and $(\hat{\alpha}, \hat{b}, \hat{\nu})$ is the joint minimizer
+of \eqref{eq:key}.
+
+Since $p(\alpha, b, \nu)$ is a much simpler function than $q(\alpha, \nu)$,
+the latter having no closed form expression and requiring an optimization
+as part of each evaluation, it is much simpler to find
+$(\hat{\alpha}, \hat{b}, \hat{\nu})$
+by minimizing the former rather than the latter.
+
+\subsection{A Digression on Partial Derivatives}
+
+Let $f(\alpha, b, \nu)$ be a scalar-valued function of three vector
+variables.  We write partial derivative vectors using subscripts:
+$f_\alpha(\alpha, b, \nu)$ denotes the vector of partial derivatives
+with respect to components of $\alpha$.  Our convention is that we take
+this to be a column vector.  Similarly for $f_b(\alpha, b, \nu)$.
+We also use this convention for partial derivatives with respect to
+single variables: $f_{\nu_k}(\alpha, b, \nu)$, which are, of course,
+scalars.  We use this convention for any scalar-valued function
+of any number of vector variables.
+
+We continue this convention for second partial derivatives:
+$f_{\alpha b}(\alpha, b, \nu)$ denotes the matrix of partial derivatives
+having $i, j$ component that is the (mixed) second partial derivative of
+$f$ with respect to $\alpha_i$ and $b_j$.  Thus the row dimension of
+$f_{\alpha b}(\alpha, b, \nu)$  is the dimension of $\alpha$,
+the column dimension is the dimension of $b$, and
+$f_{b \alpha}(\alpha, b, \nu)$  is the transpose of
+$f_{\alpha b}(\alpha, b, \nu)$.
+
+This convention allows easy indication of points at which partial derivatives
+are evaluated.  For example, $f_{\alpha b}(\alpha, b^*, \nu)$ indicates
+that $b^*$ is plugged in for $b$ in the expression for
+$f_{\alpha b}(\alpha, b, \nu)$.
+
+We also use this convention of subscripts denoting partial derivatives
+with vector-valued functions.
+If $f(\alpha, b, \nu)$ is a column-vector-valued function of vector
+variables, then $f_\alpha(\alpha, b, \nu)$ denotes the matrix of
+partial derivatives having $i, j$ component that is the partial derivative
+of the $i$-th component of $f_\alpha(\alpha, b, \nu)$ with respect to
+$\alpha_j$.
+Thus the row dimension of
+$f_{\alpha}(\alpha, b, \nu)$  is the dimension of
+$f(\alpha, b, \nu)$ and
+the column dimension is the dimension of $\alpha$.
+
+\subsection{First Derivatives}
+
+Start with \eqref{eq:key}.  Its derivatives are
+\begin{equation} \label{eq:p-alpha}
+   p_\alpha(\alpha, b, \nu)
+   =
+   - M^T \bigl[ y - \mu(a + M \alpha + Z b) \bigr]
+\end{equation}
+\begin{equation} \label{eq:p-c}
+   p_b(\alpha, b, \nu)
+   =
+   - Z^T \bigl[ y - \mu(a + M \alpha + Z b) \bigr] + D^{- 1} b
+\end{equation}
+and
+\begin{equation} \label{eq:p-theta}
+   p_{\nu_k}(\alpha, b, \nu)
+   =
+   - \tfrac{1}{2} b^T D^{- 1} E_k D^{- 1} b
+   + \tfrac{1}{2} \tr \Bigl(
+   \bigl[ Z^T \widehat{W} Z D + I \bigr]^{- 1}
+   Z^T \widehat{W} Z E_k
+   \Bigr)
+\end{equation}
+where
+\begin{equation} \label{eq:eek}
+   E_k = D_{\nu_k}(\nu)
+\end{equation}
+is the diagonal matrix whose components are equal to one
+if the corresponding components of $D$ are equal to $\nu_k$ by
+definition (rather than by accident when some other component of $\nu$
+also has the same value) and whose components are otherwise zero.
+The formula for the derivative of a matrix inverse
+comes from \citet[Chapter~15, Equation~8.15]{harville}.
+The formula for the derivative of the log of a determinant
+comes from \citet[Chapter~15, Equation~8.6]{harville}.
+
+The estimating equation for $b^*$ can be written
+\begin{equation} \label{eq:estimating-c-star}
+   p_b\bigl(\alpha, b^*, \nu\bigr) = 0
+\end{equation}
+and by the multivariate chain rule \citep[Theorem~8.15]{browder}
+we have
+\begin{equation} \label{eq:q-alpha}
+\begin{split}
+   q_\alpha(\alpha, \nu)
+   & =
+   p_\alpha(\alpha, b^*, \nu)
+   +
+   b^*_\alpha(\alpha, \nu)^T p_b(\alpha, b^*, \nu)
+   \\
+   & =
+   p_\alpha(\alpha, b^*, \nu)
+\end{split}
+\end{equation}
+by \eqref{eq:estimating-c-star}, and
+\begin{equation} \label{eq:q-theta}
+\begin{split}
+   q_{\nu_k}(\alpha, \nu)
+   & =
+   b^*_{\nu_k}(\alpha, \nu)^T
+   p_b(\alpha, b^*, \nu)
+   +
+   p_{\nu_k}(\alpha, b^*, \nu)
+   \\
+   & =
+   p_{\nu_k}(\alpha, b^*, \nu)
+\end{split}
+\end{equation}
+again by \eqref{eq:estimating-c-star}.
+
+\subsection{Second Derivatives} \label{sec:second}
+
+By the multivariate chain rule \citep[Theorem~8.15]{browder}
+\begin{align*}
+   q_{\alpha \alpha}(\alpha, \nu)
+   & =
+   p_{\alpha \alpha}(\alpha, b^*, \nu)
+   +
+   p_{\alpha b}(\alpha, b^*, \nu) b^*_\alpha(\alpha, \nu)
+   \\
+   q_{\alpha \nu}(\alpha, \nu)
+   & =
+   p_{\alpha \nu}(\alpha, b^*, \nu)
+   +
+   p_{\alpha b}(\alpha, b^*, \nu) b^*_{\nu}(\alpha, \nu)
+   \\
+   q_{\nu \nu}(\alpha, \nu)
+   & =
+   p_{\nu \nu}(\alpha, b^*, \nu)
+   +
+   p_{\nu b}(\alpha, b^*, \nu) b^*_{\nu}(\alpha, \nu)
+\end{align*}
+The estimating equation \eqref{eq:estimating-c-star}
+defines $b^*$ implicitly.  Thus derivatives of $b^*$ are computed using
+the implicit function theorem \citep[Theorem~8.29]{browder}
+\begin{align}
+   b^*_\alpha(\alpha, \nu)
+   & =
+   -
+   p_{b b}(\alpha, b^*, \nu)^{-1} p_{b \alpha}(\alpha, b^*, \nu)
+   \label{eq:c-star-alpha-rewrite}
+   \\
+   b^*_{\nu}(\alpha, \nu)
+   & =
+   -
+   p_{b b}(\alpha, b^*, \nu)^{-1} p_{b \nu}(\alpha, b^*, \nu)
+   \label{eq:c-star-theta-rewrite}
+\end{align}
+This theorem requires that $p_{b b}(\alpha, b^*, \nu)$ be invertible,
+and we shall see below that it is.
+Then the second derivatives above can be rewritten
+\begin{align*}
+   q_{\alpha \alpha}(\alpha, \nu)
+   & =
+   p_{\alpha \alpha}(\alpha, b^*, \nu)
+   -
+   p_{\alpha b}(\alpha, b^*, \nu)
+   p_{b b}(\alpha, b^*, \nu)^{-1} p_{b \alpha}(\alpha, b^*, \nu)
+   \\
+   q_{\alpha \nu}(\alpha, \nu)
+   & =
+   p_{\alpha \nu}(\alpha, b^*, \nu)
+   -
+   p_{\alpha b}(\alpha, b^*, \nu)
+   p_{b b}(\alpha, b^*, \nu)^{-1} p_{b \nu}(\alpha, b^*, \nu)
+   \\
+   q_{\nu \nu}(\alpha, \nu)
+   & =
+   p_{\nu \nu}(\alpha, b^*, \nu)
+   -
+   p_{\nu b}(\alpha, b^*, \nu)
+   p_{b b}(\alpha, b^*, \nu)^{-1} p_{b \nu}(\alpha, b^*, \nu)
+\end{align*}
+a particularly simple and symmetric form.  If we combine all the parameters
+in one vector $\psi = (\alpha, \nu)$ and write $p(\psi, b)$ instead
+of $p(\alpha, b, \nu)$ we have
+\begin{equation} \label{eq:psi-psi}
+   q_{\psi \psi}(\psi)
+   =
+   p_{\psi \psi}(\psi, b^*)
+   -
+   p_{\psi b}\bigl(\psi, b^*\bigr)
+   p_{b b}\bigl(\psi, b^*\bigr)^{- 1}
+   p_{b \psi}\bigl(\psi, b^*\bigr)
+\end{equation}
+This form is familiar from the conditional variance formula
+for normal distributions if
+\begin{equation} \label{eq:fat}
+   \begin{pmatrix} \Sigma_{1 1} & \Sigma_{1 2}
+   \\ \Sigma_{2 1} & \Sigma_{2 2} \end{pmatrix}
+\end{equation}
+is the partitioned variance matrix of a partitioned normal random vector
+with components $X_1$ and $X_2$, then the variance matrix of the conditional
+distribution of $X_1$ given $X_2$ is
+\begin{equation} \label{eq:thin}
+   \Sigma_{1 1} - \Sigma_{1 2} \Sigma_{2 2}^{- 1} \Sigma_{2 1}
+\end{equation}
+assuming that $X_2$ is nondegenerate \citep[Theorem~2.5.1]{anderson}.
+Moreover, if the conditional distribution is degenerate, that is, if there
+exists a nonrandom vector $v$ such that $\var(v^T X_1 \mid X_2) = 0$, then
+$$
+   v^T X_1 = v^T \Sigma_{1 2} \Sigma_{2 2}^{- 1} X_2
+$$
+with probability one, assuming $X_1$ and $X_2$ have mean zero
+\citep[also by][Theorem~2.5.1]{anderson}, and the joint distribution
+of $X_1$ and $X_2$ is also degenerate.  Thus we conclude that if
+the (joint) Hessian matrix of $p$ is nonsingular, then so is the (joint)
+Hessian matrix of $q$ given by \eqref{eq:psi-psi}.
+
+The remaining work for this section is deriving second derivatives of $p$
+\begin{align*}
+   p_{\alpha \alpha}(\alpha, b, \nu)
+   & =
+   M^T W(a + M \alpha + Z b) M
+   \\
+   p_{\alpha b}(\alpha, b, \nu)
+   & =
+   M^T W(a + M \alpha + Z b) Z
+   \\
+   p_{b b}(\alpha, b, \nu)
+   & =
+   Z^T W(a + M \alpha + Z b) Z + D^{- 1}
+   \\
+   p_{\alpha \nu_k}(\alpha, b, \nu)
+   & =
+   0
+   \\
+   p_{b \nu_k}(\alpha, b, \nu)
+   & =
+   - D^{- 1} E_k D^{- 1} b
+   \\
+   p_{\nu_j \nu_k}(\alpha, b, \nu)
+   & =
+   b^T D^{- 1} E_j D^{- 1} E_k D^{- 1} b
+   \\
+   & \qquad
+   -
+   \tfrac{1}{2} \tr \Bigl(
+   \bigl[ Z^T \widehat{W} Z D + I \bigr]^{- 1}
+   Z^T \widehat{W} Z E_j
+   \\
+   & \qquad \qquad
+   \bigl[ Z^T \widehat{W} Z D + I \bigr]^{- 1}
+   Z^T \widehat{W} Z E_k
+   \Bigr)
+\end{align*}
+This finishes the derivation of all the derivatives we need.
+Recall that in our use of the implicit function theorem we needed
+$p_{b b}(\alpha, b^*, \nu)$ to be invertible.  From the explicit form
+given above we see that it is actually negative definite, because
+$W(a + M \alpha + Z b)$ is positive semidefinite by \eqref{eq:w}.
+
+\subsection{Zero Variance Components} \label{sec:zero}
+
+When some variance components are zero, the corresponding diagonal components
+of $D$ are zero, and the corresponding components of $b$ are zero almost surely.
+However we deal with this situation, it must have the same effect as omitting
+those variance components and the corresponding random effects from the model.
+
+\citet[Section 2.3]{b+c} suggest using the Moore-Penrose pseudoinverse
+\citep[Chapter~20]{harville}.  Let $D^+$ denote the diagonal matrix whose
+diagonal components are the reciprocals of the diagonal components
+provided those are nonzero and whose diagonal components are zero otherwise.
+Then
+\begin{equation} \label{eq:log-pickle-too-too}
+   q(\alpha, \nu)
+   =
+   - l(a + M \alpha + Z b^*)
+   + \tfrac{1}{2} (b^*)^T D^+ b^*
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T \widehat{W} Z D + I \bigr]
+\end{equation}
+is an approximate log likelihood, but in the calculation of
+$b^*$ constrained penalized maximum likelihood must be used:
+elements of $b$ corresponding to zero variance components must be
+constrained to be zero, because \eqref{eq:log-pickle-too-too} does
+not force them to be zero.
+
+Although this proposal \citep[Section 2.3]{b+c} does deal with the
+situation where the zero variance components are somehow known, it
+does not adequately deal with estimating which variance components are
+zero.  That is the subject of the following two sections.
+
+\subsection{The Theory of Constrained Optimization} \label{sec:raw}
+
+\subsubsection{Incorporating Constraints in the Objective Function}
+
+When zero variance components arise, optimization of \eqref{eq:key}
+puts us in the
+realm of constrained optimization.  The theory of constrained optimization
+\citep{raw} has a notational bias towards minimization \citep[p.~5]{raw}.
+Thus, as explained above (Section~\ref{sec:minimize}) we have switched
+from maximization to minimization.
+
+Readers who are familiar with Karush-Kuhn-Tucker\
+(\citealp[Section~9.1]{fletcher}; \citealp[Section~12.2]{nocedal-wright})
+theory should be warned
+that that theory is not adequate for the problem at hand, because the
+constraint set is not a closed set and so cannot be defined in terms of
+smooth constraint functions.
+Thus the need for the more general theory \citep{raw}.
+
+The theory of constrained optimization incorporates constraints in the
+objective function by the simple device of defining the objective function
+(for a minimization problem) to have the value $+ \infty$ off the constraint
+set \citep[Section~1A]{raw}.
+Since no point where the objective function has the value $+ \infty$
+can minimize it, unless the the objective function has the value $+ \infty$
+everywhere, which is not the case in any application, the unconstrained
+minimizer of this sort of objective function is the same as the constrained
+minimizer.
+
+Thus we need to impose constraints on our key function
+\eqref{eq:key}, requiring that
+each component of $\nu$ be nonnegative and when any component of $\nu$ is
+zero the corresponding components of $b$ are also zero.  However,
+the formula \eqref{eq:key} does not make sense when components of $\nu$
+are zero, so we proceed differently.
+
+\subsubsection{Lower Semicontinuous Regularization}
+
+Since all but the middle term on the right-hand side of
+\eqref{eq:key} are actually defined on some neighborhood of each point
+of the constraint set and differentiable at each point
+of the constraint set, we only need to deal with the middle term.
+It is the sum of terms of the form $b_i^2 / \nu_k$, where $\nu_k$ is
+the variance of $b_i$.  Thus we investigate functions of this form
+\begin{equation} \label{eq:h}
+   h(b, \nu)
+   =
+   b^2 / \nu
+\end{equation}
+where, temporarily, $b$ and $\nu$ are scalars rather than vectors
+(representing single components of the vectors).  In case $\nu > 0$
+we have derivatives
+\begin{align*}
+   h_b(b, \nu) & = 2 b / \nu
+   \\
+   h_\nu(b, \nu) & = - b^2 / \nu^2
+   \\
+   h_{b b}(b, \nu) & = 2 / \nu
+   \\
+   h_{b \nu}(b, \nu) & = - 2 b / \nu^2
+   \\
+   h_{\nu \nu}(b, \nu) & = 2 b^2 / \nu^3
+\end{align*}
+The Hessian matrix
+$$
+   h''(b, \nu)
+   =
+   \begin{pmatrix}
+   2 / \nu & - 2 b / \nu^2
+   \\
+   - 2 b / \nu^2 & 2 b^2 / \nu^3
+   \end{pmatrix}
+$$
+has nonnegative determinants of its principal submatrices, since the
+diagonal components are positive and $\det\bigl(h''(b, \nu)\bigr)$ is zero.
+Thus the Hessian matrix is nonnegative definite
+\citep[Theorem~14.9.11]{harville}, which implies that $h$ itself is
+convex \citep[Theorem~2.14]{raw} on the set where $\nu > 0$.
+
+We then extend $h$ to the whole of the constraint set (this just adds
+the origin to the points already considered) in two steps.
+First we define it to have the value $+ \infty$ at all points not
+yet considered (those where any component of $\nu$ is nonpositive).
+This gives us an extended-real-valued convex function defined on
+all of $\real^2$.
+Second we take it to be the
+lower semicontinuous (LSC) regularization \citep[p.~14]{raw} of the
+function just defined.  It is clear that
+$$
+   \liminf_{\substack{b \to \bar{b}\\\nu \searrow 0}} h(b, \nu)
+   =
+   \begin{cases}
+   0, & \bar{b} = 0
+   \\
+   + \infty, & \text{otherwise}
+   \end{cases}
+$$
+Thus the LSC regularization is
+\begin{equation} \label{eq:h-lsc}
+   h(b, \nu)
+   =
+   \begin{cases}
+   b^2 / \nu, & \nu > 0
+   \\
+   0, & \nu = 0 \opand b = 0
+   \\
+   + \infty, & \text{otherwise}
+   \end{cases}
+\end{equation}
+The LSC regularization of a convex function is convex
+\citep[Proposition~2.32]{raw}, so \eqref{eq:h-lsc} defines
+an extended-real-valued convex function.
+
+Note that $h(b, 0)$ considered as a function of $b$
+is minimized at $b = 0$ because that is the only point where this function
+is finite.  Hence this does enforce the constraint that random effects
+corresponding to zero variance components must be zero.
+
+Let $k$ denote the map from indices for $b$ to indices for $\nu$ that gives
+corresponding components: $\nu_{k(i)}$ is the variance of $b_i$.
+Let $\dim(b)$ denote the number of random effects.  Then our objective function
+can be written
+\begin{equation} \label{eq:key-lsc}
+   p(\alpha, b, \nu)
+   =
+   - l(a + M \alpha + Z b)
+   + \tfrac{1}{2} \sum_{i = 1}^{\dim(b)} h(b_i, \nu_{k(i)})
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T \widehat{W} Z D + I \bigr]
+\end{equation}
+where $h$ is given by \eqref{eq:h-lsc}, provided all of the components of
+$\nu$ are nonnegative.  The proviso is necessary because the third term
+on the right-hand side is not defined for all values of $\nu$, only those
+such that the argument of the determinant is a positive definite matrix.
+Hence, we must separately define $p(\alpha, b, \nu) = + \infty$
+whenever any component of $\nu$ is negative.
+
+\subsubsection{Subderivatives}
+
+In calculus we learn that the first derivative is zero at a local minimum
+and, therefore, to check points where the first derivative is zero.
+This is called Fermat's rule.  This
+rule no longer works for nonsmooth functions, including those that incorporate
+constraints, such as \eqref{eq:key-lsc}.  It does, of course, still work
+at points in the interior of the constraint set where \eqref{eq:key-lsc}
+is differentiable.  It does not work to check points on the boundary.
+There we need what \citet[Theorem~10.1]{raw}
+call \emph{Fermat's rule, generalized:} at a local minimum the
+\emph{subderivative function} is nonnegative.
+
+For any extended-real-valued function $f$ on $\real^d$,
+the \emph{subderivative function}, denoted $d f(x)$
+is also an extended-real-valued function on $\real^d$ defined by
+$$
+   d f(x)(\bar{w}) = \liminf_{\substack{\tau \searrow 0 \\ w \to \bar{w}}}
+   \frac{f(x + \tau w) - f(x)}{\tau}
+$$
+\citep[Definition~8.1]{raw}.  The notation on the left-hand side is read
+the subderivative of $f$ at the point $x$ in the direction $\bar{w}$.
+Fortunately, we do not have to use this
+definition to calculate subderivatives we want, because the calculus
+of subderivatives allows us to use simpler formulas in special cases.
+Firstly, there is the notion of subdifferential regularity
+\citep[Definition~7.25]{raw}, which we can use without knowing the definition.
+The sum of regular functions is regular and the subderivative of a sum
+is the sum of the subderivatives \citep[Corollary~10.9]{raw}.
+A smooth function is regular and the subderivative is given by
+\begin{equation} \label{eq:subderivative-smooth}
+   d f(x)(w) = w^T f'(x),
+\end{equation}
+where, as in Sections~\ref{sec:complete} and~\ref{sec:laplace} above,
+$f'(x)$ denotes the gradient vector (the vector of partial derivatives)
+of $f$ at the point $x$ \citep[Exercise~8.20]{raw}.  Every LSC convex function
+is regular \citep[Example~7.27]{raw}.  Thus in computing subderivatives
+of \eqref{eq:key-lsc} we may compute them term by term, and for the
+first and last terms, they are given in terms of the partial derivatives
+already computed by \eqref{eq:subderivative-smooth}.
+For an LSC convex function $f$, we have the following characterization
+of the subderivative \citep[Proposition~8.21]{raw}.  At any point $x$
+where $f(x)$ is finite, the limit
+$$
+   g(w) = \lim_{\tau \searrow 0} \frac{f(x + \tau w) - f(x)}{\tau}
+$$
+exists and defines a sublinear function $g$, and then $d f(x)$
+is the LSC regularization of $g$.
+An extended-real-valued
+function $g$ is \emph{sublinear} if $g(0) = 0$ and
+$$
+   g(a_1 x_1 + a_2 x_2) \le a_1 g(x_1) + a_2 g(x_2)
+$$
+for all vectors $x_1$ and $x_2$ and positive scalars $a_1$ and $a_2$
+\citep[Definition~3.18]{raw}.
+The subderivative function of every regular LSC function
+is sublinear \citep[Theorem~7.26]{raw}.
+
+So let us proceed to calculate the subderivative of \eqref{eq:h-lsc}.
+In the interior of the constraint set, where this function is smooth,
+we can use the partial derivatives already calculated
+$$
+   d h(b, \nu)(u, v) = \frac{2 b u}{\nu} - \frac{b^2 v}{\nu^2}
+$$
+where the notation on the left-hand side means the subderivative of $h$
+at the point $(b, \nu)$ in the direction $(u, v)$.
+On the boundary of the constraint set, which consists of the single point
+$(0, 0)$, we take limits.  In case $v > 0$, we have
+$$
+   \lim_{\tau \searrow 0}
+   \frac{h(\tau u, \tau v) - h(0, 0)}{\tau}
+   =
+   \lim_{\tau \searrow 0}
+   \frac{\tau^2 u^2 / (\tau v)}{\tau}
+   =
+   \lim_{\tau \searrow 0}
+   \frac{u^2}{v}
+   =
+   \frac{u^2}{v}
+$$
+In case $v < 0$ or in case $v = 0$ and $u \neq 0$,
+\begin{equation} \label{eq:difference-quotient}
+   \frac{h(\tau u, \tau v) - h(0, 0)}{\tau}
+\end{equation}
+is equal to $+ \infty$ for all $\tau > 0$ so the limit inferior is $+ \infty$.
+In case $v = 0$ and $u = 0$, \eqref{eq:difference-quotient} is equal to zero
+for all $\tau > 0$ so the limit inferior is zero.
+Thus we see that the limit inferior already defines an LSC function and
+$$
+   d h(0, 0)(u, v) = h(u, v).
+$$
+
+\subsubsection{Applying the Generalization of Fermat's Rule}
+
+The theory of constrained optimization tells us nothing we did not already
+know (from Fermat's rule) about smooth functions.  The only way we can
+have $d f(x)(w) = w^T f'(x) \ge 0$ for all vectors $w$ is if $f'(x) = 0$.
+It is only at points where the function is nonsmooth, in the cases of
+interest to us, points on the boundary of the constraint set, where
+the theory of constrained optimization tells us things we did not know and
+need to know.
+
+Even on the boundary, the conclusions of the theory about components
+of the state that are not on the boundary agree with what we already knew.
+We have
+$$
+   d p(\alpha, b, \nu)(s, u, v)
+   =
+   s^T p_\alpha(\alpha, b, \nu)
+   +
+   \text{terms not containing $s$}
+$$
+and the only way this can be nonnegative for all $s$ is if
+\begin{equation} \label{eq:descent-alpha}
+   p_\alpha(\alpha, b, \nu) = 0
+\end{equation}
+in which case
+$d p(\alpha, b, \nu)(s, u, v)$ is a constant function of $s$, or, what
+is the same thing in other words, the terms of
+$d p(\alpha, b, \nu)(s, u, v)$ that appear to involve $s$ are all zero
+(and so do not actually involve $s$).
+
+Similarly, $d p(\alpha, b, \nu)(s, u, v) \ge 0$ for all $u_i$ and $v_j$
+such that $\nu_j > 0$ and $k(i) = j$ only if
+\begin{equation} \label{eq:descent-other-smooth}
+\begin{split}
+   p_{\nu_j}(\alpha, b, \nu) & = 0, \qquad \text{$j$ such that $\nu_j > 0$}
+   \\
+   p_{b_i}(\alpha, b, \nu) & = 0, \qquad \text{$i$ such that $\nu_{k(i)} > 0$}
+\end{split}
+\end{equation}
+in which case we conclude that
+$d p(\alpha, b, \nu)(s, u, v)$ is a constant function of such $u_i$ and $v_j$.
+
+Thus, assuming that we are at a point $(\alpha, b, \nu$)
+where \eqref{eq:descent-alpha}
+and \eqref{eq:descent-other-smooth} hold,
+and we do assume this throughout the rest of this section,
+$d p(\alpha, b, \nu)(s, u, v)$ actually involves only $v_j$ and $u_i$ such
+that $\nu_j = 0$ and $k(i) = j$.  Define
+\begin{equation} \label{eq:key-smooth}
+   \bar{p}(\alpha, b, \nu)
+   =
+   - l(a + M \alpha + Z b)
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T \widehat{W} Z D + I \bigr]
+\end{equation}
+(the part of \eqref{eq:key-lsc} consisting of the smooth terms).
+Then
+\begin{equation} \label{eq:descent-other-nonsmooth}
+\begin{split}
+   d p(\alpha, b, \nu)(s, u, v)
+   & =
+   \sum_{j \in J}
+   \Biggl[
+   v_j \bar{p}_{\nu_j}(\alpha, b, \nu)
+   \\
+   & \qquad
+   +
+   \sum_{i \in k^{- 1}(j)}
+   \Biggl(
+   u_i \bar{p}_{b_i}(\alpha, b, \nu)
+   +
+   h(u_i, v_j)
+   \Biggr)
+   \Biggr]
+\end{split}
+\end{equation}
+where $J$ is the set of $j$ such that $\nu_j = 0$,
+where $k^{- 1}(j)$ denotes the set of $i$ such that $k(i) = j$,
+and where $h$ is defined by \eqref{eq:h-lsc}.
+Fermat's rule generalized says we must consider all of the terms
+of \eqref{eq:descent-other-nonsmooth} together.
+We cannot consider partial derivatives, because the partial derivatives
+do not exist.  To check that we are at a local minimum we need to show
+that \eqref{eq:descent-other-nonsmooth} is nonnegative
+for all vectors $u$ and $v$.
+Conversely, to verify that we are not at a local minimum, we need to find
+one pair of vectors $u$ and $v$ such that \eqref{eq:descent-other-nonsmooth}
+is negative.  Such a pair $(u, v)$ we call a \emph{descent direction}.
+Since Fermat's rule generalized is a necessary but not sufficient condition
+(like the ordinary Fermat's rule), the check that we are at a local minimum
+is not definitive, but the check that we are not is.  If a descent direction
+is found, then moving in that direction away from
+the current value of $(\alpha, b, \nu)$ will decrease the objective
+function \eqref{eq:key-lsc}.
+
+So how do we find a descent direction?  We want to minimize
+\eqref{eq:descent-other-nonsmooth} considered as a function of $u$ and $v$
+for fixed $\alpha$, $b$, and $\nu$.
+On further consideration, we can consider the terms of
+\eqref{eq:descent-other-nonsmooth} for each $j$ separately.
+If the minimum of
+\begin{equation} \label{eq:descent-other-nonsmooth-j}
+   v_j \bar{p}_{\nu_j}(\alpha, b, \nu)
+   +
+   \sum_{i \in k^{- 1}(j)}
+   \Biggl(
+   u_i \bar{p}_{b_i}(\alpha, b, \nu)
+   +
+   h(u_i, v_j)
+   \Biggr)
+\end{equation}
+over all vectors $u$ and $v$ is nonnegative, then the minimum is zero,
+because \eqref{eq:descent-other-nonsmooth-j} has the value zero
+when $u = 0$ and $v = 0$.  Thus we can ignore this $j$ in calculating
+the descent direction.
+
+On the other hand, if the minimum is negative,
+then the minimum does not occur at $v = 0$ and the minimum is actually
+$- \infty$ by the sublinearity of the subderivative,
+one consequence of sublinearity being positive homogeneity
+$$
+   d f(x)(\tau w) = \tau d f(x)(w), \qquad \tau \ge 0
+$$
+which holds
+for any subderivative.  Thus (as our terminology hints) we are only trying
+to find a descent \emph{direction}, the length of the vector $(u, v)$ does
+not matter, only its direction.  Thus to get a finite minimum we can
+do a constrained minimization of \eqref{eq:descent-other-nonsmooth-j},
+constraining $(u, v)$ to lie in a ball.  This is found by the well-known
+Karush-Kuhn-Tucker theory of constrained optimization
+(\citealp[Section~9.1]{fletcher}; \citealp[Section~12.2]{nocedal-wright})
+to be the minimum of the Lagrangian function
+\begin{equation} \label{eq:laggard}
+   L(u, v)
+   =
+   \lambda v_j^2
+   +
+   v_j \bar{p}_{\nu_j}(\alpha, b, \nu)
+   +
+   \sum_{i \in k^{- 1}(j)}
+   \Biggl(
+   \lambda
+   u_i^2
+   +
+   u_i \bar{p}_{b_i}(\alpha, b, \nu)
+   +
+   \frac{u_i^2}{v_j}
+   \Biggr)
+\end{equation}
+where $\lambda > 0$ is the Lagrange multiplier, which would have to be
+adjusted if we were interested in constraining $(u, v)$ to lie in a particular
+ball.  Since we do not care about the length of $(u, v)$ we can use any
+$\lambda$.  We have replaced $h(u_i, v_i)$ by $u_i^2 / v_j$ because we
+know that if we are finding an actual descent direction, then we will
+have $v_j > 0$. Now
+\begin{align*}
+   L_{u_i}(u, v)
+   & =
+   2 \lambda u_i
+   +
+   \bar{p}_{b_i}(\alpha, b, \nu)
+   +
+   \frac{2 u_i}{v_j},
+   \qquad
+   i \in k^{- 1}(j)
+   \\
+   L_{v_j}(u, v)
+   & =
+   2 \lambda v_j
+   +
+   \bar{p}_{\nu_j}(\alpha, b, \nu)
+   -
+   \sum_{i \in k^{- 1}(j)}
+   \frac{u_i^2}{v_j^2}
+\end{align*}
+The minimum occurs where these are zero.
+Setting the first equal to zero and solving for $u_i$ gives
+$$
+   \hat{u}_i(v_j)
+   =
+   - \frac{\bar{p}_{b_i}(\alpha, b, \nu)}{2 (\lambda + 1 / v_j)}
+$$
+plugging this back into the second gives
+\begin{align*}
+   L_{v_j}\bigl(\hat{u}(v), v\bigr)
+   & =
+   2 \lambda v_j
+   +
+   \bar{p}_{\nu_j}(\alpha, b, \nu)
+   -
+   \frac{1}{4 (\lambda v_j + 1)^2}
+   \sum_{i \in k^{- 1}(j)}
+   \bar{p}_{b_i}(\alpha, b, \nu)^2
+\end{align*}
+and we seek zeros of this.  The right-hand is clearly an increasing
+function of $v_j$ so it is negative somewhere only if it is negative when
+$v_j = 0$ where it has the value
+\begin{equation} \label{eq:descent-test}
+   \bar{p}_{\nu_j}(\alpha, b, \nu)
+   -
+   \frac{1}{4}
+   \sum_{i \in k^{- 1}(j)}
+   \bar{p}_{b_i}(\alpha, b, \nu)^2
+\end{equation}
+So that gives us a test for a descent direction: we have a descent
+direction if and only if \eqref{eq:descent-test} is negative.
+Conversely, we appear to have $\hat{\nu}_j = 0$ if \eqref{eq:descent-test}
+is nonnegative.
+
+That finishes our treatment of the theory of constrained optimization.
+We have to ask is all of this complication really necessary?
+It turns out that it is and it isn't.  We can partially avoid it
+by a change of variables.  But the cure is worse than the disease
+in some ways.  This is presented in the following section.
+
+\subsection{Square Roots} \label{sec:roots}
+
+We can avoid constrained optimization by the following change of parameter.
+Introduce new parameter variables by
+\begin{align*}
+   \nu_j & = \sigma_j^2
+   \\
+   b & = A c
+\end{align*}
+where $A$ is diagonal and $A^2 = D$, so the $i$-th diagonal component of
+$A$ is $\sigma_{k(i)}$.
+Then the objective function \eqref{eq:key} becomes
+\begin{equation} \label{eq:key-rooted}
+   \tilde{p}(\alpha, c, \sigma)
+   =
+   - l(a + M \alpha + Z A c)
+   + \tfrac{1}{2} c^T c
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T \widehat{W} Z A^2 + I \bigr]
+\end{equation}
+There are now no constraints and \eqref{eq:key-rooted} is a continuous
+function of all variables.
+
+The drawback is that by symmetry we must have
+$\tilde{p}_{\sigma_j}(\alpha, c, \sigma)$ equal to zero when $\sigma_j = 0$.
+Thus first derivatives become useless for checking for descent directions,
+and second derivative information is necessary.
+However, that is not the way unconstrained optimizers like the R functions
+\texttt{optim} and \texttt{nlminb} work.  They do not expect such pathological
+behavior and do not deal with it correctly.  If we want to use such optimizers
+to find local minima of \eqref{eq:key-rooted}, then we must provide starting
+points that have no component of $\nu$ equal to zero,
+and hope that the optimizer will never get any component of $\nu$ close to
+zero unless zero actually is a solution.  But this is only a hope.
+The theory that guided the design of these optimizers does not provide
+any guarantees for this kind of objective function.
+
+Moreover, optimizer algorithms stop when close to but not exactly
+at a solution, a consequence of inexactness of computer arithmetic.
+Thus when the optimizer stops and declares convergence with one or more
+components of $\nu$ close to zero, how do we know whether the true solution
+is exactly zero or not?  We don't unless we return to the original
+parameterization and apply the theory of the preceding section.
+The question of whether the MLE of the variance components are exactly
+zero or not is of scientific interest, so it seems that the device of this
+section does not entirely avoid the theory of constrained optimization.
+We must change back to the original parameters and use \eqref{eq:descent-test}
+to determine whether or not we have $\nu_j = 0$.
+
+Finally, there is another issue with this ``square root'' parameterization.
+For this new parameterization,
+the analogs of the second derivative formulas derived
+in Section~\ref{sec:second} above are
+extraordinarily ill-behaved.  The Hessian matrices are badly conditioned
+and sometimes turn out to be not positive definite when calculated by
+the computer's arithmetic (which is inexact) even though theory says
+they must be positive definite.  We know this because at one point we
+thought that this ``square root'' parameterization was the answer to
+everything and tried to use it everywhere.  Months of frustration ensued
+where it mostly worked, but failed on a few problems.  It took us a long
+time to see that it is fundamentally wrong-headed.  As we said above,
+the cure is worse than the disease.
+
+Thus we concluded that, while we may use this ``square root'' parameterization
+to do unconstrained rather than constrained minimization,
+we should use it only for that.
+The test \eqref{eq:descent-test} should be used to determine whether
+variance components are exactly zero or not, and the formulas in
+Section~\ref{sec:second} should be used to derive Fisher information.
+
+\subsubsection{First Derivatives}
+
+Some of R's optimization routines can use first derivative information,
+thus we derive first derivatives in this parameterization.
+\begin{align}
+   \tilde{p}_\alpha(\alpha, c, \sigma)
+   & =
+   - M^T [ y - \mu(a + M \alpha + Z A c) ]
+   \label{eq:key-rooted-alpha}
+   \\
+   \tilde{p}_c(\alpha, c, \sigma)
+   & =
+   - A Z^T [ y - \mu(a + M \alpha + Z A c) ]
+   + c
+   \label{eq:key-rooted-c}
+   \\
+   \tilde{p}_{\sigma_j}(\alpha, c, \sigma)
+   & =
+   - c^T E_j Z^T [ y - \mu(a + M \alpha + Z A c) ]
+   \nonumber
+   \\
+   & \qquad
+   +
+   \tr\left( [ Z^T \widehat{W} Z A^2 + I \bigr]^{- 1}
+   Z^T \widehat{W} Z A E_j
+   \right)
+   \label{eq:key-rooted-sigma}
+\end{align}
+where $E_j$ is given by \eqref{eq:eek}.
+
+\subsection{Fisher Information} \label{sec:fisher}
+
+The observed Fisher information matrix is minus the second derivative matrix
+of the log likelihood.  As we said above, we want to do this in the original
+parameterization.
+
+Assembling stuff derived in preceding sections and introducing
+\begin{align*}
+   \mu^*
+   & =
+   \mu\bigl(a + M \alpha + Z b^*(\alpha, \nu) \bigr)
+   \\
+   W^*
+   & =
+   W\bigl(a + M \alpha + Z b^*(\alpha, \nu) \bigr)
+   \\
+   H^* & = Z^T W^* Z + D^{- 1}
+   \\
+   \widehat{H} & = Z^T \widehat{W} Z D + I
+\end{align*}
+we obtain
+\begin{align*}
+   q_{\alpha \alpha}(\alpha, \nu)
+   & =
+   M^T W^* M - M^T W^* Z (H^*)^{- 1} Z^T W^* M
+   \\
+   q_{\alpha \nu_j}(\alpha, \nu)
+   & =
+   M^T W^* Z (H^*)^{- 1} D^{- 1} E_j D^{-1} b^*
+   \\
+   q_{\nu_j \nu_k}(\alpha, \nu)
+   & =
+   (b^*)^T D^{- 1} E_j D^{- 1} E_k D^{- 1} b^*
+   \\
+   & \qquad
+   -
+   \tfrac{1}{2} \tr \Bigl( \widehat{H}^{- 1} Z^T \widehat{W} Z E_j
+   \widehat{H}^{- 1} Z^T \widehat{W} Z E_k \Bigr)
+   \\
+   & \qquad
+   -
+   (b^*)^T D^{- 1} E_j D^{- 1}
+   (H^*)^{- 1}
+   D^{- 1} E_k D^{- 1} b^*
+\end{align*}
+In all of these $b^*$, $\mu^*$, $W^*$, and $H^*$ are functions of $\alpha$
+and $\nu$ even though the notation does not indicate this.
+
+It is tempting to think expected Fisher information simplifies things
+because we ``know'' $E(y) = \mu$ and $\var(y) = W$, except we don't know
+that!  What we do know is
+$$
+   E(y \mid b) = \mu(a + M \alpha + Z b)
+$$
+but we don't know how to take the expectation of the right hand side
+(and similarly for the variance).  Rather than introduce further approximations
+of dubious validity, it seems best to just use (approximate)
+observed Fisher information.
+
+\subsection{REML?}
+
+\citet{b+c} do not maximize the approximate log likelihood
+\eqref{eq:log-pickle}, but make further
+approximations to give estimators motivated by REML (restricted maximum
+likelihood) estimators for linear mixed models (LMM).
+\citet{b+c} concede that
+the argument that justifies REML estimators for LMM does not carry over to
+their REML-like estimators for generalized linear mixed models (GLMM).
+Hence these REML-like estimators have no mathematical justification.
+Even in LMM the widely used procedure of following REML estimates of the
+variance components with so-called BLUE estimates of fixed effects and BLUP
+estimates of random effects, which are actually only BLUE and BLUP if the
+variance components are assumed known rather than estimated, is obviously
+wrong: ignoring the fact that the variance components are estimated cannot be
+justified (and \citeauthor{b+c} say this in their discussion section).
+Hence REML is not justified even in LMM when fixed effects
+are the parameters of interest.  In aster models, because components of the
+response vector are dependent and have distributions in different families,
+it is very unclear what REML-like estimators in the style of \citet{b+c}
+might be.  The analogy just breaks down.
+Hence, we do not pursue this REML analogy and stick with what we have
+described above.
+
+\section{Practice} \label{sec:reaster}
+
+Our goal is to minimize \eqref{eq:log-pickle}.
+We replace \eqref{eq:log-pickle} with \eqref{eq:log-pickle-too}
+in some steps because of our inability to differentiate \eqref{eq:log-pickle},
+but our whole procedure must minimize \eqref{eq:log-pickle}.
+
+\subsection{Step 1}
+
+To get close to $(\hat{\alpha}, \hat{c}, \hat{\sigma})$ starting from far away
+we minimize
+\begin{equation} \label{eq:r}
+\begin{split}
+   r(\sigma)
+   & =
+   - l(a + M \tilde{\alpha} + Z A \tilde{c})
+   + \tfrac{1}{2} \tilde{c}^T \tilde{c}
+   \\
+   & \qquad
+   + \tfrac{1}{2} \log
+   \det\bigl[ Z^T W(a + M \tilde{\alpha} + Z A \tilde{c}) Z A^2 + I \bigr]
+\end{split}
+\end{equation}
+where $\tilde{\alpha}$ and $\tilde{c}$ are the joint minimizers of
+\eqref{eq:key-rooted} considered as a function of $\alpha$ and $c$ for
+fixed $\sigma$.  In \eqref{eq:r}, $\tilde{\alpha}$, $\tilde{c}$, and $A$
+are all functions of $\sigma$ although the notation does not indicate
+this.
+
+Because we cannot calculate derivatives of \eqref{eq:r}
+we minimize using the R function \texttt{optim}
+with \texttt{method = "Nelder-Mead"}, the so-called Nelder-Mead simplex
+algorithm, a no-derivative method nonlinear optimization,
+not to be confused with the simplex algorithm
+for linear programming.
+
+\subsection{Step 2}
+
+Having found $\alpha$, $c$, and $\sigma$ close to the MLE values
+via the preceding step, we then switch to minimization of
+\eqref{eq:key-rooted} for which we have the derivative formulas
+\eqref{eq:key-rooted-alpha}, \eqref{eq:key-rooted-c},
+and \eqref{eq:key-rooted-sigma}.
+In this step we can use one of R's optimization functions that uses
+first derivative information: \texttt{nlm} or \texttt{nlminb} or
+\texttt{optim} with optional argument \texttt{method = "BFGS"}
+or \texttt{method = "CG"} or \texttt{method = "L-BFGS-B"}.
+
+To define \eqref{eq:key-rooted} we also need a $\widehat{W}$, and we take the
+value at the current values of $\alpha$, $c$, and $\sigma$.
+Because $W$ is typically a very large matrix ($n \times n$, where $n$
+is the number of nodes in complete aster graph, the number of nodes
+in the subgraph for a single individual times the number of individuals),
+we actually store $Z^T \widehat{W} Z$, which is only $r \times r$, where
+$r$ is the number of random effects.  We set
+\begin{equation} \label{eq:zwz}
+   Z^T \widehat{W} Z
+   =
+   Z^T W(a + M \alpha + Z A c) Z
+\end{equation}
+where $\alpha$, $c$, and $A = A(\sigma)$ are the current values before
+we start minimizing $\tilde{p}(\alpha, c, \sigma)$ and this value of
+$Z^T \widehat{W} Z$ is fixed throughout the minimization,
+as is required by the definition of $\tilde{p}(\alpha, c, \sigma)$.
+
+Having minimized $\tilde{p}(\alpha, c, \sigma)$ we are still not done, because
+now \eqref{eq:zwz} is wrong.  We held it fixed at the values of
+$\alpha$, $c$, and $\sigma$ we had before the minimization, and now
+those values have changed.  Thus we should re-evaluate \eqref{eq:zwz}
+and re-minimize, and continue doing this until convergence.
+
+When this iteration terminates we are done with this step, and we have
+our point estimates $\hat{\alpha}$, $\hat{c}$, and $\hat{\sigma}$.
+We also have our point estimates $\hat{b}$ of the random effects
+on the original scale given by $A(\hat{\nu}) \hat{c}$
+and our point estimates $\nu_j = \sigma_j^2$ of the variance components.
+
+\subsection{Step 3}
+
+Having converted back to the original parameters, if any of the $\nu_j$
+are close to zero we use the check \eqref{eq:descent-test} to determine
+whether or not they are exactly zero.
+
+\section{R Package Aster}
+
+We use the R statistical computing environment \citep{rcore} in our analysis.
+It is free software and can be obtained from
+\url{http://cran.r-project.org}.  Precompiled binaries
+are available for Windows, Macintosh, and popular Linux distributions.
+We use the contributed package \verb@aster@ \citep{package-aster}.
+If R has been installed, but this package has
+not yet been installed, do
+\begin{verbatim}
+install.packages("aster")
+\end{verbatim}
+from the R command line
+(or do the equivalent using the GUI menus if on Apple Macintosh
+or Microsoft Windows).  This may require root or administrator privileges.
+
+Assuming the \verb@aster@ package has been installed, we load it.
+If we want to call R function \verb@trust@, which this document does,
+we now have to load CRAN package \verb@trust@ (this used to be loaded
+automatically when package \verb@aster@ was loaded, but no longer is).
+<<library>>=
+library(aster)
+library(trust)
+@
+<<baz,include=FALSE,echo=FALSE>>=
+baz <- library(help = "aster")
+baz <- baz$info[[1]]
+baz <- baz[grep("Version", baz)]
+baz <- sub("^Version: *", "", baz)
+bazzer <- paste(R.version$major, R.version$minor, sep = ".")
+@
+The version of the package used to make this document
+is \Sexpr{baz}.
+The version of R used to make this document is \Sexpr{bazzer}.
+
+This entire document and all of the calculations shown were made using
+the R command \texttt{Sweave} and hence are exactly reproducible by
+anyone who has R and the R noweb (RNW) file from which it was created.
+Both the RNW file and and the PDF document produced from it will be made
+available at
+\url{http://www.stat.umn.edu/geyer/aster}.  For further details on
+the use of Sweave and R see Chapter~1 of the technical report
+\citet{aster2tr} available at the same web site.
+
+Not only can one exactly reproduce the results in the printable document,
+one can also modify the parameters of the simulation and get different
+results.  Anything at all can be changed once one has the RNW file.
+
+In particular, we set the ``seed'' of the random number generator
+<<set-seed>>=
+set.seed(42)
+@
+so that every time this RNW file is run it produces the same results.
+Changing the argument of \texttt{set.seed} or removing this chunk of
+R code will produce different results.
+<<foot,include=FALSE,echo=FALSE>>=
+# options(width = 70)
+@
+
+\section{A Digression on Aster Models and Formulas} \label{sec:formula}
+
+\subsection{Observed Fitness}
+
+In an unconditional aster model (and all published examples in the literature
+are unconditional aster models except for Example~1 of \citet{aster2} and that
+could have also been done using an unconditional aster model) the unconditional
+canonical parameter vector $\varphi$ has a multivariate monotone relationship
+with the unconditional mean value parameter vector $\mu$
+\citep[Appendix]{aster-fitness}.  The exact relationship between
+$\varphi$ and $\mu$ is very complicated.
+\citet{aster-philosophic} works through a simple example, and the formulas
+become very messy.  So the only thing one can have any intuition about is
+the multivariate monotone relationship.
+The new functions added to the \texttt{aster} package to do random effects
+aster models only do unconditional aster models.
+
+Now what unconditional mean values does one want to establish relationships
+with?  Generally with those that are the best surrogates of overall fitness
+(total reproductive success of individuals over their lifetime)
+in the data, that is, generally, the last fitness component observed.
+In the data in the example in \citet{gws}, that is head count (number of
+compound flowers observed).  One might think that the earlier components
+of fitness are important too, but their effect is already incorporated in
+the last component of fitness (you can't have flowers if you are dead,
+and similarly for any other component of fitness).
+
+Thus if one has predictors only affecting ``fitness'' nodes of the graph
+(those whose sum is the best surrogate of lifetime fitness), an unconditional
+aster model will do the right thing by adjusting the unconditional mean values
+of those nodes to fit the data.  In recent papers we have included an indicator
+variable named \texttt{fit} that indicates these ``fitness'' nodes of the graph
+(it is one for those nodes and zero for other nodes) that helps in the modeling
+and we have done so for the examples in this paper.
+
+The model in \citet{gws} that was deemed the best one for drawing scientific
+conclusions (their Model~2) was fit by the formula given in the paper
+\begin{verbatim}
+resp ~ varb + level:(nsloc + ewloc) + hdct * pop - pop
+\end{verbatim}
+but that formula can be simplified to
+\begin{verbatim}
+resp ~ varb + level:(nsloc + ewloc) + hdct:pop
+\end{verbatim}
+which fits the same model and is easier to understand.
+The term \texttt{hdct:pop} is best not thought of as an ``interaction''
+although that is the way the R formula mini-language describes it.
+What actually happens is, because \texttt{pop} is categorical with 7 levels
+R makes 6 dummy variables (one for each category but throws one away because
+all 7 together would be confounded with the intercept dummy variable) then
+it multiplies each of these dummy variables by \texttt{hdct} (which, recall,
+is zero-or-one-valued), and this does exactly what is wanted: making those
+dummy variables apply to ``fitness'' nodes only.
+(It was just noticed that the examples on the help pages for the R functions
+\texttt{aster}, \texttt{anova.aster}, and \texttt{predict.aster} had the
+old-style formulas.  Those help pages have now been fixed.)
+
+The only difference between the example just discussed (which now matches
+the example on the help page for the \texttt{aster} function) and the ones
+in this technical report (other than being random effects models) is that
+where it says \texttt{hdct} we would now say \texttt{fit}, taking that for
+a conventional name of a dummy (indicator) variable that indicates ``fitness''
+nodes of the graph.
+
+Thus the dictum: every variable for which one wants to establish a relationship
+with (overall) fitness should enter every formula ``interacted with''
+\texttt{fit} (but, as explained above, ``interacted with''
+is a bad description, hence the scare quotes).  And that ``interacted with''
+must be the colon operator (\texttt{:}) in the R formula mini-language,
+not the star operator (\texttt{*}), as in \texttt{pop : fit}.
+
+\subsection{Other Fitness Components}
+
+In general it makes no scientific sense to have terms without interaction
+in aster model formulas, except for \texttt{varb} if that is what one is
+calling the factor that indicates nodes of the graph (as it does in all of
+the examples in this technical report and earlier aster technical reports
+and in the aster papers these technical reports accompanied).
+The reason why one should not, for example, have \texttt{pop} by itself
+is that it makes no sense to have one parameter for the population effect
+on all fitness components (survival and fecundity, or survival, flowering
+indicator, and number of flowers).  That is why the four models tested by
+\citet[Table~1]{gws}, which can be simplified (as discussed above) to
+\begin{center}
+\begin{tabular}{ll}
+Model 1 & \verb@resp ~ varb + level:(nsloc + ewloc)@ \\
+Model 2 & \verb@resp ~ varb + level:(nsloc + ewloc) + fit:pop@ \\
+Model 3 & \verb@resp ~ varb + level:(nsloc + ewloc) + factor(fit)*pop@ \\
+Model 4 & \verb@resp ~ varb + level:(nsloc + ewloc) + level*pop@
+\end{tabular}
+\end{center}
+have some ``interaction'' (again with scare quotes because they should
+not be interpreted as interactions) with either \texttt{fit} or \texttt{level}
+or \texttt{varb}, all of which are indicators for certain nodes of the graph
+or groups of nodes of the graph.  These ``interactions'' make certain
+regression coefficients only apply to certain nodes of the graph.
+In model 1 there are no \texttt{pop} effects.
+In model 2 there are \texttt{pop} effects only for fitness nodes (the head
+count nodes that together are the best surrogate of observed fitness).
+In model 3 there are \texttt{pop} effects not only for fitness node
+but also for non-fitness nodes.  We would now say this model doesn't really
+make scientific sense and \citet{gws} said the same thing (``it is difficult
+to interpret Model 3 scientifically $\ldots$'') because non-fitness nodes
+includes two different fitness components (survival and flowering indicator)
+and these should have separate parameters not the same parameters.  Thus
+we should not use Model 3 \emph{even though it fits best according to purely
+statistical criteria}.
+In model 4 there are \texttt{pop} effects for each population and each
+``level'' (which is shorthand for component of fitness), that is, there
+are separate \texttt{pop} effects for survival, for flowering, and for head
+count.  And that also makes scientific sense.
+We could also have a model 5 in which the last term in the formula is
+\verb@varb*pop@ but that would be a lot of parameters.
+
+Whenever possible, one wants to have \texttt{fit} interaction with all
+predictors with which one wants to establish a relation with fitness.
+As \citet{gws} discuss, models other than Model~2 are difficult to interpret.
+The fact that \texttt{fit:pop} is statistically significant has the direct
+interpretation that individuals having different parental populations have
+different fitness.  Model~4, in contrast, says that all fitness components
+vary with respect to parental population, not necessarily in the same
+direction, and the effect on overall fitness is unclear.
+
+\section{Radish Data}
+
+We use data on the invasive California wild radish (\emph{Raphanus sativus})
+described by \citet{ridley} and contained in the dataset \texttt{radish}
+in the R contributed package \texttt{aster}.  For each individual, three
+response variables are observed, connected by the following graphical model
+$$
+\begin{CD}
+   1
+   @>\text{Ber}>>
+   y_1
+   @>\text{0-Poi}>>
+   y_2
+   @>\text{Poi}>>
+   y_3
+\end{CD}
+$$
+$y_1$ being an indicator of whether any flowers were produced,
+$y_2$ being the count of the number of flowers produced,
+$y_3$ being the count of the number of fruits produced,
+the unconditional distribution of $y_1$ being Bernoulli,
+the conditional distribution of $y_2$ given $y_1$ being zero-truncated Poisson,
+and the conditional distribution of $y_3$ given $y_2$ being Poisson.
+
+We load the data
+<<data>>=
+data(radish)
+names(radish)
+levels(radish$varb)
+@
+This is a ``long format'' data frame produced by the R command reshape
+from ``wide format'' data.  The variable \texttt{varb} indicates which
+components of the response vector (variable \texttt{resp}) corresponded
+to which original variables in the ``wide format'' data (components of
+fitness).  The variable \texttt{fit} is the indicator of the best surrogate
+of fitness in these data, which is the last node ($y_3$) of the graph and
+the \texttt{"Fruits"} level of \texttt{varb}.
+
+Then set up the graphical model
+<<model>>=
+pred <- c(0,1,2)
+fam <- c(1,3,2)
+sapply(fam.default(), as.character)[fam]
+@
+
+These data come from a designed experiment started with seeds collected from
+three large wild populations of northern, coastal California wild radish
+and three populations of southern, inland California wild radish.  Thus we
+have populations nested within region.
+<<show-pop>>=
+reg2pop <- split(as.character(radish$Pop), as.character(radish$Region))
+reg2pop <- lapply(reg2pop, unique)
+reg2pop
+@
+Plants were grown at two experimental sites,
+one northern, coastal California field site located
+at Point Reyes National Seashore and one
+southern, inland site located
+at the University of California Riverside Agricultural Experiment Station.
+Blocks were nested within site.
+<<show-site>>=
+sit2blk <- split(as.character(radish$Block), as.character(radish$Site))
+sit2blk <- lapply(sit2blk, unique)
+sit2blk
+@
+The issue of main scientific interest is the interaction of region and
+site, which is indicative of local adaptation when the pattern of mean
+values shows that each population does better in its home environment than
+in others.  Testing significance of this
+interaction is complicated by the nesting of populations within region and
+blocks within site and the desire of scientists to treat these nested factors
+as random effects.
+
+The best surrogate of fitness in these data is the \texttt{Fruits}
+component of the response vector.  Thus we form the ``interaction'' with
+the indicator of this component and all scientifically
+interesting predictors (Section~\ref{sec:formula} above).
+
+\subsection{A Fixed Effects Model}
+
+The fixed effects model most closely connected with the random effects model
+of interest is
+<<model-with-drop>>=
+aout <- aster(resp ~ varb + fit : (Site * Region + Block + Pop),
+    pred, fam, varb, id, root, data = radish)
+options(show.signif.stars = FALSE)
+summary(aout)
+@
+<<foos,include=FALSE,echo=FALSE>>=
+options(width = 70)
+@
+Note: the variable \texttt{fit} is the same as the dummy variable
+\texttt{varbFruits} constructed by the aster model software.
+
+The parameter of main scientific interest is the regression coefficient
+named (by R) \texttt{\Sexpr{names(aout$coef)[length(aout$coef)]}}, which is the
+region by site interaction.  A statistically significantly nonzero value
+of this parameter may indicate local adaptation
+(more on this in Section~\ref{sec:re-anal-radish} below).
+In the fit above, this parameter is indeed highly statistically significant,
+but that $P$-value does not take the random effects story into account.
+
+\subsection{Random Effects Model}
+
+The traditional way to deal with a situation like this is to treat the
+population effects as random (within region) and the block effects as
+random (within site).  We now do (an approximation to) this.
+To specify a random-effects aster model using the R function \texttt{reaster}
+one supplies either two formulas (when there is only one variance component)
+or one formula and a list of formulas (when there is more than one variance
+component).  The first formula specifies the fixed effects model matrix
+($M$ in the notation of Section~\ref{sec:theo}), and the second formula or
+list of formulas specifies the random effects model matrix
+($Z$ in the notation of Section~\ref{sec:theo}).
+When there is a list of formulas, each formula specifies the columns of the
+random effects model matrix that go with one variance component.
+The components of the list should be named, because the names are taken to name
+the variance components.
+The first formula (for fixed effects) is just like in an ordinary aster model
+(or a linear or generalized linear model).  The other formulas (for random
+effects) are somewhat different in that they (1) do not need a response
+(that is specified by the fixed effects formula) and (2) should not have
+an intercept (the way to specify this is to prefix the formula with
+\texttt{0 +}).  Hence the following.  Note that we are following the dictum
+of Section~\ref{sec:formula}.
+<<reaster>>=
+rout <- reaster(resp ~ varb + fit : (Site * Region),
+    list(block = ~ 0 + fit : Block, pop = ~ 0 + fit : Pop),
+    pred, fam, varb, id, root, data = radish)
+summary(rout)
+@
+The results are somewhat different from the fixed effects analysis.
+One fixed effect \texttt{fit:SitePoint Reyes},
+which was statistically significant in the fixed effects model,
+is not statistically
+significant in the random effects model.  The main scientific conclusions,
+however, do not change (Section~\ref{sec:re-anal-radish} below).
+
+We also try out some options of the \texttt{summary.reaster} function,
+not because they are particularly interesting here, but just to illustrate
+them
+<<alternate-rout>>=
+summary(rout, standard.deviation = FALSE)
+@
+Now the estimates in the \texttt{Variance Components} section of the
+printout are variance components $\hat{\nu}_k = \hat{\sigma}_k^2$
+rather than their square roots as we had before.
+We do not recommend this option
+\texttt{standard.deviation = FALSE} because the standard errors,
+derived from the delta method go to zero as $\nu_k$ goes to zero,
+and this is wrong (it is right ``in asymptopia'' but for sufficiently
+small $\nu_k$ whatever sample size one has is too small).
+Thus this option seems to provide worse estimates than the default.
+
+\subsection{Does this Reanalysis Change Biological Conclusions?}
+\label{sec:re-anal-radish}
+
+In short, no.  \citet{ridley} did not do a random effects aster analysis
+because it had not yet been invented.  Nevertheless their conclusions hold up.
+The main conclusion of interest being local adaptation, which is indicated by
+the statistical significance of the fixed effect for region-site interaction
+and the pattern of mean values for different populations and different blocks,
+which we do not examine \citep[this was done by][]{ridley}.
+
+The fact that random effects analysis and fixed effects analysis agree
+qualitatively on this one example does not, of course, prove that they
+would agree on all examples.  In these data the region-site interaction
+is very large and almost any sensible statistical analysis would show it.
+When the interaction is not so large, the analysis done will make a difference.
+
+\section{Bootstrapping the Radish Data}
+
+In this section we do a parametric bootstrap to check the standard errors
+provided by \texttt{reaster} and \texttt{summary}.  First we store the
+(approximate) maximum likelihood estimates
+<<hats>>=
+names(rout)
+alpha.hat <- rout$alpha
+sigma.hat <- rout$sigma
+nu.hat <- rout$nu
+b.hat <- rout$b
+c.hat <- rout$c
+sout <- summary(rout)
+se.alpha.hat <- sout$alpha[ , "Std. Error"]
+se.sigma.hat <- sout$sigma[ , "Std. Error"]
+se.nu.hat <- sout$nu[ , "Std. Error"]
+
+fixed <- rout$fixed
+random <- rout$random
+modmat.tot <- cbind(fixed, Reduce(cbind, random))
+
+nfix <- ncol(fixed)
+nrand <- sapply(random, ncol)
+a.hat <- rep(sigma.hat, times = nrand)
+@
+
+To simulate new aster data we first need to change from unconditional
+canonical parameters to conditional canonical parameters (because that's
+what the R function \texttt{raster} requires).
+<<transform>>=
+c.star <- rnorm(sum(nrand))
+b.star <- a.hat * c.star
+eff.star <- c(alpha.hat, b.star)
+phi.star <- as.numeric(as.vector(rout$obj$origin) + modmat.tot %*% eff.star)
+theta.star <- astertransform(phi.star, rout$obj, to.cond = "conditional",
+    to.mean = "canonical")
+y.star <- raster(theta.star, pred, fam, rout$obj$root)
+y.star <- as.vector(y.star)
+@
+Now we need to redo the above analysis on the new data.  We can take
+the simulation truth as starting values.
+<<reaster-star>>=
+rout.star <- reaster(y.star ~ varb + fit : (Site * Region),
+    list(block = ~ 0 + fit : Block, pop = ~ 0 + fit : Pop),
+    pred, fam, varb, id, root, data = radish,
+    effects = c(alpha.hat, c.star), sigma = sigma.hat)
+sout.star <- summary(rout.star)
+print(sout.star)
+@
+Now we want to get estimates and standard errors for this fit
+<<stars>>=
+alpha.star <- rout.star$alpha
+sigma.star <- rout.star$sigma
+nu.star <- rout.star$nu
+as.vector(alpha.star - alpha.hat)
+as.vector(sigma.star - sigma.hat)
+as.vector(nu.star - nu.hat)
+se.alpha.star <- sout.star$alpha[ , "Std. Error"]
+se.sigma.star <- sout.star$sigma[ , "Std. Error"]
+se.nu.star <- sout.star$nu[ , "Std. Error"]
+@
+So this is the analysis we bootstrap.  All we need to do is put it in a loop.
+
+The bootstrap takes a long time (see below) if done with a reasonable
+sample size.  Here we use bootstrap sample size
+<<nboot>>=
+nboot <- 199
+@
+Thus we save the results and restore them here
+<<restore>>=
+suppressWarnings(foo <- try(load("radish-boot.rda"), silent = TRUE))
+done <- (! inherits(foo, "try-error")) &&
+    identical(.Random.seed, signature$seed) &&
+    identical(nboot, signature$nboot) &&
+    identical(alpha.hat, signature$alpha) &&
+    identical(sigma.hat, signature$sigma)
+done
+@
+If \texttt{done} is \texttt{TRUE} then the bootstrap is already done
+and its results restored.  Otherwise we have to do it, either because it
+has never been done or because one or more of the values of the R objects
+that (partially) determine it has changed.  The reason for using both
+the \texttt{suppressWarnings} function and the \texttt{silent = TRUE}
+argument to the \texttt{try} function is that when the file we are
+trying to load does not exist the \texttt{load} function gives both
+an error and a warning.
+
+So now we are ready to try it out.
+<<boot>>=
+if (! done) {
+    signature <- list(seed = .Random.seed, nboot = nboot, alpha = alpha.hat,
+        sigma = sigma.hat)
+    boot.start.time <- proc.time()
+
+    alpha.star <- matrix(NaN, nboot, length(alpha.hat))
+    sigma.star <- matrix(NaN, nboot, length(sigma.hat))
+    nu.star <- matrix(NaN, nboot, length(nu.hat))
+    se.alpha.star <- alpha.star
+    se.sigma.star <- sigma.star
+    se.nu.star <- nu.star
+
+    for (iboot in 1:nboot) {
+        c.star <- rnorm(sum(nrand))
+        b.star <- a.hat * c.star
+        eff.star <- c(alpha.hat, b.star)
+        phi.star <- as.numeric(as.vector(rout$obj$origin) +
+            modmat.tot %*% eff.star)
+        theta.star <- astertransform(phi.star, rout$obj,
+            to.cond = "conditional", to.mean = "canonical")
+        y.star <- raster(theta.star, pred, fam, rout$obj$root)
+        y.star <- as.vector(y.star)
+
+        rout.star <- reaster(y.star ~ varb + fit : (Site * Region),
+            list(block = ~ 0 + fit : Block, pop = ~ 0 + fit : Pop),
+            pred, fam, varb, id, root, data = radish,
+            effects = c(alpha.hat, c.star), sigma = sigma.hat)
+        sout.star <- suppressWarnings(summary(rout.star))
+
+        alpha.star[iboot, ] <- rout.star$alpha
+        sigma.star[iboot, ] <- rout.star$sigma
+        nu.star[iboot, ] <- rout.star$nu
+        se.alpha.star[iboot, ] <- sout.star$alpha[ , "Std. Error"]
+        se.sigma.star[iboot, ] <- sout.star$sigma[ , "Std. Error"]
+        se.nu.star[iboot, ] <- sout.star$nu[ , "Std. Error"]
+    }
+
+    boot.stop.time <- proc.time()
+    save.random.seed <- .Random.seed
+    save(signature, alpha.star, sigma.star, nu.star, se.alpha.star,
+        se.sigma.star, se.nu.star,
+        boot.start.time, boot.stop.time, save.random.seed,
+        file = "radish-boot.rda")
+} else {
+    .Random.seed <- save.random.seed
+}
+@
+<<times,include=FALSE,echo=FALSE>>=
+ttime <- (boot.stop.time - boot.start.time)[1]
+tsec <- round(ttime %% 60, 1)
+tmin <- floor((ttime / 60) %% 60)
+thr <- floor(ttime / (60 * 60))
+@
+The bootstrap with bootstrap sample size \Sexpr{nboot} took
+\Sexpr{thr} hours, \Sexpr{tmin} minutes, and \Sexpr{tsec} seconds.
+
+Occasionally, the \texttt{summary} function fails to calculate standard errors.
+The following tells us how many times this happened.
+<<na>>=
+sum(! is.finite(se.alpha.star[ , 1]))
+@
+Now we make standardized quantities
+<<z>>=
+z <- cbind(alpha.star, sigma.star)
+z <- sweep(z, 2, c(alpha.hat, sigma.hat))
+se.z <- cbind(se.alpha.star, se.sigma.star)
+z <- z / se.z
+apply(z, 2, mean)
+apply(z, 2, sd)
+@
+Not exactly standard normal (mean zero, standard deviation one).
+In fact, some seem quite far from standard normal.
+
+If we apply more robust estimators of location and scale
+<<robust>>=
+apply(z, 2, median)
+apply(z, 2, mad)
+@
+we see that some of the non-normality appears to be due to outliers,
+but the distributions are still nowhere near standard normal.
+This means if we really want accurate tests and confidence intervals,
+they cannot be based on the standard errors printed out
+by \texttt{summary.reaster}.
+
+Suppose we want a 95\% confidence interval for the coefficient for
+the fixed effect named \texttt{"fit:SiteRiverside:RegionS"}. 
+Instead of using
+$$
+   \text{point estimate} \pm 1.96 \times \text{standard error}
+$$
+we should use critical values derived from the bootstrap distribution.
+Here's how to do that.
+<<bootstrap-ci>>=
+conf.level <- 0.95
+n <- "fit:SiteRiverside:RegionS"
+colnames(z) <- c(names(alpha.hat), names(sigma.hat))
+myz <- z[ , n]
+crit <- quantile(myz, probs = c((1 - conf.level) / 2, (1 + conf.level) / 2))
+crit
+alpha.hat[n] - rev(crit) * se.alpha.hat[n]
+@
+In this case, the bootstrap critical values are actually smaller than
+1.96 so the bootstrap confidence interval is actually shorter than
+the confidence interval based on the standard error printed out by
+\texttt{summary.reaster}.  But that won't be true in general.
+
+Let us look at what seems to be the worst (most non-standard-normal)
+bootstrap distribution, that for $\nu_1$.
+<<look-at-dist>>=
+n <- "block"
+myz <- z[ , n]
+myz <- myz[! is.na(myz)]
+@
+makes the bootstrap $z$-scores and
+<<label=fig1too,include=FALSE>>=
+qqnorm(myz)
+qqline(myz)
+@
+makes a Q-Q plot (Figure~\ref{fig:fig1}).
+\begin{figure}
+\begin{center}
+<<label=fig1,fig=TRUE,echo=FALSE>>=
+<<fig1too>>
+@
+\end{center}
+\caption{Q-Q plot of bootstrap $z$-scores for $\sigma_1$
+(square root of variance component for blocks).}
+\label{fig:fig1}
+\end{figure}
+
+We see from Fig.~\ref{fig:fig1} that the distribution is not too far
+from normal in the middle (Tukey's law: \emph{all} distributions
+look normal in the middle), but is centered in the wrong place
+(median = \Sexpr{round(median(myz), 3)}) has the wrong spread
+($1.4826$ times median absolute deviation = \Sexpr{round(mad(myz), 3)}),
+is skewed with a long left tail and short right tail.
+
+For comparison we make the analogous plot for the corresponding variance
+component.
+<<look-at-dist-nu>>=
+n <- 1
+myz <- (nu.star[ , n] - nu.hat[n]) / se.nu.star[ , n]
+myz <- myz[! is.na(myz)]
+mean(myz)
+sd(myz)
+median(myz)
+mad(myz)
+@
+The following code
+<<label=fig2too,include=FALSE>>=
+qqnorm(myz)
+qqline(myz)
+@
+makes the Q-Q plot for this (Figure~\ref{fig:fig2}).
+\begin{figure}
+\begin{center}
+<<label=fig2,fig=TRUE,echo=FALSE>>=
+<<fig2too>>
+@
+\end{center}
+\caption{Q-Q plot of bootstrap $z$-scores for $\nu_1$
+(of variance component for blocks).}
+\label{fig:fig2}
+\end{figure}
+We see that the bootstrap distribution of the variance component is even worse
+than the distribution of its square root.  That is why we recommend using
+square roots of variance components.
+
+That is the end of bootstrap analysis in this technical report.  We see the
+asymptotic standard errors produced by \texttt{reaster} and \texttt{summary}
+are not perfect and not horrible.  We will just use them from now on.
+
+\section{Oats Data}
+
+\subsection{Data}
+
+We use data on the slender wild oat (\emph{Avena barbata})
+described by \citet{latta} and contained in the dataset \texttt{oats}
+in the R contributed package \texttt{aster}.  For each individual, two
+response variables are observed, connected by the following graphical model
+$$
+\begin{CD}
+   1
+   @>\text{Ber}>>
+   y_1
+   @>\text{0-Poi}>>
+   y_2
+\end{CD}
+$$
+$y_1$ being an indicator of whether any spikelets (compound flowers)
+were produced,
+$y_2$ being the count of the number of spikelets produced,
+the unconditional distribution of $y_1$ being Bernoulli,
+and the conditional distribution of $y_2$ given $y_1$ being
+zero-truncated Poisson.
+
+<<oat-baz,include=FALSE,echo=FALSE>>=
+#### remove everything, new analysis
+rm(list = ls())
+@
+We load the data
+<<oat-data>>=
+data(oats)
+names(oats)
+levels(oats$varb)
+@
+This is a ``long format'' data frame produced by the R command reshape
+from ``wide format'' data.  The variable \texttt{varb} indicates which
+components of the response vector (variable \texttt{resp}) corresponded
+to which original variables in the ``wide format'' data (components of
+fitness).  The variable \texttt{fit} is the indicator of the best surrogate
+of fitness in these data, which is the last node ($y_2$) of the graph and
+the \texttt{"Spike"} level of \texttt{varb}.
+
+Then set up the graphical model
+<<oat-model>>=
+pred <- c(0, 1)
+fam <- c(1, 3)
+sapply(fam.default(), as.character)[fam]
+@
+
+These data come from a designed experiment started with seeds collected
+in the 1980's in northern California of the xeric (found in drier regions)
+and mesic (found in less dry regions) ecotypes.
+The variable \texttt{Gen} is the ecotype (\texttt{"X"} or \texttt{"M"}).
+The variable \texttt{Fam} is the accession (nested within \texttt{Gen}).
+The variable \texttt{Site} is the site.
+The variable \texttt{Year} is the year (2003 to 2007).
+The experimental sites were at the Sierra Foothills Research and Extension
+Center (\verb@Site == "SF"@), which is northeast of Sacramento on the east
+side of the Central Valley of California, and at the Hopland Research and
+Extension center (\verb@Site = "Hop"@), which is in the California Coastal
+Ranges north of San Francisco.  Hopland receives 30\% more rainfall and
+has a less severe summer drought than Sierra foothills.
+@
+The best surrogate of fitness in these data is the \texttt{Spike}
+component of the response vector.  Thus we form the ``interaction'' with
+the indicator of this component and all scientifically
+interesting predictors (Section~\ref{sec:formula} above).
+
+\subsection{Random Effects Model}
+
+The random effects model of interest is complicated because interactions
+were statistically significant in the 
+normal-normal (normal data, normal random effects)
+analysis, and
+we include them here too.
+\begin{center}
+\begin{tabular}{ll}
+\multicolumn{1}{c}{Effect} & \multicolumn{1}{c}{Type} \\
+\hline
+Site & fixed \\
+Year & random \\
+Gen & fixed \\
+Fam & random \\
+$\text{Gen} * \text{Site}$ & fixed \\
+$\text{Gen} * \text{Year}$ & random \\
+$\text{Site} * \text{Fam}$ & random \\
+$\text{Year} * \text{Fam}$ & random
+\end{tabular}
+\end{center}
+Note that the interaction of a fixed effect and a random effect is a random
+effect.  Each of these random effects is a vector whose components are
+assumed to have the same variance, so there is one variance component
+for each.  And we need one random effects model matrix for each.
+
+The following statements fit the random effects model.
+<<oat-reaster>>=
+data(oats)
+
+pred <- c(0,1)
+fam <- c(1,3)
+
+rout <- reaster(resp ~ varb + fit : (Gen * Site),
+    list(year = ~ 0 + fit : Year, fam = ~ 0 + fit : Fam,
+        fam.site = ~ 0 + fit : Fam : Site, fam.year = ~ 0 + fit : Fam : Year,
+        gen.year = ~ 0 + fit : Gen : Year),
+        pred, fam, varb, id, root, data = oats)
+summary(rout)
+@
+Again we have made an ``interaction'' with \texttt{fit} and all scientifically
+interesting effects, either fixed or random, as explained
+in Section~\ref{sec:formula}.
+
+We see that all variance components are significantly different from zero
+except for the \texttt{fam} random effect, which is estimated to be exactly
+zero.  This happens in aster models with random effects, just like it happens
+in traditional normal-normal (normal data, normal random effects) random
+effects models.  In this case, asymptotic normality does not hold.  Part
+of the asymptotic distribution of the maximum likelihood estimator is
+an atom at zero, and any distribution having an atom is not normal.
+For this reason, the standard error for this variance component is
+reported as \texttt{NA} and similarly for the $z$-value and $P$-value.
+Anyway, there is no point in a $P$-value for testing whether this
+variance component is nonzero (when the data favor the null hypothesis,
+you don't need a $P$-value to accept the null hypothesis).
+
+\subsection{Does this Reanalysis Change Biological Conclusions?}
+\label{sec:re-anal-oats}
+
+In short, no.  \citet{latta} did not do a random effects aster analysis
+because it had not yet been invented (instead he assumed normal response
+and did a conventional normal-normal random effects analysis).
+Nevertheless his conclusions hold up.
+
+Local adaptation, which would have been shown by an interaction
+of ecotype with site was of interest, but was not found in the analysis
+by \citet{latta} using a conventional normal-normal random effects model.
+Instead it was found that the mesic ecotype had higher fitness (survived
+and reproduced better) in all environments.
+Our analysis here using aster models with random effects confirms this
+finding.
+This interaction is the coefficient named (by R)
+\texttt{\Sexpr{names(rout$alpha)[length(rout$alpha)]}}, which is the
+ecotype by site interaction.  A statistically significantly nonzero value
+of this parameter would have indicated local adaptation if the pattern
+of mean values for ecotypes in the various sites had been as expected
+with local adaptation (each ecotype fitter in its home environment);
+these mean values are given in \citet{latta} (and do not show the
+pattern expected for local adaptation, so this test is moot, nevertheless
+we look at its $P$-value anyway).
+<<oat-reaster-summary,include=FALSE,echo=FALSE>>=
+sout <- summary(rout)
+foo <- sout$alpha[length(rout$alpha), 4]
+@
+However this interaction is not statistically significant
+($P = \Sexpr{round(foo, 3)}$).
+Like in our reanalysis, \citet{latta} did not find evidence of local adaptation.
+Instead, he found that the mesic ecotype had more fitness in all environments.
+
+\section{Partridge Pea Data}
+
+\subsection{Data}
+
+We use data on the partridge pea (\emph{Chamaecrista fasciculata})
+described by \citet{etterson-i,etterson-ii} and \citet{etterson-shaw} and
+contained in the dataset \texttt{chamae3}
+in the R contributed package \texttt{aster}.  For each individual, two
+response variables are observed, connected by the following graphical model
+$$
+\begin{CD}
+   1
+   @>\text{Ber}>>
+   y_1
+   @>\text{0-Poi}>>
+   y_2
+\end{CD}
+$$
+$y_1$ being an indicator of whether any fruits were produced,
+$y_2$ being the count of the number of fruits produced,
+the unconditional distribution of $y_1$ being Bernoulli,
+and the conditional distribution of $y_2$ given $y_1$ being
+zero-truncated Poisson.
+
+<<pea-baz,include=FALSE,echo=FALSE>>=
+#### remove everything, new analysis
+rm(list = ls())
+@
+We load the data
+<<pea-data>>=
+data(chamae3)
+names(chamae3)
+levels(chamae3$varb)
+@
+This is a ``long format'' data frame produced by the R command reshape
+from ``wide format'' data.  The variable \texttt{varb} indicates which
+components of the response vector (variable \texttt{resp}) corresponded
+to which original variables in the ``wide format'' data (components of
+fitness).  The variable \texttt{fit} is the indicator of the best surrogate
+of fitness in these data, which is the last node ($y_2$) of the graph and
+the \texttt{"fruit"} level of \texttt{varb}.
+
+Then set up the graphical model
+<<pea-model>>=
+pred <- c(0, 1)
+fam <- c(1, 3)
+sapply(fam.default(), as.character)[fam]
+@
+
+We show more information about variables in this dataset.
+<<pea-pop>>=
+levels(chamae3$POP)
+levels(chamae3$SITE)
+nlevels(chamae3$SIRE)
+nlevels(chamae3$DAM)
+head(chamae3$SIRE)
+head(chamae3$DAM)
+@
+\emph{C. fasciculata} grows in the Great Plains of North America
+from southern Minnesota to Mexico.
+Three focal populations were sampled in the following locations
+\begin{enumerate}
+\item Kellog-Weaver Dunes, Wabasha County, Minnesota
+\item Konza Prairie, Riley County, Kansas
+\item Pontotoc Ridge, Pontotoc County, Oklahoma
+\end{enumerate}
+(the numbers for the list items correspond to the levels of the variable
+\texttt{POP} in the dataset).
+These sites are progressively more arid from north to south and also
+differ in other characteristics.
+Seed pods were collected from 200 plants in each of these three natural
+populations, crosses were done, germinated, and raised in the greenhouse.
+The parent plants are indicated by the variables
+\texttt{SIRE} and \texttt{DAM} in the dataset.
+The seedlings from the greenhouse were planted using a randomized block
+design \citep{etterson-ii} in three field sites
+\begin{enumerate}
+\item[\texttt{"O"}] Robert S. Kerr Environmental Research Center, Ada, Oklahoma
+\item[\texttt{"K"}] Konza Prairie Research Natural Area, Manhatten, Kansas
+\item[\texttt{"M"}] University of Minnesota, St. Paul Minnesota
+\end{enumerate}
+(the characters for the list items correspond to the levels of the variable
+\texttt{SITE} in the dataset).
+The Oklahoma field site was 30 km northwest of the Oklahoma natural population;
+the Kansas field site was 5 km from the Kansas natural population;
+the Minnesota field site was 110 km northwest of the Minnesota natural
+population.
+
+These data are a subset of data previously analyzed by non-aster methods
+by \citet{etterson-i,etterson-ii} and \citet{etterson-shaw} and by aster
+but not random effects aster methods by \citet{aster2}.  Seed counts were also
+observed on up to three seed pods per plant and fecundity was
+estimated as $\text{average seed count} \times \text{pod number}$ with
+some exceptions.  In some cases, especially Minnesota genotypes in
+the Oklahoma site, pods had dehisced and the plants senesced, in which
+case the number of pedicels that had remnant pod fragments still attached
+were counted and fecundity was imputed using the average seed count
+of the other full-sib replicate within the block or, if that was not available,
+the average seed count of the full-sib family across blocks.
+Because of the complexity of the seed count data, aster analysis that uses
+the seed counts is difficult \citep{aster2} and complicated and does not
+serve as a good example.  Thus here we analyze only the pod number data
+(level \texttt{"fruit"} of variable \texttt{varb}), which does have
+straightforward aster analysis and serves as a better example, even though
+this makes our reanalysis not really comparable with the analysis
+in \citet{etterson-ii} which does use the seed counts.
+\citet[p.~E43]{aster2} explain two alternative experimental designs that
+would have enabled straightforward aster analysis (including random effects
+aster models), but, of course, this experiment was done before aster models
+were invented, so there would have seemed no point to such designs at the
+time.  \citet*{stanton-geddes-et-al} used one of these designs, but their
+data do not address the questions we investigate here.
+
+All individuals descended from all three natural populations were planted
+in all three field sites, so these data can address local adaptation and
+previous analyses \citet[Discussion]{etterson-ii} did find local adaptation.
+But local adaptation is not the main point of interest for our analysis here.
+Instead we investigate whether sire effects, which we treat as random effects,
+as did the previous conventional quantitative genetics analysis
+\citep{etterson-ii} actually appear to be normally distributed.
+We focus on sire effects although dam effects are also treated as random
+effects because in this experimental design sire effects are expected to
+correspond closely to pure breeding values but dam effects
+will be confounded with maternal and dominance effects.
+
+\subsection{Analysis}
+
+First we do the aster analysis, analyzing  each of the nine population-site
+pairs separately.
+Since these analyses take a long time we save the results and restore
+them here
+<<pea-restore>>=
+suppressWarnings(foo <- try(load("chamae-reaster.rda"), silent = TRUE))
+done <- (! inherits(foo, "try-error"))
+done
+@
+If \texttt{done} is \texttt{TRUE} then the analyses are already done
+and their results restored.  Otherwise we have to do them.
+First we subset the data, making a list whose components are nine
+data frames (the data for the separate analyses).
+<<pea-subset>>=
+names(chamae3)
+site <- as.character(chamae3$SITE)
+pop <- as.character(chamae3$POP)
+usite <- sort(unique(site))
+upop <- sort(unique(pop))
+usite
+upop
+rsite <- rep(usite, times = length(upop))
+rpop <- rep(upop, each = length(usite))
+cbind(rsite, rpop)
+nsitepop <- paste(rsite, rpop, sep = "")
+nsitepop
+
+if (! done) {
+    subdata <- list()
+    for (i in seq(along = rsite))
+        subdata[[nsitepop[i]]] <- droplevels(subset(chamae3,
+            site == rsite[i] & pop == rpop[i]))
+}
+length(subdata)
+sapply(subdata, nrow)
+sapply(subdata, function(x) unique(x$SITE))
+sapply(subdata, function(x) unique(x$POP))
+@
+We see we have successfully done the subsetting.
+
+Then we do the analysis.
+<<pea-reaster>>=
+if (! done) {
+    pea.analysis.time <- system.time(
+        subout <- lapply(subdata, function(x) reaster(resp ~ varb + fit:BLK,
+            list(sire = ~ 0 + fit:SIRE, dam = ~ 0 + fit:DAM),
+            pred, fam, varb, id, root, data = x))
+    )
+    sumout <- lapply(subout, summary)
+    save(subdata, subout, sumout, pea.analysis.time,
+        file = "chamae-reaster.rda")
+}
+@
+Because the results of these analyses are voluminous, we put them in
+Appendix~\ref{sec:printout}.
+<<pea-times,include=FALSE,echo=FALSE>>=
+ttime <- pea.analysis.time[1]
+tsec <- round(ttime %% 60, 1)
+tmin <- floor((ttime / 60) %% 60)
+thr <- floor(ttime / (60 * 60))
+@
+The nine invocations of the \texttt{reaster} took
+\Sexpr{thr} hours, \Sexpr{tmin} minutes, and \Sexpr{tsec} seconds all together.
+
+\subsection{Significance Levels}
+
+<<pea-significance>>=
+pp <- sapply(sumout, function(foo) foo$sigma["sire", "Pr(>|z|)/2"])
+round(pp, 4)
+@
+We see that the sire variance components for the Minnesota and Oklahoma
+natural population are not close to statistically significant at the
+Minnesota field site.  All the other sire variance components are at
+least borderline statistically significant.
+
+\subsection{Comparison of Breeding Values}
+
+\citet[Figure~3]{etterson-ii} made scatterplots of breeding values
+(sire random effects) and we do the same.
+First we need to get the sire effects.
+<<pea-breed>>=
+subbreed <- lapply(subout, function(foo) foo$b)
+head(names(subbreed[[1]]))
+renames <- paste0("fit:SIRE", as.character(levels(chamae3$SIRE)))
+head(renames)
+subsire <- lapply(subout, function(foo) foo$b[renames])
+sapply(subsire, length)
+sapply(subsire, function(foo) sum(is.finite(foo)))
+@
+The following code
+<<label=fig3too,include=FALSE>>=
+subsubsire <- subsire[paste0(c("M", "K", "O"), 1)]
+pairs(as.data.frame(subsubsire))
+@
+makes the pairwise scatter plots (Figure~\ref{fig:fig3}).
+\begin{figure}
+\begin{center}
+<<label=fig3,fig=TRUE,echo=FALSE>>=
+<<fig3too>>
+@
+\end{center}
+\caption{Pairwise scatter plots of sire effects for the Minnesota natural
+population at the various field sites (\texttt{M1} is Minnesota site,
+\texttt{K1} is Kansas site, and \texttt{O1} is Oklahoma site.}
+\label{fig:fig3}
+\end{figure}
+We don't see anything interesting but that is perhaps because the breeding
+values for the Minnesota natural population are small.
+
+We then repeat the same procedure for the other two natural populations.
+The code
+<<label=fig4too,include=FALSE>>=
+subsubsire <- subsire[paste0(c("M", "K", "O"), 2)]
+pairs(as.data.frame(subsubsire))
+@
+makes Figure~\ref{fig:fig4}, which is the Kansas natural population.
+\begin{figure}
+\begin{center}
+<<label=fig4,fig=TRUE,echo=FALSE>>=
+<<fig4too>>
+@
+\end{center}
+\caption{Pairwise scatter plots of sire effects for the Kansas natural
+population at the various field sites (\texttt{M2} is Minnesota site,
+\texttt{K2} is Kansas site, and \texttt{O2} is Oklahoma site.}
+\label{fig:fig4}
+\end{figure}
+The code
+<<label=fig5too,include=FALSE>>=
+subsubsire <- subsire[paste0(c("M", "K", "O"), 3)]
+pairs(as.data.frame(subsubsire))
+@
+makes Figure~\ref{fig:fig5}, which is the Oklahoma natural population.
+\begin{figure}
+\begin{center}
+<<label=fig5,fig=TRUE,echo=FALSE>>=
+<<fig5too>>
+@
+\end{center}
+\caption{Pairwise scatter plots of sire effects for the Oklahoma natural
+population at the various field sites (\texttt{M3} is Minnesota site,
+\texttt{K3} is Kansas site, and \texttt{O3} is Oklahoma site.}
+\label{fig:fig5}
+\end{figure}
+
+\subsection{Gaussianity of Breeding Values}
+
+Maximum likelihood makes the estimates of sire effects look normally
+distributed, even if the actual effects are not very normally distributed.
+This section looks at this issue.
+
+The code
+<<label=fig6too,include=FALSE>>=
+qqnorm(subsire$K2)
+qqline(subsire$K2)
+@
+makes Figure~\ref{fig:fig6}, which is for the Kansas-Kansas
+(Kansas natural population and Kansas field site) sire effects.
+\begin{figure}
+\begin{center}
+<<label=fig6,fig=TRUE,echo=FALSE>>=
+<<fig6too>>
+@
+\end{center}
+\caption{Q-Q plot of sire effects for the Kansas natural
+population at the Kansas field site.}
+\label{fig:fig6}
+\end{figure}
+It shows them to be normally distributed.
+
+These sire effects are penalized maximum likelihood estimators with
+quadratic penalty ($b^*$ in the notation of Section~\ref{sec:laplace} above)
+with penalty parameter (reciprocal variance component) estimated by approximate
+maximum likelihood (minimizing $q$ defined in that section).
+
+If we broaden our context, such penalized maximum likelihood estimators are
+nothing new \citep*{good-gaskins,hoerl-kennard,green,hastie-et-al} and are
+widely used in statistics.  What is different here is that elsewhere the
+penalty parameter (the multiplier of the penalty function) is chosen by
+cross-validation or AIC or some such device.  The penalty parameter is not
+considered to be a parameter like other parameters, but as a constant to
+be adjusted to get good fit or good predictions.
+
+If we take off our ``normal random effects'' hat and stop believing that
+there really random variables
+(the sire effects) that, although unobserved and unobservable even in
+principle, are exactly homoscedastically normally distributed,
+then we can still use penalized maximum likelihood.
+Let us see what happens when we use much smaller penalty
+(larger sire variance component) than the maximum likelihood penalty.
+We cannot use zero penalty because
+the sire effects are confounded with other effects (with the intercept
+and also with the dam effects).  But we can use any nonzero penalty.
+
+We try first with one-tenth the penalty (10 times the maximum likelihood
+sire variance component).
+There is not a nice function like \texttt{reaster} to do this.
+We have to use some of the ``plumbing'' functions that \texttt{reaster} calls.
+<<pea-penmlogl-ten>>=
+alpha.mle <- subout$K2$alpha
+sigma.mle <- subout$K2$sigma
+c.mle <- subout$K2$c
+sigma.penal10 <- c(sqrt(10), 1) * sigma.mle
+fixed <- subout$K2$fixed
+random <- subout$K2$random
+obj <- subout$K2$obj
+tout <- trust(objfun = penmlogl2, parinit = c.mle, rinit = 1, rmax = 10,
+    alpha = alpha.mle, sigma = sigma.penal10, fixed = fixed,
+    random = random, obj = obj)
+stopifnot(tout$converged)
+oldsire <- subsire$K2[is.finite(subsire$K2)]
+neweff <- tout$argument * tout$scale
+@
+The code
+<<label=fig7too,include=FALSE>>=
+newsire10 <- neweff[grep("SIRE", names(neweff))]
+plot(oldsire, newsire10, xlab = "MLE sire effects",
+    ylab = "sire effects with 1 / 10 the MLE penalty")
+abline(line(oldsire, newsire10))
+@
+makes Figure~\ref{fig:fig7}, which is still for the Kansas-Kansas
+sire effects but now plots the MLE effects against effects with
+smaller penalty.
+\begin{figure}
+\begin{center}
+<<label=fig7,fig=TRUE,echo=FALSE>>=
+<<fig7too>>
+@
+\end{center}
+\caption{Plot of sire effects for the Kansas natural
+population at the Kansas field site estimated with the MLE penalty
+parameter (variance component) and 1 / 10 of that penalty.}
+\label{fig:fig7}
+\end{figure}
+This doesn't show any non-normality.  There is almost perfect linearity
+between the old and new sire effects.  If one looks normal, then so will
+the other.
+
+So try again with one-hundredth the penalty (100 times the maximum likelihood
+sire variance component).
+<<pea-penmlogl-hundred>>=
+sigma.penal100 <- c(sqrt(100), 1) * sigma.mle
+tout <- trust(objfun = penmlogl2, parinit = tout$argument, rinit = 1, rmax = 10,
+    alpha = alpha.mle, sigma = sigma.penal100, fixed = fixed,
+    random = random, obj = obj)
+stopifnot(tout$converged)
+neweff <- tout$argument * tout$scale
+@
+The code
+<<label=fig8too,include=FALSE>>=
+newsire100 <- neweff[grep("SIRE", names(neweff))]
+plot(oldsire, newsire100, xlab = "MLE sire effects",
+    ylab = "sire effects with 1 / 100 the MLE penalty")
+abline(line(oldsire, newsire100))
+@
+makes Figure~\ref{fig:fig8}, which is still for the Kansas-Kansas
+sire effects but now plots the MLE effects against effects with
+even smaller penalty.
+\begin{figure}
+\begin{center}
+<<label=fig8,fig=TRUE,echo=FALSE>>=
+<<fig8too>>
+@
+\end{center}
+\caption{Plot of sire effects for the Kansas natural
+population at the Kansas field site estimated with the MLE penalty
+parameter (variance component) and 1 / 100 of that penalty.}
+\label{fig:fig8}
+\end{figure}
+This again doesn't show any non-normality.
+
+So try again with one-millionth the penalty
+($10^6$ times the maximum likelihood sire variance component).
+<<pea-penmlogl-million>>=
+sigma.penal1e6 <- c(sqrt(1e6), 1) * sigma.mle
+tout <- trust(objfun = penmlogl2, parinit = tout$argument, rinit = 1, rmax = 10,
+    alpha = alpha.mle, sigma = sigma.penal1e6, fixed = fixed,
+    random = random, obj = obj)
+stopifnot(tout$converged)
+neweff <- tout$argument * tout$scale
+@
+The code
+<<label=fig9too,include=FALSE>>=
+newsire1e6 <- neweff[grep("SIRE", names(neweff))]
+plot(oldsire, newsire1e6, xlab = "MLE sire effects",
+    ylab = "sire effects with 1 / 1,000,000 the MLE penalty")
+abline(line(oldsire, newsire1e6))
+@
+makes Figure~\ref{fig:fig9}, which is still for the Kansas-Kansas
+sire effects but now plots the MLE effects against effects with
+a lot smaller penalty.
+\begin{figure}
+\begin{center}
+<<label=fig9,fig=TRUE,echo=FALSE>>=
+<<fig9too>>
+@
+\end{center}
+\caption{Plot of sire effects for the Kansas natural
+population at the Kansas field site estimated with the MLE penalty
+parameter (variance component) and 1 / 1,000,000 of that penalty.}
+\label{fig:fig9}
+\end{figure}
+This again doesn't show any non-normality.
+
+In conclusion (of this section), there doesn't seem to be any evidence
+of non-normality in the particular population-site combination (Kansas-Kansas)
+we examined in detail.  The other population-site combinations (not shown)
+are similar with only a few moderate outliers (points off the line, one
+outlier in Minnesota-Minnesota, two outliers in Kansas-Oklahoma, four
+outliers in Minnesota-Oklahoma, one outlier in Oklahoma-Oklahoma).
+None of these moderate outliers cause any apparent non-normality in Q-Q plots
+(not shown),
+nor do they have statistically significant non-normality as measured
+by the Shapiro-Wilk test (not shown, R function \texttt{shapiro.test}).
+
+\subsection{Mapping Breeding Values to Mean Values}
+
+The issue in the section title makes no sense without further clarification.
+The mapping between canonical and mean value parameter values in an aster model
+(or any exponential family model) is invertible.  So there is no question that
+there is a one-to-one correspondence between canonical and mean value
+parameter values in the aster model.  But this says nothing about random
+effects.  It doesn't say anything about ``effects'' of any kind.
+
+Since this one-to-one transformation is nonlinear, the phenomenon one has in
+linear models (where this transformation is the identity transformation, that
+is, canonical and mean value parameters are the same) that one can consider
+how much a change in one effect induces a change in mean values
+\emph{without considering other effect values} does not occur.  In generalized
+linear models and aster models, the amount of change depends on the values
+of the other effects.  So one must carefully say what one is doing.
+
+Here we are interested in mapping the sire effects to the mean value parameter
+scale.  To do this we have specify the values of the other effects, both fixed
+and random.  We set the other random effects (the dam effects) to zero (taking
+this to be a typical value), set the fixed effects to their maximum likelihood
+values, and predict for hypothetical individuals that are all in block 1 (so
+block effects do not influence the comparison of the sire effects).
+
+Note that block 1 in one site has nothing to do with block 1 in another site,
+so this is arguably not the right thing to do, but it is not obvious that any
+other procedure is unarguably right either.
+
+We want to make just two plots (merely to illustrate the method), the Kansas
+population in the Kansas site and in the Oklahoma site.  These are the
+\texttt{"K2"} and \texttt{"O2"} elements of the various lists made above
+(which contain all nine site-population pairs).
+<<subsub>>=
+subsubout <- subout[c("K2", "O2")]
+@
+There is no function to do ``prediction'' for random effects.  (It is not
+clear what such a function should do!)  Thus we ``predict'' using the function
+\texttt{predict.aster}, which only understands fixed effects.  We hand this
+function the object of class \texttt{"aster"} which is inside the object
+of class \texttt{"reaster"} produced by the R function \texttt{"reaster"}
+<<subsub-show>>=
+names(subsubout[[1]])
+class(subsubout[[1]]$obj)
+hoom <- predict(subsubout[[1]]$obj, subsubout[[1]]$alpha)
+hoom <- matrix(hoom, ncol = 2)
+hoom <- hoom[ , 2]
+unique(hoom)
+@
+These are the predicted values for the four blocks (not necessarily in
+order of block number).  Let's restrict to block 1.
+<<subsub-show>>=
+hoom <- predict(subsubout[[1]]$obj, subsubout[[1]]$alpha)
+hoom <- matrix(hoom, ncol = 2)
+boom <- subsubout[[1]]$obj$modmat[ , , "fit:BLK1"] == 1
+unique(hoom[boom])
+@
+Our strategy will be to use the ``prediction'' (mean value parameter value)
+for any one of these individuals in block 1 and add to the block 1 effect
+the sire effect.  First we find one of those individuals.
+<<subsub-find>>=
+idx <- subsubout[[1]]$obj$modmat[ , , "fit:BLK1"]
+idx <- matrix(idx, ncol = 2)
+idx <- idx[ , 2]
+idx <- seq(along = idx)[idx == 1]
+idx <- min(idx)
+idx
+@
+It turns out that block 1 comes first in the data (no surprise), so the
+first individual is in block 1.
+
+Now get sire effects.
+<<subsub-sire>>=
+subsubsire <- lapply(subsubout, function(x) x$b)
+subsubsire <- lapply(subsubsire, function(x) x[grep("SIRE", names(x))])
+@
+This means the following code gives mean
+value parameters for the first element of \texttt{subsubout}
+<<subsub-doit-one>>=
+psire <- function(x) {
+    newcoef <- subsubout[[1]]$alpha
+    newcoef["fit:BLK1"] <- newcoef["fit:BLK1"] + x
+    hoom <- predict(subsubout[[1]]$obj, newcoef = newcoef)
+    hoom <- matrix(hoom, ncol = 2)
+    hoom[1, 2]
+}
+musire1 <- unlist(Map(psire, subsubsire[[1]]))
+@
+And the following does the same for the second element
+<<subsub-doit-too>>=
+psire <- function(x) {
+    newcoef <- subsubout[[2]]$alpha
+    newcoef["fit:BLK1"] <- newcoef["fit:BLK1"] + x
+    hoom <- predict(subsubout[[2]]$obj, newcoef = newcoef)
+    hoom <- matrix(hoom, ncol = 2)
+    hoom[1, 2]
+}
+musire2 <- unlist(Map(psire, subsubsire[[2]]))
+musire <- list(musire1, musire2)
+names(musire) <- names(subsubout)
+@
+Now we make density plots
+<<subsub-density>>=
+subsubdens <- lapply(musire, density)
+@
+Then we do the plot.
+The code
+<<label=fig10too,include=FALSE>>=
+par(mar = c(5, 1.5, 1, 1) + 0.1, mfrow = c(1, 2), oma = c(0, 2.5, 0, 0))
+for (i in seq(along = subsubdens)) {
+    plot(subsubdens[[i]], ylab = "", xlab = "fruits per individual", main = "")
+    foo <- par("usr")
+    text(0.85 * foo[1] + 0.15 * foo[2], 0.15 * foo[3] + 0.85 * foo[4],
+        letters[i], cex = 2)
+}
+mtext("density", side = 2, line = 1, outer = TRUE, at = 0.6)
+@
+makes Figure~\ref{fig:fig10}, which does both of these density plots
+in one figure.
+\begin{figure}
+\begin{center}
+<<label=fig10,fig=TRUE,echo=FALSE>>=
+<<fig10too>>
+@
+\end{center}
+\caption{Plot of sire effects on the mean value parameter scale for
+an individual in block 1 having the various sire effects in the data.
+Panel a is the Kansas population in the Kansas field site.
+Panel b is the Kansas population in the Oklahoma field site.}
+\label{fig:fig10}
+\end{figure}
+
+The apparent non-Gaussianity of these plots is an artifact of small
+sample side.  A Shapiro-Wilk test shows no statistically significant
+non-Gaussianity.
+<<subsub-shapiro>>=
+lapply(subsubsire, shapiro.test)
+lapply(musire, shapiro.test)
+@
+
+\appendix
+
+\section{Cholesky}
+
+How do we calculate log determinants and derivatives thereof?
+R has a function \texttt{determinant} that calculates the log determinant.
+It uses $L U$ decomposition.
+
+An alternative method is to use Cholesky decomposition, but that only works
+when the given matrix is symmetric.  This may be better because there
+is a sparse version (the \texttt{chol} function in the \texttt{Matrix}
+package) that may enable us to do much larger problems (perhaps after some
+other issues getting in the way of scaling are also fixed).
+
+We need to calculate the log determinant that appears in \eqref{eq:key}
+or \eqref{eq:key-rooted}, but the matrix is not symmetric.
+It can, however, be rewritten so as to be symmetric.
+Assuming $A$ is invertible \begin{align*}
+   \det\bigl( Z^T \widehat{W} Z A^2 + I \bigr)
+   & =
+   \det\bigl( Z^T \widehat{W} Z A + A^{- 1} \bigr)
+   \det\bigl( A \bigr)
+   \\
+   & =
+   \det\bigl( A Z^T \widehat{W} Z A + I \bigr)
+\end{align*}
+If $A$ is singular, we can see by continuity
+that the two sides must agree there too.
+That takes care of \eqref{eq:key-rooted}.
+The same trick works for \eqref{eq:key}; just replace $A$ by
+$D^{1 / 2}$, which is the diagonal matrix whose diagonal components
+are the nonnegative square roots of the corresponding diagonal
+components of $D$.
+
+Cholesky can also be used to efficiently calculate matrix inverses
+(done by the \texttt{chol2inv} function in the \texttt{Matrix} package).
+So we investigate whether we can use Cholesky to calculate derivatives.
+
+\subsection{First Derivatives}
+
+For the trace in the formula \eqref{eq:key-rooted-sigma}
+for $\tilde{p}_{\sigma_j}(\alpha, c, \sigma)$
+we have in case $A$ is invertible
+\begin{multline*}
+   \tr\left(
+   [ Z^T \widehat{W} Z A^2 + I \bigr]^{- 1}
+   Z^T \widehat{W} Z A E_j
+   \right)
+   \\
+   =
+   \tr\left(
+   [ A^{- 1} ( A Z^T \widehat{W} Z A + I ) A \bigr]^{- 1}
+   Z^T \widehat{W} Z A E_j
+   \right)
+   \\
+   =
+   \tr\left(
+   A^{- 1}
+   [ A Z^T \widehat{W} Z A + I \bigr]^{- 1}
+   A
+   Z^T \widehat{W} Z A E_j
+   \right)
+   \\
+   =
+   \tr\left(
+   [ A Z^T \widehat{W} Z A + I \bigr]^{- 1}
+   A
+   Z^T \widehat{W} Z A E_j
+   A^{- 1}
+   \right)
+   \\
+   =
+   \tr\left(
+   [ A Z^T \widehat{W} Z A + I \bigr]^{- 1}
+   A
+   Z^T \widehat{W} Z E_j
+   \right)
+\end{multline*}
+the next-to-last equality being $\tr(A B) = \tr(B A)$ and the
+last equality using the fact that $A$, $E_j$, and $A^{- 1}$ are all
+diagonal so they commute.
+Again we see that we get the same identity of the first and last
+expressions even when $A$ is singular by continuity.
+
+For the trace in the formula \eqref{eq:p-theta}
+for $p_{\nu_k}(\alpha, b, \nu)$
+we have in case $D$ is invertible
+\begin{multline*}
+   \tr \Bigl(
+   \bigl[ Z^T \widehat{W} Z D + I \bigr]^{- 1}
+   Z^T \widehat{W} Z E_k
+   \Bigr)
+   \\
+   =
+   \tr \Bigl(
+   D^{- 1 / 2} \bigl[ D^{1 / 2} Z^T \widehat{W} Z D^{1 / 2} + I \bigr]^{- 1}
+   D^{1 / 2}
+   Z^T \widehat{W} Z E_k
+   \Bigr)
+   \\
+   =
+   \tr \Bigl(
+   \bigl[ D^{1 / 2} Z^T \widehat{W} Z D^{1 / 2} + I \bigr]^{- 1}
+   D^{1 / 2}
+   Z^T \widehat{W} Z
+   D^{- 1 / 2} 
+   E_k
+   \Bigr)
+\end{multline*}
+This, of course, does not work when $D$ is singular.
+We already knew we cannot differentiate $p(\alpha, b, \nu)$ on the
+boundary of the constraint set.
+
+\subsection{Second Derivatives}
+
+For the trace in the formula in Section~\ref{sec:second}
+for $p_{\nu_j \nu_k}(\alpha, b, \nu)$
+we have in case $D$ is invertible
+\begin{multline*}
+   \tr \Bigl(
+   \bigl[ Z^T \widehat{W} Z D + I \bigr]^{- 1}
+   Z^T \widehat{W} Z E_j
+   \bigl[ Z^T \widehat{W} Z D + I \bigr]^{- 1}
+   Z^T \widehat{W} Z E_k
+   \Bigr)
+   \\
+   =
+   \tr \Bigl(
+   D^{- 1 / 2}
+   \bigl[ D^{1 / 2} Z^T \widehat{W} Z D^{1 / 2} + I \bigr]^{- 1}
+   D^{1 / 2}
+   Z^T \widehat{W} Z E_j
+   \\
+   D^{- 1 / 2}
+   \bigl[ D^{1 / 2} Z^T \widehat{W} Z D^{1 / 2} + I \bigr]^{- 1}
+   D^{1 / 2}
+   Z^T \widehat{W} Z E_k
+   \Bigr)
+   \\
+   =
+   \tr \Bigl(
+   \bigl[ D^{1 / 2} Z^T \widehat{W} Z D^{1 / 2} + I \bigr]^{- 1}
+   D^{1 / 2}
+   Z^T \widehat{W} Z E_j
+   D^{- 1 / 2}
+   \\
+   \bigl[ D^{1 / 2} Z^T \widehat{W} Z D^{1 / 2} + I \bigr]^{- 1}
+   D^{1 / 2}
+   Z^T \widehat{W} Z E_k
+   D^{- 1 / 2}
+   \Bigr)
+\end{multline*}
+Again, this does not work when $D$ is singular.
+
+The same trace occurs in the expression for $q_{\nu_j \nu_k}(\alpha, \nu)$
+given in Section~\ref{sec:fisher} and can be calculated the same way.
+
+\section{Partridge Pea Analysis Printout} \label{sec:printout}
+
+<<pea-printout>>=
+for (i in seq(along = sumout)) {
+    cat("\n\nSITE =", rsite[i], "and POP =", rpop[i], "\n")
+    print(sumout[[i]])
+}
+@
+
+\begin{thebibliography}{}
+
+\bibitem[Anderson(2003)]{anderson}
+Anderson, T.~W. (2003).
+\newblock \emph{An Introduction to Multivariate Statistical Analysis}, 3rd ed.
+\newblock Hoboken: John Wiley \& Sons.
+
+\bibitem[Barndorff-Nielsen(1978)]{barndorff}
+Barndorff-Nielsen, O. (1978).
+\newblock \emph{Information and Exponential Families}.
+\newblock Chichester: John Wiley \& Sons.
+
+% \bibitem[Bolker et al.(2009)Bolker, B.~M., Brooks, M.~E., Clark, C.~J.,
+%     Geange, S.~W., Poulsen, J.~R., Stevens, M.~H.~H.
+%     and White, J.-S.~S.]{bolker}
+% Bolker, B.~M., Brooks, M.~E., Clark, C.~J., Geange, S.~W., Poulsen, J.~R.,
+%     Stevens, M.~H.~H., and White, J.-S.~S. (2009).
+% \newblock Generalized linear mixed models: a practical guide for ecology and
+%     evolution.
+% \newblock \emph{Trends in Ecology and Evolution},
+%     \textbf{24}, 127--135.
+
+\bibitem[Booth and Hobert(1999)]{booth-hobert}
+Booth, J., and Hobert, J.~P. (1999).
+\newblock Maximizing generalized linear mixed model likelihoods with
+    an automated Monte Carlo EM algorithm.
+\newblock \emph{Journal of the Royal Statistical Society}, Series B,
+    \textbf{61}, 265--285.
+
+\bibitem[Breslow and Clayton(1993)]{b+c}
+Breslow, N.~E., and Clayton, D.~G. (1993).
+\newblock Approximate inference in generalized linear mixed models.
+\newblock \emph{Journal of the American Statistical Association},
+    \textbf{88}, 9--25.
+
+\bibitem[{Browder(1996)}]{browder}
+Browder, A. (1996).
+\newblock \emph{Mathematical Analysis: An Introduction}.
+\newblock New York: Springer-Verlag.
+
+% \bibitem[Burnham and Anderson(2002)]{b+a}
+% Burnham, K.~P., and Anderson, D.~R. (2002).
+% \newblock \emph{Model Selection and Multimodel Inference: A Practical
+%     Information-Theoretic Approach}, 2nd ed.
+% \newblock New York: Springer-Verlag.
+
+\bibitem[Etterson(2004a)]{etterson-i}
+Etterson, J.~R. (2004a).
+\newblock Evolutionary potential of \emph{Chamaecrista fasciculata}
+    in relation to climate change.  I. Clinal patterns of
+     selection along an environmental gradient in the great plains.
+\newblock \emph{Evolution}, \textbf{58}, 1446--1458.
+
+\bibitem[Etterson(2004b)]{etterson-ii}
+Etterson, J.~R. (2004b).
+\newblock Evolutionary potential of \emph{Chamaecrista fasciculata}
+    in relation to climate change. II. Genetic architecture of three
+    populations reciprocally planted along an environmental gradient in the
+    great plains.
+\newblock \emph{Evolution}, \textbf{58}, 1459--1471.
+
+\bibitem[Etterson and Shaw(2001)]{etterson-shaw}
+Etterson, J. R., and Shaw, R. G. (2001).
+\newblock Constraint to adaptive evolution in response to global warming.
+\newblock \emph{Science}, \textbf{294}, 151--154.
+
+\bibitem[Fletcher(1987)]{fletcher}
+Fletcher, R. (1987).
+\newblock \emph{Practical Methods of Optimization}, 2nd ed.
+\newblock Chichester: John Wiley \& Sons.
+
+\bibitem[Geyer(1994)]{mcmcml}
+Geyer, C.~J. (1994).
+\newblock On the convergence of Monte Carlo maximum likelihood calculations.
+\newblock \emph{Journal of the Royal Statistical Society, Series B},
+    \textbf{56}, 261--274.
+
+\bibitem[Geyer(2009)]{gdor}
+Geyer, C.~J. (2009).
+\newblock Likelihood inference in exponential families and directions
+    of recession.
+\newblock \emph{Electronic Journal of Statistics}, \textbf{3}, 259--289.
+
+\bibitem[Geyer(2010)]{aster-philosophic}
+Geyer, C.~J. (2010).
+\newblock A Philosophical Look at Aster Models.
+\newblock Technical Report No.~676.  School of Statistics,
+    University of Minnesota.
+\newblock \url{http://purl.umn.edu/57163}.
+
+\bibitem[Geyer(2012)]{package-aster}
+Geyer, C.~J. (2012).
+\newblock aster: Aster Models.
+\newblock R package version 0.8-12.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}.
+
+\bibitem[Geyer(in press)]{simple}
+Geyer, C.~J. (in press).
+\newblock Asymptotics of maximum likelihood without the LLN or CLT
+    or sample size going to infinity.
+\newblock To appear in \emph{Festschrift for Morris L. Eaton},
+    G. Jones and X. Shen eds.
+\newblock Institute of Mathematical Statistics: Hayward, CA.
+
+% \bibitem[Geyer and Meeden(2005)]{fuzzy-orange}
+% Geyer, C.~J., and Meeden, G.~D. (2005).
+% \newblock Fuzzy and randomized confidence intervals and P-values
+%     (with discussion).
+% \newblock \emph{Statistical Science}, \textbf{20}, 358--387.
+
+% \bibitem[Geyer and Shaw(2008a)]{evo2008talk}
+% Geyer, C.~J., and Shaw, R.~G. (2008a).
+% \newblock Supporting Data Analysis for a talk to be given at Evolution 2008
+%     University of Minnesota, June 20--24.
+% \newblock University of Minnesota School of Statistics Technical Report
+%     No.~669.
+% \newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+% \bibitem[Geyer and Shaw(2009)]{tr671r}
+% Geyer, C.~J., and Shaw, R.~G. (2009).
+% \newblock Model Selection in Estimation of Fitness Landscales.
+% \newblock Technical Report No. 671 (revised).  School of Statistics,
+%     University of Minnesota.
+% \newblock \url{http://purl.umn.edu/56219}.
+
+\bibitem[Geyer and Thompson(1992)]{g+t}
+Geyer, C.~J., and Thompson, E.~A. (1992).
+\newblock Constrained Monte Carlo maximum likelihood for dependent data,
+    (with discussion).
+\newblock \emph{Journal of the Royal Statistical Society, Series B},
+    \textbf{54}, 657--699.
+
+\bibitem[Geyer et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S., and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, \textbf{94}, 415--426.
+
+\bibitem[Good and Gaskins(1971)]{good-gaskins}
+Good, I.~J., and Gaskins, R.~A. (1971).
+\newblock Nonparametric roughness penalties for probability densities.
+\newblock \emph{Biometrika}, \textbf{58}, 255--277.
+
+\bibitem[Green(1987)]{green}
+Green, P.~J. (1987).
+\newblock Penalized likelihood for general semi-parametric regression models.
+\newblock \emph{International Statistical Review}, \textbf{55}, 245--259.
+
+\bibitem[Harville(1997)]{harville}
+Harville, D.~A. (1997).
+\newblock{Matrix Algebra From a Statistician's Perspective}.
+\newblock New York: Springer.
+
+\bibitem[Hastie et al.(2009)Hastie, Tibshirani and Friedman]{hastie-et-al}
+Hastie, T., Tibshirani, R., and Friedman J. (2009).
+\newblock \emph{Elements of Statistical Learning: Data Mining,
+    Inference and Prediction}, 2nd ed.
+\newblock New York: Springer.
+
+\bibitem[Hoerl and Kennard(1970)]{hoerl-kennard}
+Hoerl, A.~E., and Kennard, R.~W. (1970).
+\newblock Ridge regression: applications to nonorthogonal problems.
+\newblock \emph{Technometrics}, \textbf{12}, 69--82.
+
+\bibitem[Hunter et~al.(2008)Hunter, Handcock, Butts, Goodreau
+    and Morris]{hunter-et-al}
+Hunter, D.~R., Handcock, M.~S., Butts, C.~T., Goodreau, S.~M., Morris, M.
+    (2008).
+\newblock \texttt{ergm}: A package to fit, simulate and diagnose
+    exponential-family models for networks.
+\newblock \emph{Journal of Statistical Software}, \textbf{24}.
+
+\bibitem[Hummel et~al.(to appear)Hummel, Hunter and Handcock]{hummel-et-al}
+Hummel, R.~M., Hunter, D.~R., and Handcock, M.~S. (to appear).
+\newblock Improving simulation-based algorithms for fitting EGRMs.
+\newblock To appear in \emph{Journal of Statistical Software}.
+
+\bibitem[Latta(2009)]{latta}
+Latta, R.~G. (2009).
+\newblock Testing for local adaptation in \emph{Avena barbata},
+    a classic example of ecotypic divergence.
+\newblock \emph{Molecular Ecology}, \textbf{18}, 3781--3791.
+
+% \bibitem[Le~Cam and Yang(2000)]{lecam-yang}
+% Le~Cam, L., and Yang, G.~L. (2000).
+% \newblock \emph{Asymptotics in Statistics: Some Basic Concepts}, 2nd ed.
+% \newblock New York: Springer.
+
+% \bibitem[Lee and Nelder(1996)]{l+n}
+% Lee, Y., and Nelder, J.~A. (1996).
+% \newblock Hierarchical generalized linear models (with discussion).
+% \newblock \emph{Journal of the Royal Statistical Society, Series B},
+%     \textbf{58}, 619--678.
+
+% \bibitem[Lee et al.(2006)Lee, Nelder and Pawitan]{l+n+p}
+% Lee, Y., Nelder, J.~A., and Pawitan, Y. (2006).
+% \newblock \emph{Generalized Linear Models with Random Effects}.
+% \newblock London: Chapman and Hall.
+
+% \bibitem[McCullagh(2008)]{mccullagh}
+% McCullagh, P. (2008).
+% \newblock Sampling bias and logistic models.
+% \newblock \emph{Journal of the Royal Statistical Society, Series B},
+%     \textbf{70}, 643--677.
+
+\bibitem[Nocedal and Wright(1999)]{nocedal-wright}
+Nocedal, J., and Wright, S.~J. (1999).
+\newblock \emph{Numerical Optimization}.
+\newblock New York: Springer.
+
+% \bibitem[Oehlert(2000)]{oehlert}
+% Oehlert, G.~W. (2000).
+% \newblock \emph{A First Course in Design and Analysis of Experiments}.
+% \newblock New York: W.~H. Freeman.
+
+\bibitem[Okabayashi and Geyer(2011)]{okabayashi-geyer}
+Okabayashi, S., and Geyer, C.~J. (2011)
+\newblock Gradient-based search for maximum likelihood in exponential families.
+\newblock \emph{Electronic Journal of Statistics}, \textbf{6}, 123--147.
+
+\bibitem[Penttinen(1984)]{penttinen}
+Penttinen, A. (1984).
+\newblock Modelling interations in spatial point patterns: parameter
+    estimation by the maximum likelihood method.
+\newblock Jyv\"{a}skyl\"{a} Studies in Computer Science, Economics
+    and Statistics, \textbf{7}.
+
+\bibitem[R Development Core Team(2012)]{rcore}
+R Development Core Team (2012).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+\bibitem[Ridley and Ellstrand(2010)]{ridley}
+Ridley, C.~E., and Ellstrand, N.~C. (2010).
+\newblock Rapid evolution of morphology and adaptive life history in
+    the invasive California wild radish (\emph{Raphanus sativus}) and
+    the implications for management.
+\newblock \emph{Evolutionary Applications}, \textbf{3}, 64--76.
+
+\bibitem[Rockafellar and Wets(2004)]{raw}
+Rockafellar, R.~T., and Wets, R. J.-B. (2004).
+\newblock \emph{Variational Analysis}, corr.\ 2nd printing.
+\newblock Berlin: Springer-Verlag.
+
+\bibitem[Searle et al.(1992)Searle, Casella and McCulloch]{searle}
+Searle, S.~R., Casella, G., and McCulloch, C.~E. (1992).
+\newblock \emph{Variance Components}.
+\newblock New York: John Wiley.
+
+\bibitem[Shaw et al.(1999)Shaw, Promislow, Tatar, Hughes, and Geyer]{promislow}
+Shaw, F.~H., Promislow, D.~E.~L., Tatar, M., Hughes, K.~A.
+    and Geyer, C.~J. (1999).
+\newblock Towards reconciling inferences concerning genetic variation
+    in senescence.
+\newblock \emph{Genetics}, \textbf{152}, 553--566.
+
+\bibitem[Shaw et~al.(2002)Shaw, Geyer and Shaw]{shaw-geyer-shaw}
+Shaw, F.~H., Geyer, C.~J., and Shaw, R.~G. (2002).
+\newblock A Comprehensive Model of Mutations Affecting Fitness
+    and Inferences for \emph{Arabidopsis thaliana}
+\newblock \emph{Evolution}, \textbf{56}, 453--463.
+
+\bibitem[Shaw et al.(2007)Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2tr}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2007).
+\newblock Supporting data analysis for ``Unifying life history analysis
+    for inference of fitness and population growth''.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~658
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Shaw et al.(2008)Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2008).
+\newblock Unifying life history analysis for inference of fitness
+    and population growth.
+\newblock \emph{American Naturalist}, \textbf{172}, E35--E47.
+
+\bibitem[Shaw and Geyer(2010)]{aster-fitness}
+Shaw, R.~G., and Geyer, C.~J. (2010).
+\newblock Inferring fitness landscapes.
+\newblock \emph{Evolution}, \textbf{64}, 2510--2520. 
+
+\bibitem[Stanton-Geddes et al.(2012)Stanton-Geddes,
+    Shaw and Tiffin]{stanton-geddes-et-al}
+Stanton-Geddes, J., Shaw, R.~G., and Tiffin, P. (2012).
+\newblock Interactions between soil habitat and geographic range affect
+    plant fitness.
+\newblock \emph{PLoS One}, \textbf{7}, e36015.
+
+\bibitem[Sung and Geyer(2007)]{sung}
+Sung, Y.~J., and Geyer, C.~J. (2007).
+\newblock Monte Carlo likelihood inference for missing data models.
+\newblock \emph{Annals of Statistics}, \textbf{35}, 990--1011.
+
+% \bibitem[Thompson and Geyer(2007)]{fuzzy-genetics}
+% Thompson, E.~A., and Geyer, C.~J. (2007).
+% \newblock Fuzzy P-values in latent variable problems.
+% \newblock \emph{Biometrika}, \textbf{94}, 49--60.
+
+\bibitem[Thompson and Guo(1991)]{thompson}
+Thompson, E. A., and Guo, S. W. (1991).
+\newblock Evaluation of likelihood ratios for complex genetic models.
+\newblock \emph{IMA J. Math. Appl. Med. Biol.}, \textbf{8}, 149--169.
+
+\end{thebibliography}
+
+\end{document}
+
