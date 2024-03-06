@@ -1,0 +1,1794 @@
+
+\documentclass[11pt,twoside,notitlepage]{article}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+% remove room for headers, add to textheight
+
+  \addtolength{\textheight}{\headheight}
+  \addtolength{\textheight}{\headsep}
+  \setlength{\headheight}{0 pt}
+  \setlength{\headsep}{0 pt}
+
+% adjust so right and left hand pages have different margins
+% not sure why these particular numbers were picked or if they
+% still make sense
+
+  % \showthe\evensidemargin
+  % \showthe\oddsidemargin
+  % \showthe\textwidth
+
+  % \evensidemargin  15 pt
+  % \oddsidemargin 61.5 pt
+  % \textwidth 392.5 pt
+
+  \evensidemargin 28.75 pt
+  \oddsidemargin 75.25 pt
+  \textwidth 365 pt
+
+%%%%% NEW go with 1.25 inch margin on all sides
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{- 2 in}
+\setlength{\topmargin}{0.25 pt}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \footskip}
+
+\setlength{\oddsidemargin}{0.25 in}
+\setlength{\evensidemargin}{0.25 in}
+\addtolength{\textwidth}{- \oddsidemargin}
+\addtolength{\textwidth}{- \evensidemargin}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries More Supporting Data Analysis for \\
+    ``Unifying Life History Analysis for Inference \\
+    of Fitness and Population Growth''} \\
+    By \\
+    Ruth G. Shaw, Charles J. Geyer, Stuart Wagenius, \\
+    Helen H. Hangelbroek, and Julie R. Etterson \\
+    Technical Report No.~661 \\
+    School of Statistics \\
+    University of Minnesota \\
+    % original document downloaded from www.stat.umn.edu/geyer/aster
+    % had \today but printed in the PDF on that site was the date below
+    December 26, 2007
+    % \today
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+
+\begin{abstract}
+This technical report (TR) gives details of a data reanalysis backing
+up a paper having the same authors as this TR
+and having the title that is quoted in the title of this TR.  This
+reanalysis was not in the first submission of the paper, which instead
+had analyses given in Chapters~3 and~4 of TR~658.  This analysis is for
+the second submission (to the same journal, \emph{American Naturalist})
+of that paper.
+Unlike the first analyses, these reanalyses directly estimate the fitness
+landscape rather than quantities related to it.
+The two analyses are also much more alike than the two analyses for the
+first submission.  Both estimate exactly the same quantities, although
+one has to work harder to do so.
+
+In an unrelated issue, we also give an example of subsampling a component
+of fitness and its affect on parameter estimates.  This issue was mentioned
+in the first draft of the paper, but this is the first worked example
+illustrating this method.
+\end{abstract}
+
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 70)
+ps.options(pointsize = 15)
+@
+
+\section{Creating this Document}
+
+This document is created from its source file \texttt{tr661.Rnw} using
+the R \texttt{Sweave} command and the \LaTeX\ document preparation system.
+First do
+\begin{verbatim}
+Sweave("tr661.Rnw")
+\end{verbatim}
+if you have downloaded the file, or do
+\begin{verbatim}
+Sweave(url("http://www.stat.umn.edu/geyer/aster/tr661/tr661.Rnw"))
+\end{verbatim}
+otherwise.
+This step takes an hour and a half on a fairly fast computer because
+of the Monte Carlo calculation in Section~\ref{sec:land-sim},
+and this step needs to be redone until the statements
+\texttt{print(ok)} on pages \pageref{pg:ok2}
+and \pageref{pg:ok1} print \texttt{TRUE}.
+
+Then process the output, \texttt{tr661.tex} and several files with
+suffixes \texttt{pdf} and \texttt{eps} in the usual fashion (which
+depends on your system and installation).
+
+\section{Introduction}
+
+The analysis presented in this technical report is one more attempt
+to do full justice to the \emph{Chamaecrista} data described below.
+As the experiment was designed there
+were multiple components of fitness.  For each plant that survived
+to that stage, fruits were counted (\texttt{fruit}) and then a random
+sample of fruits of size 3 was taken and the seeds in those fruits counted
+(\texttt{seed}).  This experimental design does not fit aster models perfectly
+(not the fault of the experimenters because the experiment was done before
+aster models were described).  It would have been better if seeds were
+counted for all fruits or for a fraction $p$ of fruits.
+
+Nevertheless, we do what we can.  Using a Monte Carlo calculation we can
+still estimate the fitness surface that corresponds to any aster model
+we decide fits the data.  We can use the parametric bootstrap to
+carry out statistical tests or confidence intervals, although these no
+longer have a simple relationship to the parameters of the fitted aster
+model (as they would if the experimental design had been more favorable
+to aster analysis).
+
+In Section~\ref{sec:both} we perform an aster analysis in which
+both components of fitness, \texttt{fruit} and \texttt{seed} are used,
+and fitness is deemed to be \verb@fruit * seed / 3@.  The multiplication
+in this definition complicates estimation of expected fitness.  The
+aster software can calculate the expectation of any linear combination
+of components of fitness, but it cannot calculate expectations of nonlinear
+functions of components of fitness.  Fortunately, expectations that cannot
+be calculated exactly can be approximated by Monte Carlo.  This takes time
+but is not otherwise problematic.
+
+In Section~\ref{sec:single} we perform an aster analysis in which
+\texttt{fruit} is deemed fitness.  This illustrates the typical situation
+in which a linear combination of fitness components is deemed fitness
+and no Monte Carlo calculation is needed.
+
+\section{Analysis involving Both Components of Fitness} \label{sec:both}
+
+\subsection{Data}
+
+We reanalyze a subset of the data analyzed by \citet{es}.
+These data are in the \texttt{chamae} dataset in the \texttt{aster}
+contributed package to the R statistical computing environment \citep{rcore}.
+Individuals of \emph{Chamaecrista fasciculata} (common name, partridge pea)
+were obtained from three locations in the country and planted in three field
+sites.  Of the complete data we only reanalyze here individuals
+planted in one field site (Minnesota).
+
+These data are already in ``long'' format, no need to use the \texttt{reshape}
+function on them to do aster analysis.  We will, however, need the
+``wide'' format for Lande-Arnold analysis \citep{la}.  So we do that, before
+making any changes (we will add newly defined variables) to \texttt{chamae}.
+<<wide>>=
+library(aster)
+data(chamae)
+chamaew <- reshape(chamae, direction = "wide", timevar = "varb",
+    v.names = "resp", varying = list(levels(chamae$varb)))
+names(chamaew)
+@
+
+For each individual, many characteristics were measured, three of which we
+consider phenotypic characters (so our $z$ is three-dimensional), and others
+which combine to make up an estimate of fitness.
+The three phenotypic characters are reproductive stage (\verb@STG1N@),
+log leaf number (\verb@LOGLVS@), and log leaf thickness (\verb@LOGSLA@).
+``At the natural end of the growing season, [they] recorded total pod number
+and seed counts from three representative pods; from these measures, [they]
+estimated [fitness]'' \citep[further explained in their note 12]{es}.
+
+% There are several complications in the estimation of fitness.
+% Some fruits (pods) had already dehisced by the time data were collected,
+% so seeds could not be counted.  The number of dehisced fruits are not recorded
+% in the data we are working with (although they could be reconstructed from
+% the original data).  Some individuals had fewer than three (non-dehisced)
+% fruits to count.
+
+% An aster model does not allow missing data as opposed to structural zeros,
+% which are data that are necessarily zero because other data are zero, for
+% example, that dead individuals have no fruits and individuals that have
+% zero fruits also have zero seeds.  Structural zeros are allowed, but true
+% missing data, random variables that are part of the statistical model and
+% that can have multiple possible values given the observed data, are not.
+% We know how to handle missing data in theory \citep{g,sg}, but this would
+% require Monte Carlo likelihood approximation (MCLA), a complication we
+% do not wish to introduce here, for which no computer implementation
+% currently exists (for aster models, MCLA has been implemented in many
+% other contexts).
+
+Although aster model theory in the published version of
+\citet{gws} does allow conditionally multinomial response variables,
+versions of the \texttt{aster} package up through 0.7-2, the current
+version at the time this was written, do not.
+Multinomial response, if we could use it, would allow us to deal
+individuals having seeds counted from 0, 1, 2, or 3 fruits.
+% To avoid the missing data issue, we ignore dehisced fruits, treating
+% them for the purposes of this example has having no seeds.
+% In contrast, \citet{es} imputed fitness in certain cases.
+To avoid multinomial response, we remove individuals with
+seeds counted for only one or two fruits (there were only four such).  
+
+\begin{figure}
+\begin{center}
+\setlength{\unitlength}{0.4 in}
+\begin{picture}(2.65,2.15)(-2.25,-2.10)
+\put(0,0){\makebox(0,0){$1$}}
+\put(-1,-1){\makebox(0,0){\ttfamily fecund}}
+\put(-2,-2){\makebox(0,0){\ttfamily seed}}
+\put(0,-2){\makebox(0,0){\ttfamily fruit}}
+\multiput(-0.25,-0.25)(-1,-1){2}{\vector(-1,-1){0.5}}
+\multiput(-0.75,-1.25)(1,-1){1}{\vector(1,-1){0.5}}
+\end{picture}
+\end{center}
+\caption{Graph for \emph{Chamaecrista} Aster Data.
+Arrows go from parent nodes to child nodes.
+Nodes are labeled by their associated variables.
+The only root node is associated with the constant variable $1$.
+\texttt{fecund} is Bernoulli (zero indicates no seeds, one indicates
+nonzero seeds).  If \texttt{fecund} is zero, then so are the other variables.
+If \texttt{fecund} is nonzero, then \texttt{fruit} (fruit count)
+and \texttt{seed} (seed count) are conditionally independent,
+\texttt{fruit} has a two-truncated negative binomial distribution,
+and \texttt{seed} has a zero-truncated negative binomial distribution.}
+\label{fig:graph:chamae}
+\end{figure}
+
+Figure~\ref{fig:graph:chamae} shows the graph of the aster model we use
+for these
+data.  Fruit count (\texttt{fruit}) and seed count (\texttt{seed}) are
+dependent only in that if one is zero, then so is the other (we only model
+fruit count for individuals who have seeds, because fruit count for other
+individuals is irrelevant).  Given that neither is zero (when
+\verb@fecund == 1@), they are conditionally independent.
+Given that fruit count is nonzero, it is at least three
+(by our data modifications).
+The conditional distribution of \texttt{seed} given that it is nonzero
+is what is called zero-truncated negative binomial,
+which is negative binomial conditioned on being greater than zero.
+By analogy we call the conditional distribution of \texttt{fruit} given
+that it is nonzero, two-truncated negative binomial,
+which is negative binomial conditioned on being greater than two.
+
+\subsection{Aster Analysis}
+
+We need to choose the non-exponential-family parameters (sizes)
+for the negative binomial distributions, since the \verb@aster@ package
+only does maximum likelihood for exponential family parameters.
+We start with the following values, which were chosen with knowledge
+of the maximum likelihood estimates for these parameters, which we find
+in Section~\ref{sec:mle}.  The values that are found then are written
+out to a file and loaded here if the file exists, so after several
+runs (of \texttt{Sweave}) we are reading in here the maximum likelihood
+values of these non-exponential-family parameters.
+<<setup-aster-families>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("chamae-alpha.rda"))
+options(show.error.messages = TRUE, warn = 0)
+ok <- exists("alpha.fruit") && exists("alpha.seed")
+if (! ok) {
+    alpha.fruit <- 3.0
+    alpha.seed <- 15.0
+}
+print(alpha.fruit)
+print(alpha.seed)
+@
+
+Then we set up the aster model framework.
+<<setup-aster>>=
+vars <- c("fecund", "fruit", "seed")
+pred <- c(0,1,1)
+famlist <- list(fam.bernoulli(), fam.poisson(),
+    fam.truncated.negative.binomial(size = alpha.seed, truncation = 0),
+    fam.truncated.negative.binomial(size = alpha.fruit, truncation = 2))
+fam <- c(1,4,3)
+@
+
+We can now fit our first aster model.
+<<out1>>=
+out1 <- aster(resp ~ varb + BLK, pred, fam, varb, id, root,
+    data = chamae, famlist = famlist)
+summary(out1, show.graph = TRUE)
+@
+The ``response'' \verb@resp@ is a numeric vector containing all the
+response variables (\verb@fecund@, \verb@fruit@, and \verb@seed@).
+The ``predictor'' \verb@varb@ is a factor with three levels distinguishing
+with \verb@resp@ which original response variable an element is.
+The predictor \verb@BLK@ has not been mentioned so far.
+It is block within the field where the plants were grown.
+
+% Delete as per Ruth criticism
+% One might think we should use \verb@varb * BLK@ but this uses up
+% too many parameters when we have not yet added the predictors of interest.
+% <<out1foo>>=
+% out1foo <- aster(resp ~ varb * BLK, pred, fam, varb, id, root,
+%     data = chamae, famlist = famlist)
+% summary(out1foo)
+% anova(out1, out1foo)
+% @
+% Despite the statistically significant improvement (based on the chi-square
+% approximation to the log likelihood ratio,
+% we do not want to
+% use up all our degrees of freedom before we put the predictors of
+% interest in the model.
+
+Now we add phenotypic variables.
+<<out2>>=
+out2 <- aster(resp ~ varb + BLK + LOGLVS + LOGSLA + STG1N,
+    pred, fam, varb, id, root, data = chamae, famlist = famlist)
+summary(out2)
+@
+One might think we should use \verb@varb * (LOGLVS + LOGSLA + STG1N)@
+but it turns out
+this is too many parameters and the Fisher information is ill conditioned,
+as shown by the need to use the \verb@info.tol@ argument.
+<<out2foo>>=
+out2foo <- aster(resp ~ BLK + varb * (LOGLVS + LOGSLA + STG1N),
+    pred, fam, varb, id, root, data = chamae, famlist = famlist)
+summary(out2foo, info.tol = 1e-11)
+anova(out2, out2foo)
+@
+Despite the statistically significant improvement (based on the chi-square
+approximation to the log likelihood ratio, which may not be valid with
+such an ill-conditioned Fisher information), we do not adopt this model
+(\verb@out2foo@) either.
+
+Although we cannot afford 9 parameters (3 levels of \verb@varb@ times 3
+predictor variables) for the interaction, we can afford 6,
+only putting the phenotype variables in at level \verb@fruit@ and \verb@seed@.
+Because we are fitting an unconditional aster model, the effects of these
+terms are passed down to \verb@fecund@.
+See the example in \citet{gws} for discussion of this phenomenon.
+<<out6>>=
+foo <- as.numeric(as.character(chamae$varb) == "fruit")
+chamae$LOGLVSfr <- chamae$LOGLVS * foo
+chamae$LOGSLAfr <- chamae$LOGSLA * foo
+chamae$STG1Nfr <- chamae$STG1N * foo
+foo <- as.numeric(as.character(chamae$varb) == "seed")
+chamae$LOGLVSsd <- chamae$LOGLVS * foo
+chamae$LOGSLAsd <- chamae$LOGSLA * foo
+chamae$STG1Nsd <- chamae$STG1N * foo
+
+out6 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + STG1Nfr +
+    LOGLVSsd + LOGSLAsd + STG1Nsd, pred, fam, varb, id, root, data = chamae,
+    famlist = famlist)
+summary(out6)
+@
+
+When we analyzed the Minnesota-Minnesota subset alone (the subset of
+these data consisting of only the Minnesota population) the
+there was no statistically significant effect of the phenotypic predictors
+on seed count.  In these data that effect is significant.
+<<oopsie>>=
+out5 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + STG1Nfr,
+    pred, fam, varb, id, root, data = chamae, famlist = famlist)
+summary(out5)
+anova(out5, out6)
+@
+
+A similar test
+<<poopsie>>=
+out4 <- aster(resp ~ varb + BLK + LOGLVSsd + LOGSLAsd + STG1Nsd,
+    pred, fam, varb, id, root, data = chamae, famlist = famlist)
+summary(out4)
+anova(out4, out6)
+@
+shows that the effect of these variables on fruit is significant.
+
+Now we consider quadratic terms.  Since the variable \verb@STG1N@
+has only a few values
+<<lookatit>>=
+sort(unique(chamae$STG1N))
+tabulate(chamae$STG1N)
+@
+there is little sense adding terms quadratic in this variable.
+
+The test
+<<quopsie>>=
+out7 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + I(LOGLVSfr^2) +
+    I(LOGSLAfr^2) + I(LOGLVSfr * LOGSLAfr) + STG1Nfr + LOGLVSsd +
+    LOGSLAsd + STG1Nsd,
+    pred, fam, varb, id, root, data = chamae, famlist = famlist)
+summary(out7, info.tol = 1e-9)
+anova(out6, out7)
+@
+shows that there appears to be a quadratic effect on fruit.
+The similar test
+<<quopsie-too>>=
+out8 <- aster(resp ~ varb + BLK + LOGLVSsd + LOGSLAsd + I(LOGLVSsd^2) +
+    I(LOGSLAsd^2) + I(LOGLVSsd * LOGSLAsd) + STG1Nsd + LOGLVSfr +
+    LOGSLAfr + STG1Nfr,
+    pred, fam, varb, id, root, data = chamae, famlist = famlist)
+summary(out8, info.tol = 1e-9)
+anova(out6, out8)
+@
+shows that there appears to also be a quadratic effect on seed.
+And
+<<quopsie-three>>=
+out9 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + I(LOGLVSfr^2) +
+    I(LOGSLAfr^2) + I(LOGLVSfr * LOGSLAfr) + STG1Nfr + LOGLVSsd + LOGSLAsd +
+    I(LOGLVSsd^2) + I(LOGSLAsd^2) + I(LOGLVSsd * LOGSLAsd) + STG1Nsd,
+    pred, fam, varb, id, root, data = chamae, famlist = famlist)
+summary(out9, info.tol = 1e-9)
+anova(out6, out7, out9)
+anova(out6, out8, out9)
+@
+Shows that the model that is quadratic in the effects on both fruit and
+seed is supported by the data.  There is some question about these because
+the Fisher information is close to singular (as evidenced by our need
+to supply the \verb@info.tol@ argument to the \verb@summary@ command),
+but we will go with \verb@out9@ as out ``best fitting'' model.
+
+\subsection{Maximum Likelihood Estimation of Size} \label{sec:mle}
+
+The \verb@aster@ function does not calculate the correct likelihood
+when the size parameters are considered unknown, because it drops
+terms that do not involve the exponential family parameters.
+However, the full log likelihood is easily calculated in R.
+<<full>>=
+x <- out9$x
+logl <- function(alpha.fruit, alpha.seed, theta, x) {
+    x.fecund <- x[ , 1]
+    theta.fecund <- theta[ , 1]
+    p.fecund <- 1 / (1 + exp(- theta.fecund))
+    logl.fecund <- sum(dbinom(x.fecund, 1, p.fecund, log = TRUE))
+    x.fruit <- x[x.fecund == 1, 2]
+    theta.fruit <- theta[x.fecund == 1, 2]
+    p.fruit <- (- expm1(theta.fruit))
+    logl.fruit <- sum(dnbinom(x.fruit, size = alpha.fruit,
+        prob = p.fruit, log = TRUE) - pnbinom(2, size = alpha.fruit,
+        prob = p.fruit, lower.tail = FALSE, log = TRUE))
+    x.seed <- x[x.fecund == 1, 3]
+    theta.seed <- theta[x.fecund == 1, 3]
+    p.seed <- (- expm1(theta.seed))
+    logl.seed <- sum(dnbinom(x.seed, size = alpha.seed,
+        prob = p.seed, log = TRUE) - pnbinom(0, size = alpha.seed,
+        prob = p.seed, lower.tail = FALSE, log = TRUE))
+    logl.fecund + logl.fruit + logl.seed
+}
+@
+We then calculate the profile likelihood for the two size parameters
+(\verb@alpha.fruit@ and \verb@alpha.seed@), maximizing over the other
+parameters.  Evaluating the profile log likelihood on a grid of points.
+We do not do this if the results would be the same as we got last time
+and have stored in the variable \verb@logl.seq@.
+\label{pg:ok2}
+<<full-gas>>=
+ok <- exists("alpha.fruit.save") && (alpha.fruit.save == alpha.fruit) &&
+    exists("alpha.seed.save") && (alpha.seed.save == alpha.seed) &&
+    exists("coef.save") && isTRUE(all.equal(coef.save, coefficients(out9)))
+print(ok)
+alpha.fruit.seq <- seq(1.5, 3.5, 0.25)
+alpha.seed.seq <- seq(10, 30, 0.5)
+if (! ok) {
+    logl.seq <- matrix(NA, nrow = length(alpha.fruit.seq),
+        ncol = length(alpha.seed.seq))
+    for (i in 1:length(alpha.fruit.seq)) {
+        for (j in 1:length(alpha.seed.seq)) {
+            famlist.seq <- famlist
+            famlist.seq[[3]] <- fam.truncated.negative.binomial(size =
+                alpha.seed.seq[j], truncation = 0)
+            famlist.seq[[4]] <- fam.truncated.negative.binomial(size =
+                alpha.fruit.seq[i], truncation = 2)
+            out9.seq <- aster(out9$formula, pred, fam, varb, id, root,
+                data = chamae, famlist = famlist.seq, parm = out9$coefficients)
+            theta.seq <- predict(out9.seq, model.type = "cond",
+                parm.type = "canon")
+            dim(theta.seq) <- dim(x)
+            logl.seq[i, j] <- logl(alpha.fruit.seq[i], alpha.seed.seq[j],
+                theta.seq, x)
+        }
+    }
+}
+
+##### interpolate #####
+alpha.fruit.interp <- seq(min(alpha.fruit.seq), max(alpha.fruit.seq), 0.01)
+alpha.seed.interp <- seq(min(alpha.seed.seq), max(alpha.seed.seq), 0.01)
+logl.foo <- matrix(NA, nrow = length(alpha.fruit.interp),
+    ncol = length(alpha.seed.seq))
+for (i in 1:length(alpha.seed.seq))
+    logl.foo[ , i] <- spline(alpha.fruit.seq, logl.seq[ , i],
+        n = length(alpha.fruit.interp))$y
+logl.bar <- matrix(NA, nrow = length(alpha.fruit.interp),
+    ncol = length(alpha.seed.interp))
+for (i in 1:length(alpha.fruit.interp))
+    logl.bar[i, ] <- spline(alpha.seed.seq, logl.foo[i, ],
+        n = length(alpha.seed.interp))$y
+imax.fruit <- row(logl.bar)[logl.bar == max(logl.bar)]
+imax.seed <- col(logl.bar)[logl.bar == max(logl.bar)]
+alpha.fruit.save <- alpha.fruit
+alpha.seed.save <- alpha.seed
+alpha.fruit <- alpha.fruit.interp[imax.fruit]
+alpha.seed <- alpha.seed.interp[imax.seed]
+coef.save <- coefficients(out9)
+##### save #####
+if (! ok) {
+    save(alpha.fruit, alpha.seed, alpha.fruit.save, alpha.seed.save,
+        coef.save, logl.seq, file = "chamae-alpha.rda", ascii = TRUE)
+}
+@
+At the end of this chunk we save the maximum likelihood estimates
+in a file which is read in at the beginning of this document.
+We also save some extra information so there is no need to do this
+step every time if there is no change in the alphas.
+
+Figure~\ref{fig:contour:too} (page~\pageref{fig:contour:too})
+shows the profile log likelihood for the size parameters.
+\begin{figure}
+\begin{center}
+<<label=contour,fig=TRUE,echo=FALSE>>=
+# image(alpha.fruit.interp, alpha.seed.interp, logl.bar - max(logl.bar),
+#     xlab = "size parameter for fruit", ylab = "size parameter for seed")
+lev <- pretty(logl.bar - max(logl.bar), 10)
+lev <- lev[lev != 0]
+lev <- lev[lev > min(logl.bar) - max(logl.bar)]
+lev <- sort(c(-5, -2, lev))
+contour(alpha.fruit.interp, alpha.seed.interp, logl.bar - max(logl.bar),
+    xlab = "size parameter for fruit", ylab = "size parameter for seed",
+    levels = lev)
+points(alpha.fruit, alpha.seed, pch = 19)
+@
+\end{center}
+\caption{Profile log likelihood for size parameters for the negative
+binomial distributions of fruit and seed.  Solid dot is maximum likelihood
+estimate.}
+\label{fig:contour:too}
+\end{figure}
+
+\subsection{The Fitness Landscape} \label{sec:land-sim}
+
+If we had ``aster-friendly'' data in which expected fitness was a mean value
+parameter of the aster model, we could immediately calculate the fitness
+landscape using the predict function (as in Chapter~3 of TR~658).
+Unfortunately, fitness, which in this example we take to be the product
+of \verb@fruit@ and \verb@seed@ divided by 3 (because seeds were counted for
+three fruits), has expectation that is not a mean value parameter
+(because the expectation of a product is not the product of the expectations).
+Nevertheless, we can calculate its expectation by simulation (Monte Carlo).
+
+We calculate for just one value of \verb@BLK@ and \verb@STG1N@.
+<<which>>=
+theblk <- "1"
+thestg <- 1
+@
+
+Figure~\ref{fig:surf} (page~\pageref{fig:surf})
+shows the scatter plots of the two phenotypic variables
+(\verb@LOGLVS@ and \verb@LOGSLA@, labeled \verb@LN@ and \verb@SLA@ because
+that is what they are called in the paper).  It is made by the following
+code.
+<<label=figsurftoo,include=FALSE>>=
+plot(chamaew$LOGLVS, chamaew$LOGSLA, xlab = "log(LN)", ylab = "log(SLA)")
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf,fig=TRUE,echo=FALSE>>=
+<<figsurftoo>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables.}
+\label{fig:surf}
+\end{figure}
+
+The point of making the plot Figure~\ref{fig:surf} is that we want
+to add contour lines showing the estimated fitness landscape.  To
+do that we first start with a grid of points across the figure.
+<<surf1>>=
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+z <- matrix(NA, nx, ny)
+x <- seq(ufoo[1], ufoo[2], length = nx)
+y <- seq(ufoo[3], ufoo[4], length = ny)
+xx <- outer(x, y^0)
+yy <- outer(x^0, y)
+xx <- as.vector(xx)
+yy <- as.vector(yy)
+n <- length(xx)
+@
+Then we create an appropriate \verb@newdata@ argument for
+the \verb@predict.aster@ function to ``predict'' at
+these points
+<<surf2>>=
+newdata <- data.frame(BLK = factor(rep(theblk, n), levels = levels(chamae$BLK)),
+    STG1N = rep(thestg, n), LOGLVS = xx, LOGSLA = yy, fecund = rep(1, n),
+    fruit = rep(3, n), seed = rep(5, n))
+renewdata <- reshape(newdata, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+renewdata <- data.frame(renewdata, root = 1)
+foo <- as.numeric(as.character(renewdata$varb) == "fruit")
+renewdata$LOGLVSfr <- renewdata$LOGLVS * foo
+renewdata$LOGSLAfr <- renewdata$LOGSLA * foo
+renewdata$STG1Nfr <- renewdata$STG1N * foo
+foo <- as.numeric(as.character(renewdata$varb) == "seed")
+renewdata$LOGLVSsd <- renewdata$LOGLVS * foo
+renewdata$LOGSLAsd <- renewdata$LOGSLA * foo
+renewdata$STG1Nsd <- renewdata$STG1N * foo
+@
+Then we predict the conditional canonical parameter $\theta$
+which is needed for simulation using the \verb@raster@ function.
+<<surf3>>=
+theta <- predict(out9, newdata = renewdata, varvar = varb, idvar = id,
+    root = root, model.type = "conditional", parm.type = "canonical")
+theta <- matrix(theta, nrow = nrow(newdata), ncol = ncol(out9$x))
+@
+Then we carry out a Monte Carlo approximation of the fitness landscape.
+Because this function may take a lot of time to run,
+we store the results in the current working directory, and simply load
+them if they exist.
+<<surf4>>=
+root <- matrix(1, nrow(theta), ncol(theta))
+nsim <- 5e5
+options(show.error.messages = FALSE, warn = -1)
+try(load("zzz.rda"))
+options(show.error.messages = TRUE, warn = 0)
+ok <- exists("zfit") && exists("stime") && exists("nsim.save") &&
+    (nsim == nsim.save) && exists("theta.save") &&
+    isTRUE(all.equal(theta.save, theta))
+if (! ok) {
+    zfit <- double(n)
+    stime <- system.time(
+    for (isim in 1:nsim) {
+        xnew <- raster(theta, pred, fam, root = root, famlist = famlist)
+        zfit <- zfit + xnew[ , 2] * xnew[ , 3] / 3
+    }
+    )
+    zfit <- zfit / nsim
+    nsim.save <- nsim
+    theta.save <- theta
+    save(zfit, nsim.save, theta.save, stime, file = "zzz.rda")
+}
+@
+The vector \verb@zfit@ is the Monte Carlo estimate;
+Figure~\ref{fig:surf2} (page~\pageref{fig:surf2}),
+which is made by the following code, shows it.
+<<label=figsurf2too,include=FALSE>>=
+plot(chamaew$LOGLVS, chamaew$LOGSLA, xlab = "log(LN)", ylab = "log(SLA)", pch = ".")
+zfit <- matrix(zfit, nrow = length(x))
+contour(x, y, zfit, add = TRUE)
+contour(x, y, zfit, levels = c(5, 10, 25), add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf2,fig=TRUE,echo=FALSE>>=
+<<figsurf2too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables with contours of fitness
+landscape estimated by Monte Carlo.}
+\label{fig:surf2}
+\end{figure}
+
+The time spent doing the Monte Carlo calculation of the likelihood
+surface was
+<<time>>=
+secs <- floor(stime[1])
+mins <- floor(secs / 60)
+secs <- secs - mins * 60
+hrs <- floor(mins / 60)
+mins <- mins - hrs * 60
+@
+\Sexpr{hrs} hours, \Sexpr{mins} minutes, and \Sexpr{secs} seconds.
+We could easily use an even larger Monte Carlo sample size to get smoother
+curves in this figure.
+
+\subsection{Lande-Arnold Analysis}
+
+In contrast to the aster analysis, the Lande-Arnold analysis is very simple.
+<<ols>>=
+chamaew$fit <- chamaew$fruit * chamaew$seed / 3
+
+lout <- lm(fit ~ LOGLVS + LOGSLA + STG1N + I(LOGLVS^2) +
+    I(LOGLVS * LOGSLA) + I(LOGSLA^2), data = chamaew)
+summary(lout)
+@
+The information contained in the printout of \verb@summary(lout)@
+with the exception of
+the \verb@Estimate@ column is invalid because
+the OLS model assumptions are not satisfied,
+as acknowledged by \citet{es} and \citet{etterson}.
+All we know about the statistical properties of these estimators
+is that they are best linear unbiased by the Gauss-Markov theorem
+\citep[p.~510]{lindgren}.  We know nothing about their sampling distribution
+except what we could learn by simulating the aster model.
+Therefore measures of statistical significance including standard
+errors (\verb@Std. Error@ column), $t$-statistics (\verb@t value@ column),
+and $P$-values (\verb@Pr(>|t|)@ column) are erroneous.
+
+Figure~\ref{fig:surf3} (page~\pageref{fig:surf3}),
+which is made by the following code, shows the best quadratic approximation
+to the fitness landscape fit above by multiple regression together with
+the estimate from the aster model from Figure~\ref{fig:surf2}.
+It is made by the following code, first the prediction
+<<ols-predict>>=
+zzols <- predict(lout, newdata = data.frame(LOGLVS = xx, LOGSLA = yy,
+    STG1N = rep(thestg, length(xx))))
+@
+<<label=figsurf3too,include=FALSE>>=
+plot(chamaew$LOGLVS, chamaew$LOGSLA, xlab = "log(LN)", ylab = "log(SLA)", pch = ".")
+contour(x, y, zfit, add = TRUE)
+contour(x, y, zfit, levels = c(5, 10, 25), add = TRUE)
+zzols <- matrix(zzols, nrow = length(x))
+contour(x, y, zzols, add = TRUE, lty = "dotted")
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf3,fig=TRUE,echo=FALSE>>=
+<<figsurf3too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables with contours of fitness
+landscape estimated by Monte Carlo (solid) and the best quadratic
+approximation (dotted).}
+\label{fig:surf3}
+\end{figure}
+
+Note that fitness is a positive quantity.  Hence the negative contours
+in the best quadratic approximation are nonsense, although they are the
+inevitable result of approximating a surface that is not close to quadratic
+with a quadratic function.  Note also that the best quadratic approximation
+has a saddle point and no maximum, whereas it appears that the actual fitness
+landscape does have a maximum, albeit near the edge of the distribution
+of phenotypes.
+Apparently, the saddle point is the result of the quadratic function
+trying to be nearly flat on the left hand side of the figure (a quadratic
+function cannot have an asymptote; the saddle point is the next best thing).
+A quadratic function cannot have both a saddle point and a maximum; it has
+to choose one or the other.  Unfortunately, least squares makes the wrong
+choice from the biological point of view.  It is more important to get the
+maximum right than the flat spot (where fitness is close to zero).
+
+\subsection{Goodness of Fit} \label{sec:fit}
+
+In this section we examine three issues.
+Is the assumed conditional independence of \verb@fruit@ and \verb@seed@
+given \verb@fecund == 1@ correct?
+Are the assumed conditional distributions for \verb@fruit@ and \verb@seed@
+given \verb@fecund == 1@ correct?
+
+\subsubsection{Conditional Independence of Fruit and Seed}
+
+We tackle the easiest first.
+Easy in a sense because impossible.
+We cannot test for independence.
+The best we can do is a nonparametric test for lack of correlation.
+<<check-independence>>=
+woof <- chamaew$fruit[chamaew$fecund == 1]
+meow <- chamaew$seed[chamaew$fecund == 1]
+cout <- cor.test(woof, meow, method = "kendall")
+print(cout)
+@
+The correlation (Kendall's tau) is statistically significantly
+different from zero, but perhaps, at \Sexpr{round(cout$estimate, 3)}
+not practically significant.  In any case, having no way put dependence
+in our aster model (other than the dependence induced by the
+predecessor-successor relationships indicated by the graphical model),
+we proceed as if not practically significant.
+Figure~\ref{fig:fig-kendall} (page~\pageref{fig:fig-kendall})
+shows the scatter plot of the fitted mean value parameter (for each individual)
+versus the observed value for fruit count.
+\begin{figure}
+\begin{center}
+<<label=kendall,fig=TRUE,echo=FALSE>>=
+plot(woof, meow, xlab = "fruit", ylab = "seed")
+@
+\end{center}
+\caption{Scatter plot fruit count versus seed count conditioned on
+nonzero fitness.}
+\label{fig:fig-kendall}
+\end{figure}
+
+\subsubsection{Conditional of Fruit given Nonzero Fitness} \label{sec:resid}
+
+Residual analysis of generalized linear models (GLM) is tricky.
+(Our aster model becomes a GLM when we consider only the conditional
+distribution associated with one arrow.)
+Many different residuals have been proposed \citep{ds}.
+We start with the simplest, so called Pearson residuals.
+
+<<conditional-mvp>>=
+xi.hat <- predict(out9, model.type = "cond", parm.type = "mean")
+xi.hat <- matrix(xi.hat, nrow = nrow(out9$x), ncol = ncol(out9$x))
+@
+<<pearson-fruit>>=
+range(woof)
+nwoof <- length(woof)
+woof.theta <- theta[chamaew$fecund == 1, 2]
+woof.xi <- xi.hat[chamaew$fecund == 1, 2]
+wgrad <- double(nwoof)
+winfo <- double(nwoof)
+for (i in 1:nwoof) {
+    wgrad[i] <- famfun(famlist[[4]], deriv = 1, woof.theta[i])
+    winfo[i] <- famfun(famlist[[4]], deriv = 2, woof.theta[i])
+}
+all.equal(woof.xi, wgrad)
+pearson <- (woof - woof.xi) / sqrt(winfo)
+@
+Figure~\ref{fig:pearson-fruit} (page~\pageref{fig:pearson-fruit})
+shows the scatter plot of the Pearson residuals for fruit count plotted
+against the expected fruit count given that fruit count is nonzero
+(for each individual) for individuals with nonzero fitness only.
+\begin{figure}
+\begin{center}
+<<label=pearfruit,fig=TRUE,echo=FALSE>>=
+plot(woof.xi, pearson, xlab = "fitted values",
+    ylab = "Pearson residuals")
+@
+\end{center}
+\caption{Pearson residuals for fruit count given nonzero fitness plotted
+against fitted values.}
+\label{fig:pearson-fruit}
+\end{figure}
+
+Figure~\ref{fig:pearson-fruit} is not perfect.
+There are \Sexpr{sum(abs(pearson) > 10)} individuals with Pearson residual
+greater than 10 in absolute value and an
+additional \Sexpr{sum(abs(pearson) <= 10 & abs(pearson) > 5)}
+individuals with Pearson residual between 5 and 10 in absolute value
+(out of \Sexpr{length(pearson)} total residuals).
+One does not expect Pearson residuals for a generalized linear model, much
+less an aster model, to behave as well for normal-theory linear models,
+but the lack of fit here is a bit worrying.  The large positive ``outliers''
+(which are not outliers in the sense of being bad data) indicate that
+our negative binomial model does not perfectly model these data
+(the negative binomial model is, however, an enormous improvement over
+the Poisson model, which is not shown).
+
+\subsubsection{Conditional of Seed given Nonzero Fitness}
+
+Now we do the analogous plot of the conditional distribution of \verb@seed@
+given nonzero fitness.
+<<pearson-seed>>=
+range(meow)
+nmeow <- length(meow)
+meow.theta <- theta[chamaew$fecund == 1, 3]
+meow.xi <- xi.hat[chamaew$fecund == 1, 3]
+wgrad <- double(nmeow)
+winfo <- double(nmeow)
+for (i in 1:nmeow) {
+    wgrad[i] <- famfun(famlist[[3]], deriv = 1, meow.theta[i])
+    winfo[i] <- famfun(famlist[[3]], deriv = 2, meow.theta[i])
+}
+all.equal(meow.xi, wgrad)
+pearson <- (meow - meow.xi) / sqrt(winfo)
+@
+Figure~\ref{fig:pearson-seed} (page~\pageref{fig:pearson-seed})
+shows the scatter plot of the Pearson residuals for seed count plotted
+against the expected seed count given that fruit count is nonzero
+(for each individual) for individuals with nonzero fitness only.
+\begin{figure}
+\begin{center}
+<<label=pearseed,fig=TRUE,echo=FALSE>>=
+plot(meow.xi, pearson, xlab = "fitted values",
+    ylab = "Pearson residuals")
+@
+\end{center}
+\caption{Pearson residuals for seed count given nonzero fitness plotted
+against fitted values.}
+\label{fig:pearson-seed}
+\end{figure}
+There are no obvious problem with Figure~\ref{fig:pearson-seed}.
+Certainly, it is much less troubling than Figure~\ref{fig:pearson-fruit}.
+
+\subsection{OLS Diagnostic Plots}
+
+Although unnecessary because we know the assumptions justifying OLS are
+badly violated, here are some diagnostic plots for the OLS regression.
+
+Figure~\ref{fig:foo1} (page~\pageref{fig:foo1})
+shows the plot of residuals versus fitted values made by the R statement
+<<label=foo1too,include=FALSE>>=
+plot(lout, which = 1, add.smooth = FALSE, id.n = 0,
+    sub.caption = "", caption = "")
+@
+\begin{figure}
+\begin{center}
+<<label=foo1,fig=TRUE,echo=FALSE>>=
+<<foo1too>>
+@
+\end{center}
+\caption{Residuals versus Fitted plot for OLS fit with blocks.}
+\label{fig:foo1}
+\end{figure}
+
+Figure~\ref{fig:foo2} (page~\pageref{fig:foo2})
+shows the Normal Q-Q (quantile-quantile) plot made by the R statement
+<<label=foo2too,include=FALSE>>=
+plot(lout, which = 2, id.n = 0, sub.caption = "")
+@
+\begin{figure}
+\begin{center}
+<<label=foo2,fig=TRUE,echo=FALSE>>=
+<<foo2too>>
+@
+\end{center}
+\caption{Normal Q-Q plot for OLS fit with blocks.}
+\label{fig:foo2}
+\end{figure}
+
+% Both look terrible.
+Clearly the errors are highly non-normal.
+% (a fact we did not need plots to know).
+
+\section{Analysis involving a Single Component of Fitness} \label{sec:single}
+
+Before doing anything, we remove all the variables generated in
+the preceding analyses.
+<<remove>>=
+rm(list = ls())
+ls(all.names = TRUE)
+@
+
+\subsection{Data}
+
+We reanalyze a subset of the data analyzed by \citet{es}.
+These data are in the \texttt{chamae2} dataset in the \texttt{aster}
+contributed package to the R statistical computing environment.
+This dataset is restricted to the Minnesota site of the original (larger)
+data.
+
+These data are already in ``long'' format, no need to use the \texttt{reshape}
+function on them to do aster analysis.  We will, however, need the
+``wide'' format for Lande-Arnold analysis.  So we do that, before
+making any changes (we will add newly defined variables) to \texttt{chamae2}.
+<<wide-too>>=
+library(aster)
+data(chamae2)
+chamae2w <- reshape(chamae2, direction = "wide", timevar = "varb",
+    v.names = "resp", varying = list(levels(chamae2$varb)))
+names(chamae2w)
+@
+
+We model fruit count as having a zero-inflated negative binomial distribution.
+The zero inflation allows for excess (or deficit) of individuals having
+zero fruit (over and above the small number of zeros that would occur
+if the distribution were pure negative binomial).  In an aster model
+this is done by having a Bernoulli node followed by a zero-truncated
+negative binomial node (each individual having a simple graph with two nodes).
+This means the event that an individual has one or more fruits is modeled
+as Bernoulli, and the distribution of the number of fruit given that the
+number is at least one is modeled as zero-truncated negative binomial.
+
+\section{Aster Analysis}
+
+We need to choose the non-exponential-family parameter (size)
+for the negative binomial distribution, since the \verb@aster@ package
+only does maximum likelihood for exponential family parameters.
+We start with the following value, which was chosen with knowledge
+of the maximum likelihood estimate for this parameter, which we find
+in Section~\ref{sec:mle-too}.  The value that is found then is written
+out to a file and loaded here if the file exists, so after several
+runs (of \texttt{Sweave}) we are reading in here the maximum likelihood
+value of this non-exponential-family parameter.
+<<setup-aster-families-too>>=
+options(show.error.messages = FALSE, warn = -1)
+try(load("chamae2-alpha.rda"))
+options(show.error.messages = TRUE, warn = 0)
+ok <- exists("alpha.fruit")
+if (! ok) {
+    alpha.fruit <- 3.0
+}
+print(alpha.fruit)
+@
+
+Then we set up the aster model framework.
+<<setup-aster-too>>=
+vars <- c("fecund", "fruit")
+pred <- c(0, 1)
+famlist <- list(fam.bernoulli(),
+    fam.truncated.negative.binomial(size = alpha.fruit, truncation = 0))
+fam <- c(1,2)
+@
+
+We can now fit our first aster model.
+<<out1-too>>=
+out1 <- aster(resp ~ varb + BLK, pred, fam, varb, id, root,
+    data = chamae2, famlist = famlist)
+summary(out1, show.graph = TRUE)
+@
+The ``response'' \verb@resp@ is a numeric vector containing all the
+response variables (\verb@fecund@ and \verb@fruit@).
+The ``predictor'' \verb@varb@ is a factor with two levels distinguishing
+with \verb@resp@ which original response variable an element is.
+The predictor \verb@BLK@ is block within the field where the plants were grown.
+
+Now we add phenotypic variables.
+<<out2-too>>=
+out2 <- aster(resp ~ varb + BLK + LOGLVS + LOGSLA + STG1N,
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out2, info.tol = 1e-9)
+@
+
+An alternative model with the same number of parameters as
+\verb@out2@ puts in the regression coefficients only at the ``fitness'' level
+(here \verb@fruit@).  This is similar to the example in \citet{gws}.
+Because we are fitting an unconditional aster model, the effects of these
+terms are passed down to \verb@fecund@.
+<<out6-too>>=
+foo <- as.numeric(as.character(chamae2$varb) == "fruit")
+chamae2$LOGLVSfr <- chamae2$LOGLVS * foo
+chamae2$LOGSLAfr <- chamae2$LOGSLA * foo
+chamae2$STG1Nfr <- chamae2$STG1N * foo
+
+out6 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + STG1Nfr,
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out6, info.tol = 1e-9)
+@
+It is not possible to compare \verb@out2@ and \verb@out6@ by standard
+methods (likelihood ratio test) because the models are not nested.
+They seem to fit equally well, and \verb@out6@ more directly models
+the relation of fitness (here defined as \verb@fruit@) to phenotypic
+variables.
+
+Now we consider quadratic terms.  Since the variable \verb@STG1N@
+has only a few values
+<<lookatit-too>>=
+sort(unique(chamae2$STG1N))
+tabulate(chamae2$STG1N)
+@
+there is little sense adding terms quadratic in this variable.
+
+The test
+<<out7-too>>=
+out7 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + I(LOGLVSfr^2) +
+    I(LOGSLAfr^2) + I(LOGLVSfr * LOGSLAfr) + STG1Nfr,
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out7, info.tol = 1e-9)
+anova(out6, out7)
+@
+shows that there appears to be a quadratic effect on fruit.
+
+\subsection{Maximum Likelihood Estimation of Size} \label{sec:mle-too}
+
+The \verb@aster@ function does not calculate the correct likelihood
+when the size parameters are considered unknown, because it drops
+terms that do not involve the exponential family parameters.
+However, the full log likelihood is easily calculated in R.
+<<full-too>>=
+x <- out7$x
+logl <- function(alpha.fruit, theta, x) {
+    x.fecund <- x[ , 1]
+    theta.fecund <- theta[ , 1]
+    p.fecund <- 1 / (1 + exp(- theta.fecund))
+    logl.fecund <- sum(dbinom(x.fecund, 1, p.fecund, log = TRUE))
+    x.fruit <- x[x.fecund == 1, 2]
+    theta.fruit <- theta[x.fecund == 1, 2]
+    p.fruit <- (- expm1(theta.fruit))
+    logl.fruit <- sum(dnbinom(x.fruit, size = alpha.fruit,
+        prob = p.fruit, log = TRUE) - pnbinom(0, size = alpha.fruit,
+        prob = p.fruit, lower.tail = FALSE, log = TRUE))
+    logl.fecund + logl.fruit
+}
+@
+We then calculate the profile likelihood for the size parameter
+\verb@alpha.fruit@ maximizing over the other parameters,
+evaluating the profile log likelihood on a grid of points.
+We do not do this if the results would be the same as we got last time
+and have stored in the variable \verb@logl.seq@.
+\label{pg:ok1}
+<<full-gas-too>>=
+ok <- exists("alpha.fruit.save") && (alpha.fruit.save == alpha.fruit) &&
+    exists("coef.save") && isTRUE(all.equal(coef.save, coefficients(out7)))
+print(ok)
+alpha.fruit.seq <- seq(1.5, 4.5, 0.25)
+if (! ok) {
+logl.seq <- double(length(alpha.fruit.seq))
+    for (i in 1:length(alpha.fruit.seq)) {
+        famlist.seq <- famlist
+        famlist.seq[[2]] <- fam.truncated.negative.binomial(size =
+            alpha.fruit.seq[i], truncation = 0)
+        out7.seq <- aster(out7$formula, pred, fam, varb, id, root,
+            data = chamae2, famlist = famlist.seq, parm = out7$coefficients)
+        theta.seq <- predict(out7.seq, model.type = "cond",
+            parm.type = "canon")
+        dim(theta.seq) <- dim(x)
+        logl.seq[i] <- logl(alpha.fruit.seq[i], theta.seq, x)
+    }
+}
+
+##### interpolate #####
+alpha.foo <- seq(min(alpha.fruit.seq), max(alpha.fruit.seq), 0.01)
+logl.foo <- spline(alpha.fruit.seq, logl.seq, n = length(alpha.foo))$y
+imax <- seq(along = alpha.foo)[logl.foo == max(logl.foo)]
+alpha.fruit.save <- alpha.fruit
+alpha.fruit <- alpha.foo[imax]
+coef.save <- coefficients(out7)
+##### save #####
+if (! ok) {
+    save(alpha.fruit, alpha.fruit.save, coef.save, logl.seq,
+        file = "chamae2-alpha.rda", ascii = TRUE)
+}
+@
+At the end of this chunk we save the maximum likelihood estimate
+in a file which is read in at the beginning of this document.
+We also save some extra information so there is no need to do this
+step every time if there is no change in the alpha.
+
+Figure~\ref{fig:contour-too} (page~\pageref{fig:contour-too})
+shows the profile log likelihood for the size parameter.
+\begin{figure}
+\begin{center}
+<<label=contour-too,fig=TRUE,echo=FALSE>>=
+plot(alpha.fruit.seq, logl.seq - max(logl.foo),
+    ylab = "log likelihood", xlab = expression(alpha))
+lines(alpha.foo, logl.foo - max(logl.foo))
+points(alpha.foo[imax], 0, pch = 19)
+@
+\end{center}
+\caption{Profile log likelihood for size parameter for the (zero-truncated)
+negative binomial distribution of fruit.  Hollow dots are points at which
+the log likelihood was evaluated exactly.  Curve is the interpolating
+spline.  Solid dot is maximum likelihood estimate.}
+\label{fig:contour-too}
+\end{figure}
+
+\subsection{The Fitness Landscape}
+
+We calculate for just one value of \verb@BLK@ and \verb@STG1N@.
+<<which-too>>=
+theblk <- "1"
+thestg <- 1
+@
+
+Figure~\ref{fig:surf-too} (page~\pageref{fig:surf-too})
+shows the scatter plots of the two phenotypic variables
+(\verb@LOGLVS@ and \verb@LOGSLA@, labeled \verb@LN@ and \verb@SLA@ because
+that is what they are called in the paper).  It is made by the following
+code.
+<<label=figsurftoo-too,include=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = "log(LN)", ylab = "log(SLA)")
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf-too,fig=TRUE,echo=FALSE>>=
+<<figsurftoo-too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables.}
+\label{fig:surf-too}
+\end{figure}
+
+The point of making the plot Figure~\ref{fig:surf-too} is that we want
+to add contour lines showing the estimated fitness landscape.  To
+do that we first start with a grid of points across the figure.
+<<surf1-too>>=
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+z <- matrix(NA, nx, ny)
+x <- seq(ufoo[1], ufoo[2], length = nx)
+y <- seq(ufoo[3], ufoo[4], length = ny)
+xx <- outer(x, y^0)
+yy <- outer(x^0, y)
+xx <- as.vector(xx)
+yy <- as.vector(yy)
+n <- length(xx)
+@
+
+Then we create an appropriate \verb@newdata@ argument for
+the \verb@predict.aster@ function to ``predict'' at
+these points
+<<surf2-too>>=
+newdata <- data.frame(
+    BLK = factor(rep(theblk, n), levels = levels(chamae2$BLK)),
+    STG1N = rep(thestg, n), LOGLVS = xx, LOGSLA = yy, fecund = rep(1, n),
+    fruit = rep(3, n))
+renewdata <- reshape(newdata, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+renewdata <- data.frame(renewdata, root = 1)
+foo <- as.numeric(as.character(renewdata$varb) == "fruit")
+renewdata$LOGLVSfr <- renewdata$LOGLVS * foo
+renewdata$LOGSLAfr <- renewdata$LOGSLA * foo
+renewdata$STG1Nfr <- renewdata$STG1N * foo
+@
+@
+Then we predict the unconditional mean value parameter $\tau$,
+for which the ``fruit'' component is expected fitness.
+<<surf3-too>>=
+tau <- predict(out7, newdata = renewdata, varvar = varb, idvar = id,
+    root = root)
+tau <- matrix(tau, nrow = nrow(newdata), ncol = ncol(out7$x))
+dimnames(tau) <- list(NULL, vars)
+zfit <- tau[ , "fruit"]
+@
+
+Figure~\ref{fig:surf2-too} (page~\pageref{fig:surf2-too}),
+which is made by the following code, shows it.
+<<label=figsurf2too-too,include=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = "log(LN)", ylab = "log(SLA)", pch = ".")
+zfit <- matrix(zfit, nrow = length(x))
+contour(x, y, zfit, add = TRUE)
+contour(x, y, zfit, levels = c(5, 10, 25), add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf2-too,fig=TRUE,echo=FALSE>>=
+<<figsurf2too-too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables with contours of fitness
+landscape estimated by the aster model.}
+\label{fig:surf2-too}
+\end{figure}
+
+\subsection{Lande-Arnold Analysis}
+
+In contrast to the aster analysis, the Lande-Arnold analysis is very simple.
+<<ols-too>>=
+lout <- lm(fruit ~ LOGLVS + LOGSLA + STG1N + I(LOGLVS^2) +
+    I(LOGLVS * LOGSLA) + I(LOGSLA^2), data = chamae2w)
+summary(lout)
+@
+The information contained in the printout of \verb@summary(lout)@
+with the exception of
+the \verb@Estimate@ column is invalid because
+the OLS model assumptions are not satisfied,
+as acknowledged by \citet{es} and \citet{etterson}.
+All we know about the statistical properties of these estimators
+is that they are best linear unbiased by the Gauss-Markov theorem
+\citep[p.~510]{lindgren}.  We know nothing about their sampling distribution
+except what we could learn by simulating the aster model.
+Therefore measures of statistical significance including standard
+errors (\verb@Std. Error@ column), $t$-statistics (\verb@t value@ column),
+and $P$-values (\verb@Pr(>|t|)@ column) are erroneous.
+
+Figure~\ref{fig:surf3-too} (page~\pageref{fig:surf3-too}),
+which is made by the following code, shows the best quadratic approximation
+to the fitness landscape fit above by multiple regression together with
+the estimate from the aster model from Figure~\ref{fig:surf2-too}.
+It is made by the following code, first the prediction
+<<ols-predict-too>>=
+zzols <- predict(lout, newdata = data.frame(LOGLVS = xx, LOGSLA = yy,
+    STG1N = rep(thestg, length(xx))))
+@
+<<label=figsurf3too-too,include=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = "log(LN)", ylab = "log(SLA)", pch = ".")
+contour(x, y, zfit, add = TRUE)
+contour(x, y, zfit, levels = c(5, 10, 25), add = TRUE)
+zzols <- matrix(zzols, nrow = length(x))
+contour(x, y, zzols, add = TRUE, lty = "dotted")
+@
+\begin{figure}
+\begin{center}
+<<label=figsurf3-too,fig=TRUE,echo=FALSE>>=
+<<figsurf3too-too>>
+@
+\end{center}
+\caption{Scatterplot of phenotypic variables with contours of fitness
+landscape estimated by the aster model (solid) and the best quadratic
+approximation (dotted).}
+\label{fig:surf3-too}
+\end{figure}
+
+Note that fitness is a positive quantity.  Hence the negative contours
+in the best quadratic approximation are nonsense, although they are the
+inevitable result of approximating a surface that is not close to quadratic
+with a quadratic function.  Note also that the best quadratic approximation
+has a saddle point and no maximum, whereas it appears that the actual fitness
+landscape does have a maximum, albeit near the edge of the distribution
+of phenotypes.
+Apparently, the saddle point is the result of the quadratic function
+trying to be nearly flat on the left hand side of the figure (a quadratic
+function cannot have an asymptote; the saddle point is the next best thing).
+A quadratic function cannot have both a saddle point and a maximum; it has
+to choose one or the other.  Unfortunately, least squares makes the wrong
+choice from the biological point of view.  It is more important to get the
+maximum right than the flat spot (where fitness is close to zero).
+
+\subsection{Goodness of Fit} \label{sec:fit-too}
+
+In this section we examine goodness of fit to the
+assumed conditional distributions for \verb@fruit@
+given \verb@fecund == 1@ by looking at a residual plot.
+
+Residual analysis of generalized linear models (GLM) is tricky.
+(Our aster model becomes a GLM when we consider only the conditional
+distribution associated with one arrow.)
+Many different residuals have been proposed \citep{ds}.
+We start with the simplest, so called Pearson residuals.
+
+<<conditional-mvp-and-canon>>=
+xi.hat <- predict(out7, model.type = "cond", parm.type = "mean")
+xi.hat <- matrix(xi.hat, nrow = nrow(out7$x), ncol = ncol(out7$x))
+theta.hat <- predict(out7, model.type = "cond", parm.type = "canon")
+theta.hat <- matrix(theta.hat, nrow = nrow(out7$x), ncol = ncol(out7$x))
+@
+<<pearson-fruit-too>>=
+woof <- chamae2w$fruit[chamae2w$fecund == 1]
+range(woof)
+nwoof <- length(woof)
+woof.theta <- theta.hat[chamae2w$fecund == 1, 2]
+woof.xi <- xi.hat[chamae2w$fecund == 1, 2]
+wgrad <- double(nwoof)
+winfo <- double(nwoof)
+for (i in 1:nwoof) {
+    wgrad[i] <- famfun(famlist[[2]], deriv = 1, woof.theta[i])
+    winfo[i] <- famfun(famlist[[2]], deriv = 2, woof.theta[i])
+}
+all.equal(woof.xi, wgrad)
+pearson <- (woof - woof.xi) / sqrt(winfo)
+@
+Figure~\ref{fig:fig-pearson-fruit-too}
+(page~\pageref{fig:fig-pearson-fruit-too})
+shows the scatter plot of the Pearson residuals for fruit count plotted
+against the expected fruit count given that fruit count is nonzero
+(for each individual) for individuals with nonzero fitness only.
+\begin{figure}
+\begin{center}
+<<label=pearfruit-too,fig=TRUE,echo=FALSE>>=
+plot(woof.xi, pearson, xlab = "fitted values",
+    ylab = "Pearson residuals")
+@
+\end{center}
+\caption{Pearson residuals for fruit count given nonzero fitness plotted
+against fitted values.}
+\label{fig:fig-pearson-fruit-too}
+\end{figure}
+
+Figure~\ref{fig:fig-pearson-fruit-too} is not perfect.
+There are \Sexpr{sum(pearson > 5)} individuals with Pearson residual
+greater than 5 and an
+additional \Sexpr{sum(pearson <= 5 & pearson > 3)}
+individuals with Pearson residual between 3 and 5
+(out of \Sexpr{length(pearson)} total residuals).
+There are \Sexpr{sum(pearson < -3)} individuals with Pearson residual
+less than $-3$.
+One does not expect Pearson residuals for a generalized linear model, much
+less an aster model, to behave as well for normal-theory linear models,
+but the lack of fit here is a bit worrying.  The large positive ``outliers''
+(which are not outliers in the sense of being bad data) indicate that
+our negative binomial model does not perfectly model these data
+(the negative binomial model is, however, an enormous improvement over
+the Poisson model, which is not shown).
+
+\subsection{OLS Diagnostic Plots}
+
+Although unnecessary because we know the assumptions justifying OLS are
+badly violated, here are some diagnostic plots for the OLS regression.
+
+Figure~\ref{fig:foo3} (page~\pageref{fig:foo3})
+shows the plot of residuals versus fitted values made by the R statement
+<<label=foo3too,include=FALSE>>=
+plot(lout, which = 1, add.smooth = FALSE, id.n = 0,
+    sub.caption = "", caption = "")
+@
+\begin{figure}
+\begin{center}
+<<label=foo3,fig=TRUE,echo=FALSE>>=
+<<foo3too>>
+@
+\end{center}
+\caption{Residuals versus Fitted plot for OLS fit with blocks.}
+\label{fig:foo3}
+\end{figure}
+
+Figure~\ref{fig:foo4} (page~\pageref{fig:foo4})
+shows the Normal Q-Q (quantile-quantile) plot made by the R statement
+<<label=foo4too,include=FALSE>>=
+plot(lout, which = 2, id.n = 0, sub.caption = "")
+@
+\begin{figure}
+\begin{center}
+<<label=foo4,fig=TRUE,echo=FALSE>>=
+<<foo4too>>
+@
+\end{center}
+\caption{Normal Q-Q plot for OLS fit with blocks.}
+\label{fig:foo4}
+\end{figure}
+
+% Both look terrible.
+Clearly the errors are highly non-normal.
+% (a fact we did not need plots to know).
+
+\section{Discussion}
+
+Our two analyses, Section~\ref{sec:both} and Section~\ref{sec:single}
+are quite similar.  The main results are similar: Figure~\ref{fig:surf2}
+resembles Figure~\ref{fig:surf2-too} and Figure~\ref{fig:surf3}
+resembles Figure~\ref{fig:surf3-too}.  The details are different, but
+the ``big picture'' is the same.
+
+The main difference and the reason for doing the second analysis is
+to illustrate the analysis of an ``aster-friendly'' model where
+some linear combination of fitness components is deemed fitness,
+which leads to two important simplifications of the analysis
+\begin{itemize}
+\item no Monte Carlo calculation is necessary to obtain expected fitness, and
+\item there is a canonical statistic that is a monotone function of fitness
+    so it is only necessary to have one quadratic function of phenotypes
+    in the model.
+\end{itemize}
+In contrast, the analysis in Section~\ref{sec:both} had both complications.
+We needed Monte Carlo approximation of the fitness landscape, and
+we needed two quadratic functions, one for the canonical parameter
+corresponding to \texttt{fruit} and the other for the canonical parameter
+corresponding to \texttt{seed}.
+
+In conclusion, the analysis is simpler when the data are ``aster-friendly''
+but it can be done even when not.
+
+\section{Diagnostic Plots for Paper}
+
+Here we just put Figure~\ref{fig:fig-pearson-fruit-too}
+and Figure~\ref{fig:foo3} in one plot.
+\begin{figure}
+\begin{center}
+<<label=diag,fig=TRUE,echo=FALSE,height=8>>=
+par(mfrow = c(2, 1), mar = c(1, 3, 1, 1) + 0.1)
+plot(woof.xi, pearson, xlab = "", ylab = "", axes = FALSE)
+box()
+axis(side = 2)
+abline(h = 0)
+usr <- par("usr")
+xrelpos <- 0.9
+xpos <- (1 - xrelpos) * usr[1] + xrelpos * usr[2]
+text(xpos, 6, "A", cex = 2)
+library(MASS)
+plot(fitted(lout), stdres(lout), xlab = "", ylab = "", axes = FALSE)
+box()
+axis(side = 2)
+abline(h = 0)
+usr <- par("usr")
+xpos <- (1 - xrelpos) * usr[1] + xrelpos * usr[2]
+text(xpos, 3, "B", cex = 2)
+@
+\end{center}
+\caption{Diagnostic Plots.  A: Pearson residuals for fruit count
+given nonzero fitness plotted against fitted values.
+B: standardized OLS residuals for fruit count plotted against
+fitted values.}
+\label{fig:diag}
+\end{figure}
+
+\section{Subsampling a Component of Fitness}
+
+Before doing anything, we remove all the variables generated in
+the preceding analyses.
+<<remove-too>>=
+rm(list = ls())
+ls(all.names = TRUE)
+@
+
+\subsection{Introduction}
+
+We investigate an aster model with graph $1 \rightarrow \texttt{reprod}
+\rightarrow \texttt{fruit} \rightarrow \texttt{samp} \rightarrow
+\texttt{seed}$, where
+\begin{itemize}
+\item \texttt{reprod} is Bernoulli,
+\item \texttt{fruit} is zero-truncated Poisson conditional
+    on \verb@reprod == 1@,
+\item \texttt{samp} is binomial with sample size \texttt{fruit} and
+    known success probability $p$, and
+\item \texttt{fruit} is Poisson with mean $\texttt{samp} \times \mu$,
+    where $\mu$ is an unknown parameter (mean value parameter).
+\end{itemize}
+Each of these specifies a one-parameter exponential family whether the
+parameter was specifically mentioned or not.  Each of these is in aster
+model form in which the predecessor plays the role of sample size, whether
+it was described as sample size or not.
+
+The somewhat odd thing about this proposal is that the parameter $p$ is
+\emph{known} and is a \emph{conditional} mean value parameter, but we intend
+to use an \emph{unconditional} aster model and treat the unconditional
+canonical parameter as \emph{unknown}.
+Nevertheless, we try an example to see how it works.  (With modification
+to the aster code, we could treat $p$ as known, but the current code
+cannot handle this.)
+
+Because this model is a bit odd, we start with the simpler model
+with graph $1 \rightarrow \texttt{reprod}
+\rightarrow \texttt{fruit} \rightarrow \texttt{seed}$
+which has no sampling so seeds are counted for all fruits rather than
+just for a sample.  This model is acknowledged to be the Right Thing
+(with a capital R and a capital T) but may not be feasible because
+counting seeds for all fruits may be too much work.
+
+\subsection{The Models}
+
+First we set the ``simulation truth'' parameter values.  Since unconditional
+parameterizations are difficult to imagine, we set conditional mean value
+parameters.
+<<parm>>=
+nind <- 1000
+preprod <- 0.75
+mfruit <- 100
+psamp <- 1 / 10
+mseed <- 10
+@
+
+Then we set up the aster model structures.
+<<struct>>=
+fam <- c(1, 3, 1, 2)
+pred <- c(0, 1, 2, 3)
+vars <- c("reprod", "fruit", "samp", "seed")
+Fam <- fam[-3]
+Pred <- pred[-4]
+Vars <- vars[-3]
+@
+
+\subsubsection{Simulate Data without Dependence on Covariates}
+
+<<sim-without>>=
+set.seed(42)
+Reprod <- sample(c(0, 1), nind, replace = TRUE,
+    prob = c(1 - preprod, preprod))
+Fruit <- rpois(nind, lambda = mfruit)
+Fruit <- Fruit * Reprod
+Seed <- rpois(nind, lambda = mseed * Fruit)
+zbase <- rnorm(nind)
+z1 <- zbase + rnorm(nind)
+z2 <- zbase + rnorm(nind)
+Dat <- data.frame(reprod = Reprod, fruit = Fruit, seed = Seed,
+    z1, z2, root = rep(1, nind))
+names(Dat)
+Redata <- reshape(Dat, varying = list(Vars), direction = "long",
+    timevar = "varb", times = as.factor(Vars), v.names = "resp")
+names(Redata)
+@
+
+There is one further step.  We need to zero out the phenotype values
+except those associated with \texttt{seed} since that is the variable
+that \emph{directly} contributes to fitness.
+<<zero-out>>=
+wind <- grep("seed", as.character(Redata$varb))
+for (labz in grep("z", names(Redata), value = TRUE)) {
+    Redata[[labz]][- wind] <- 0
+}
+@
+
+Now fit a model.
+<<fit1>>=
+library(aster)
+out1 <- aster(resp ~ varb, Pred, Fam, varb, id, root, data = Redata,
+    type = "conditional")
+summary(out1)
+@
+Check conditional mean value parameters.
+<<fit1-mvp>>=
+Renewdata <- Redata[Redata$id == 1, ]
+Renewdata$resp <- 1
+pout1 <- predict(out1, varvar = varb, idvar = id, root = root,
+    newdata = Renewdata, model.type = "conditional")
+pout1
+@
+We recover the ``simulation truth'' to high accuracy.
+
+\subsubsection{Simulate Data with Dependence on Covariates}
+
+First we fit the model we want to use to the data we have.  The fitted
+parameters will make no sense, because the fitness landscape is flat for
+the data we have, but we can use the model structure.
+<<out2-sub>>=
+out2 <- aster(resp ~ varb + z1 + z2 + I(z1^2) + I(z2^2) + I(z1 * z2),
+    Pred, Fam, varb, id, root, data = Redata)
+summary(out2, info.tol = 1e-12)
+@
+
+We now want to make up a quadratic function of $z$.
+We just take the one from the third paper (about aster vs\@. Lande-Arnold)
+currently being written.
+<<try1>>=
+# z1 <- Dat$z1
+# z2 <- Dat$z2
+ascal <- 0.001
+quad <- ascal * ((z1 + z2) - (z1^2 + z2^2) + z1 * z2)
+con <- mean(quad)
+mean(quad - con)
+@
+
+Now we change the coefficients in \texttt{out2} to be the ones for
+this quadratic model.  Then convert to canonical parameters and
+use the \texttt{raster} function to simulate new data.
+<<fake>>=
+fake <- out2
+fake$coefficients[3] <- fake$coefficients[3] - con
+fake$coefficients[4:5] <- ascal
+fake$coefficients[6:7] <- (- ascal)
+fake$coefficients[8] <- ascal
+fake$coefficients <- round(fake$coefficients, 3)
+fake$coefficients
+theta <- predict(fake, model.type = "conditional", parm.type = "canonical")
+theta <- matrix(theta, nrow = nrow(fake$x), ncol = ncol(fake$x))
+root <- matrix(1, nrow = nind, ncol = length(Vars))
+xnew <- raster(theta, Pred, Fam, root)
+@
+
+Now we need to reshape these new data just like we did the old.
+<<remake>>=
+dimnames(xnew) <- list(NULL, Vars)
+dnew <- as.data.frame(xnew)
+renew <- reshape(dnew, varying = list(Vars), direction = "long",
+    timevar = "varb", times = as.factor(Vars), v.names = "resp1")
+Redata$resp1 <- renew$resp1
+@
+
+Now we fit the model we want to use to this new data simulated
+from this model.
+<<out3>>=
+out3 <- aster(resp1 ~ varb + z1 + z2 + I(z1^2) + I(z2^2) + I(z1 * z2),
+    Pred, Fam, varb, id, root, data = Redata)
+sout3 <- summary(out3, info.tol = 1e-11)
+print(sout3)
+@
+Pretty close agreement.
+
+\subsubsection{Simulate Data with Sampling}
+
+We don't simulate using \texttt{raster} because we know our model
+is a bit odd and doesn't fit the data.  Instead we just subsample directly.
+Without subsampling \texttt{seed}
+is $\texttt{Poisson}(\texttt{fruit} \cdot \mu)$
+where $\mu$ is the mean number of seeds per fruit ($\mu$ varies from individual
+to individual, but that is irrelevant to subsampling, which works on one
+individual at a time).
+With subsampling \texttt{samp}
+is $\texttt{binomial}(\texttt{fruit}, p)$
+where $p$ is the subsampling fraction ($p$ does not vary among individuals),
+and \texttt{seed}
+is $\texttt{Poisson}(\texttt{samp} \cdot \mu)$.
+It can be shown that if we define $q = \texttt{samp} / \texttt{fruit}$,
+(and $q = 0$ if $\texttt{samp} = \texttt{fruit} = 0$, so $q$ varies from
+individual to individual), then
+we can set \texttt{seed}
+to be $\texttt{binomial}(\texttt{fruit}, q)$
+and this will have the required Poisson distribution.
+<<samp-dat>>=
+reprod <- Redata$resp1[as.character(Redata$varb) == "reprod"]
+fruit <- Redata$resp1[as.character(Redata$varb) == "fruit"]
+samp <- rbinom(nind, size = fruit, prob = psamp)
+oldseed <- Redata$resp1[as.character(Redata$varb) == "seed"]
+pseed <- samp / fruit
+pseed[samp == 0] <- 0
+seed <- rbinom(nind, size = oldseed, prob = pseed)
+dat2 <- data.frame(reprod, fruit, samp, seed, z1, z2, root = rep(1, nind))
+redata <- reshape(dat2, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+names(redata)
+wind <- grep("seed", as.character(redata$varb))
+for (labz in grep("z", names(redata), value = TRUE)) {
+    redata[[labz]][- wind] <- 0
+}
+@
+
+Now fit this model.
+<<out4>>=
+out4 <- aster(resp ~ varb + z1 + z2 + I(z1^2) + I(z2^2) + I(z1 * z2),
+    pred, fam, varb, id, root, data = redata)
+sout4 <- summary(out4, info.tol = 1e-11)
+print(sout4)
+names(sout4)
+@
+
+Compare estimates with and without sampling.
+<<compare-est>>=
+foo <- sout3$coefficients[ , "Estimate"]
+foo <- foo[grep("z", names(foo))]
+bar <- sout4$coefficients[ , "Estimate"]
+bar <- bar[grep("z", names(bar))]
+baz <- cbind(foo, bar)
+dimnames(baz)[[2]] <- c("without samp.", "with samp.")
+baz <- round(baz, 6)
+print(baz)
+@
+
+And compare standard errors with and without sampling.
+<<compare-se>>=
+foo <- sout3$coefficients[ , "Std. Error"]
+foo <- foo[grep("z", names(foo))]
+bar <- sout4$coefficients[ , "Std. Error"]
+bar <- bar[grep("z", names(bar))]
+baz <- cbind(foo, bar)
+dimnames(baz)[[2]] <- c("without samp.", "with samp.")
+baz <- round(baz, 7)
+print(baz)
+@
+
+Clearly, standard errors are several times larger with sampling.
+The estimates also seem larger in absolute value but seem to
+have increased proportionally.  So there may be some bias due to
+subsampling.  This needs more investigation, but that will have
+to wait until we have a real experiment with this subsampling design.
+
+Actually, this ``bias'' may be an illusion.  The models being compared
+are different, and there is no reason their canonical parameters should
+be comparable (canonical parameters are meaningless).  Let us do the same
+comparison with mean value parameters, or, better yet, with expected fitness,
+which is a certain particular mean value parameter (expected seed count).
+<<compare-mean-value>>=
+pout3 <- predict(out3, se.fit = TRUE, info.tol = 1e-9)
+fit3 <- pout3$fit[as.character(out3$data$varb) == "seed"]
+se3 <- pout3$se.fit[as.character(out3$data$varb) == "seed"]
+pout4 <- predict(out4, se.fit = TRUE)
+fit4 <- pout4$fit[as.character(out4$data$varb) == "seed"]
+se4 <- pout4$se.fit[as.character(out4$data$varb) == "seed"]
+@
+
+Figure~\ref{fig:quid} (page~\pageref{fig:quid})
+shows the scatter plot of expected seed count (for all individuals)
+without subsampling (horizontal axis) and with (vertical axis).
+The line is what should happen if the only effect of subsampling
+was to reduce the expected value proportional to the sampling fraction.
+It is made by the following code.
+<<label=figquiddich,include=FALSE>>=
+plot(fit3, fit4)
+abline(0, psamp)
+@
+\begin{figure}
+\begin{center}
+<<label=figquid,fig=TRUE,echo=FALSE>>=
+<<figquiddich>>
+@
+\end{center}
+\caption{Scatterplot of expected seed count with and without subsampling.
+Line has intercept zero and slope the sampling fraction.}
+\label{fig:quid}
+\end{figure}
+We can see from Figure~\ref{fig:quid} that the subsampling does have some
+effect, and does produce some bias, although nowhere near as large as it
+appears to be from our (incorrect) comparison of canonical parameter values.
+It is clear that, on average, there is no bias, but that some parts of the
+fitness surface are distorted somewhat by the subsampling.
+
+\begin{thebibliography}{}
+
+\bibitem[Davison and Snell(1991)]{ds}
+Davison, A.~C., and Snell, E.~J. (1991).
+\newblock Residuals and diagnostics.
+\newblock In \emph{Statistical Theory and Modelling: In honour
+    of Sir David Cox, FRS\@.}  D.~V. Hinkley, N. Reid, E.~J. Snell (eds.)
+\newblock Chapman \& Hall.
+
+\bibitem[Etterson(2004)]{etterson}
+Etterson, J.~R. (2004)
+\newblock Evolutionary potential of \emph{Chamaecrista fasciculata} in
+    relation to climate change.  I. Clinal patterns of selection along
+    an environmental gradient in the great plains.
+\newblock \emph{Evolution}, \textbf{58}, 1446--1458.
+
+\bibitem[Etterson and Shaw(2001)]{es}
+Etterson, J.~R., and Shaw, R.~G. (2001).
+\newblock Constraint to adaptive evolution in response to global warming.
+\newblock \emph{Science}, \textbf{294}, 151--154.
+
+\bibitem[Geyer, et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S. and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, \textbf{94} 415--426.
+
+\bibitem[Lande and Arnold(1983)]{la}
+Lande, R. and Arnold, S.~J. (1983).
+\newblock The measurement of selection on correlated characters.
+\newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+\bibitem[Lindgren(1993)]{lindgren}
+Lindgren, B.~W. (1993).
+\newblock \emph{Statistical Theory}, 4th ed.
+\newblock New York: Chapman \& Hall.
+
+\bibitem[R Development Core Team(2006)]{rcore}
+R Development Core Team (2006).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+\end{thebibliography}
+
+\end{document}
+

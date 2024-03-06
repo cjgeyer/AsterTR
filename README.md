@@ -20,9 +20,9 @@ Done
 | [tr669](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr669.pdf) | https://hdl.handle.net/11299/56204 | edited to fix plots |
 | | | emits warning about `RNGversion("2.7.0")` |
 | [tr666](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr666.pdf) | https://www.stat.umn.edu/geyer/aster/tr666/tr666.Rnw |
+| [tr661](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr661.pdf) | https://www.stat.umn.edu/geyer/aster/tr661/tr661.Rnw | 
 
 To Do
 
-tr661  http://www.stat.umn.edu/geyer/aster/tr661/tr661.Rnw
 tr658  http://www.stat.umn.edu/geyer/aster/tr658/*
 tr644  sources not on-line, from ssh.stat.umn.edu:Old/Madrid/Notes/Aster/Paper
