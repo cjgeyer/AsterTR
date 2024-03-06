@@ -1,0 +1,1220 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+\DeclareMathOperator{\var}{var}
+
+\newcommand{\boldtheta}{{\boldsymbol{\theta}}}
+\newcommand{\boldphi}{{\boldsymbol{\varphi}}}
+\newcommand{\boldxi}{{\boldsymbol{\xi}}}
+\newcommand{\boldmu}{{\boldsymbol{\mu}}}
+\newcommand{\boldw}{{\mathbf{w}}}
+\newcommand{\boldx}{{\mathbf{x}}}
+\newcommand{\boldy}{{\mathbf{y}}}
+\newcommand{\boldz}{{\mathbf{z}}}
+
+\hyphenation{Wa-gen-ius}
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{- 2 in}
+\setlength{\topmargin}{0.25 pt}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \footskip}
+
+\setlength{\textwidth}{\paperwidth}
+\addtolength{\textwidth}{- 2 in}
+\setlength{\oddsidemargin}{0.25 in}
+\setlength{\evensidemargin}{0.25 in}
+\addtolength{\textwidth}{- \oddsidemargin}
+\addtolength{\textwidth}{- \evensidemargin}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Supporting Data Analysis for \\
+    a talk to be given at Evolution 2008 \\
+    University of Minnesota, June 20--24} \\
+    By \\
+    Charles J. Geyer and Ruth G. Shaw \\
+    Technical Report No.~669 \\
+    School of Statistics \\
+    University of Minnesota \\
+%       April 20, 2005 \\
+    % file downloaded from conservancy.umn.edu said \today
+    % but printed (in the PDF)
+    May 14, 2008
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+A solution to the problem of estimating fitness landscapes was
+proposed by \citet{la}.  Another solution, which avoids problematic
+aspects of the Lande-Arnold methodology, was proposed by \citet*{aster2},
+who also provided an illustrative example.  Here we provide another example
+using simulated data that are more suitable to aster analysis.
+
+All analyses are done in R \citep{rcore} using the \texttt{aster}
+contributed package described by \citet{gws} except for analyses
+in the style of \citet{la}, which use ordinary least squares regression.
+Furthermore, all analyses are done using the \texttt{Sweave} function in R,
+so this entire technical report and all of the analyses reported in it
+are completely reproducible by anyone who has R with the \texttt{aster}
+package installed and the R noweb file specifying the document.
+\end{abstract}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+ps.options(pointsize = 15)
+pdf.options(pointsize = 15)
+@
+
+\section{R Package Aster}
+
+We use R statistical computing environment \citep{rcore} in our analysis.
+It is free software and can be obtained from
+\url{http://cran.r-project.org}.  Precompiled binaries
+are available for Windows, Macintosh, and popular Linux distributions.
+We use the contributed package \verb@aster@.
+If R has been installed, but this package has
+not yet been installed, do
+\begin{verbatim}
+install.packages("aster")
+\end{verbatim}
+from the R command line
+(or do the equivalent using the GUI menus if on Apple Macintosh
+or Microsoft Windows).  This may require root or administrator privileges.
+
+Assuming the \verb@aster@ package has been installed, we load it
+<<library>>=
+library(aster)
+@
+<<baz,include=FALSE,echo=FALSE>>=
+baz <- library(help = "aster")
+baz <- baz$info[[1]]
+baz <- baz[grep("Version", baz)]
+baz <- sub("^Version: *", "", baz)
+bazzer <- paste(R.version$major, R.version$minor, sep = ".")
+@
+The version of the package used to make this document
+is \Sexpr{baz} (which is available on CRAN).
+The version of R used to make this document is \Sexpr{bazzer}.
+
+This entire document and all of the calculations shown were made using
+the R command \texttt{Sweave} and hence are exactly reproducible by
+anyone who has R and the R noweb (RNW) file from which it was created.
+Both the RNW file and and the PDF document produced from it are available at
+\url{http://www.stat.umn.edu/geyer/aster}.  For further details on
+the use of Sweave and R see Chapter~1 of the technical report by
+\citet{aster2tr} available at the same web site.
+
+Not only can one exactly reproduce the results in the printable document,
+one can also modify the parameters of the simulation and get different
+results.  Obvious modifications to try are noted on pages~\pageref{rnw:1},
+\pageref{rnw:2}, \pageref{rnw:3}, and~\pageref{rnw:4} below.  But, of course,
+anything at all can be changed once one has the RNW file.
+
+Finally, we set the seeds of the random number generator so that we
+obtain the same results every time.  To get different results,
+obtain the RNW file, change this statement, and reprocess
+using \texttt{Sweave} and \LaTeX. \label{rnw:1}
+% The following text and the code in the code chunk that it explains
+% was not in the original Rnw file downloaded from conservancy.umn.edu
+% we do this to make the plots the same as in the PDF generated back in 2008
+We also set the random number generator to be the same as in the version
+of R used to make the PDF version of the tech report
+at \url{http://hdl.handle.net/11299/56204}.
+But this doesn't seem to work.  The plots generated by current versions
+of R don't match those in the tech report at the URL just cited.
+So all we can say is that the commands are the same (as can be verified
+by anyone checking this file against the RNW file at the URL just cited)
+and do what they do.
+<<seed>>=
+RNGversion("2.7.0")
+set.seed(42)
+@
+
+\section{Data Structure}
+
+We simulate data because there does not, to our knowledge, exist a data
+set that can show the full potential of aster analysis.  Our simulated
+data have three important characteristics
+\begin{enumerate}
+\item (simulated) phenotypic trait measurements,
+\item graphical model in which not all predecessor variables are Bernoulli, and
+\item fitness is the sum of reproduction variables for many time periods.
+\end{enumerate}
+See \citet{aster2} for an example showing the same kind of analysis we do
+here with real data having feature~1 above.  See
+\citet{gws} for an
+example with feature~3 above.  There are, to our knowledge, no published
+examples with feature~2 above.
+Since any or all of these features may arise in practical examples,
+we use this example as a good illustration of what is possible with aster.
+
+\subsection{Graph} \label{sec:graph}
+
+We use the following aster model graphical structure.  This is the subgraph
+for a single individual; the full graph consists of $n$ isomorphic copies
+of this subgraph, one for each of $n$ individuals.
+$$
+\begin{CD}
+   1
+   @>\text{Ber}>>
+   y_1
+   @>\text{Ber}>>
+   y_2
+   @>\text{Ber}>>
+   y_3
+   @>\text{Ber}>>
+   y_4
+   @.
+   \qquad \text{survival}
+   \\
+   @.
+   @VV\text{Ber}V
+   @VV\text{Ber}V
+   @VV\text{Ber}V
+   @VV\text{Ber}V
+   \\
+   \hphantom{1}
+   @.
+   y_5
+   @.
+   y_6
+   @.
+   y_7
+   @.
+   y_8
+   @.
+   \qquad \text{any flowers}
+   \\
+   @.
+   @VV\text{0-Poi}V
+   @VV\text{0-Poi}V
+   @VV\text{0-Poi}V
+   @VV\text{0-Poi}V
+   \\
+   \hphantom{1}
+   @.
+   y_9
+   @.
+   y_{10}
+   @.
+   y_{11}
+   @.
+   y_{12}
+   @.
+   \qquad \text{number flowers}
+   \\
+   @.
+   @VV\text{Poi}V
+   @VV\text{Poi}V
+   @VV\text{Poi}V
+   @VV\text{Poi}V
+   \\
+   \hphantom{1}
+   @.
+   y_{13}
+   @.
+   y_{14}
+   @.
+   y_{15}
+   @.
+   y_{16}
+   @.
+   \qquad \text{number seeds}
+   \\
+   @.
+   @VV\text{Ber}V
+   @VV\text{Ber}V
+   @VV\text{Ber}V
+   @VV\text{Ber}V
+   \\
+   \hphantom{1}
+   @.
+   y_{17}
+   @.
+   y_{18}
+   @.
+   y_{19}
+   @.
+   y_{20}
+   @.
+   \qquad \text{number germinate}
+\end{CD}
+$$
+Letters $y_j$ represent random variables.  Arrows represent conditional
+distributions (more on this below).
+Subgraphs for different individuals differ only in the subscripts for the
+$y_j$, each individual having a different set of variables.
+
+\subsection{Variables and Their Conditional Distributions}
+
+The variables for one individual are the $y_j$ in the graph.  Those in each
+column represent the data for one time period.  Those in each row
+represent the data for one kind of variable, one ``component of fitness.''
+The layers are
+\begin{itemize}
+\item $y_1$, $\ldots$, $y_4$ are survival indicators
+    (zero if dead, one if alive).
+\item $y_5$, $\ldots$, $y_8$ are flowering indicators
+    (zero if no flowers, one if one or more flowers).
+\item $y_9$, $\ldots$, $y_{12}$ are flowering counts
+    (number of flowers).
+\item $y_{13}$, $\ldots$, $y_{16}$ are seed counts
+    (number of seeds).
+\item $y_{17}$, $\ldots$, $y_{20}$ are germination counts
+    (number of seeds that germinate).
+\end{itemize}
+It is important to understand, so we emphasize this point,
+that everything is counted in each time period.  In the first time
+period, $y_1 = 1$ if and only if the individual is alive,
+$y_5 = 1$ if and only if the individual has at least one flower,
+$y_9$ counts all of the flowers, $y_{13}$ counts all of the seeds produced
+by all of those flowers, and $y_{17}$ counts all of those seeds that
+germinate.
+It is possible to collect data on only a sample of flowers or only a sample
+of seeds --- this is discussed in Section~8 of a technical
+report by \citet{aster2tr2} --- but we are not doing that in this example.
+
+The conditional distributions of one variable given another are indicated
+by the text over the arrows.  An arrow $y_j \longrightarrow y_k$
+indicates that
+$y_k$ is the sum of $y_j$ independent and identically distributed (IID) random
+variables with the distribution named by the text over the arrow.
+The sum of zero things is zero by convention, so $y_j = 0$ implies $y_k = 0$.
+\begin{itemize}
+\item Ber is for Bernoulli.  A random variable is Bernoulli if and only
+    if its only possible values are zero and one.  The sum of IID Bernoullis
+    is binomial.  Thus, e.~g., $y_{17}$ is binomial with sample size $y_{13}$.
+\item 0-Poi is for zero-truncated Poisson, meaning a Poisson random variable
+    conditioned on being nonzero.  In a graph
+$$
+\begin{CD}
+   y_j
+   @>\text{Ber}>>
+   y_k
+   @>\text{0-Poi}>>
+   y_l
+\end{CD}
+$$
+the conditional distribution of $y_l$ given $y_j$ is zero-inflated Poisson,
+and this is the only way zero-inflated Poisson can appear in an aster model.
+\item Poi is for Poisson.  The sum of IID Poisson is again Poisson,
+thus, e.~g., the conditional distribution of $y_{13}$ given $y_9$ is 
+Poisson with mean that is $y_9$ times a constant (which is a function of
+the parameters of the model).
+\end{itemize}
+
+\subsection{Fitness}
+
+In this model fitness (more pedantically, the best surrogate of fitness)
+is the sum of the variables in the bottom layer,
+$y_{17} + y_{18} + y_{19} + y_{20}$, the total lifetime
+(more pedantically, the total over the four time periods) number of seeds
+produced that germinate.  Expected fitness is the sum of the corresponding
+mean value parameters $\mu_{17} + \mu_{18} + \mu_{19} + \mu_{20}$, where
+$\mu_j = E(y_j)$.
+
+Readers may ask, why only those variables, don't the other components
+of fitness count too?  They do count.  A seed can't germinate if it doesn't
+exist, there can't be seeds if there weren't flowers, and there can't be
+flowers if the individual is dead.  The total number of seeds that germinate
+incorporates all earlier components of fitness.  Moreover, statistical
+theory says the other components of fitness do ``count'' even though
+they aren't counted explicitly.  Maximum likelihood estimation uses all
+the data to calculate the most efficient possible estimates.
+
+\subsection{Setup}
+
+The following R statements set up this graphical structure
+<<graph-setup>>=
+pred <- seq(1, 20) - 4
+pred[1:4] <- 0:3
+fam <- rep(c(1, 1, 3, 2, 1), each = 4)
+matrix(pred, 5, 4, byrow = TRUE)
+matrix(fam, 5, 4, byrow = TRUE)
+@
+\verb@pred@ and \verb@fam@ are displayed as matrices so they have
+the same layout as the graph.
+
+\section{Data Simulation}
+
+\subsection{Flat Fitness Landscape}
+
+We first simulate data with the following parameters
+<<simulation-truth-flat>>=
+psurv <- 0.9
+pflow <- 0.8
+mflow <- 5
+mseed <- 10
+pgerm <- 0.1
+@
+Anyone wishing to see the results of changing these parameters can
+obtain the R noweb (RNW) file from which this document was created
+(\url{http://www.stat.umn.edu/geyer/aster}),
+change these parameters and rerun. \label{rnw:2}
+
+The meaning of these parameters is
+\begin{itemize}
+\item \texttt{psurv} is the conditional mean value parameter for
+    Bernoulli distributions in the first (survival) layer
+    (of $y_1$, $\ldots$, $y_4$ given their predecessors).
+\item \texttt{pflow} is the conditional mean value parameter for
+    Bernoulli distributions in the second (any flowers) layer
+    (of $y_5$, $\ldots$, $y_8$ given their predecessors).
+\item \texttt{mflow} is the conditional mean value parameter
+    before truncation for
+    zero-truncated Poisson distributions in the third (number flowers) layer
+    (of $y_9$, $\ldots$, $y_{12}$ given their predecessors).
+    See below for meaning of ``before truncation.''
+\item \texttt{mseed} is the conditional mean value parameter for
+    Poisson distributions in the fourth (number seeds) layer
+    (of $y_{13}$, $\ldots$, $y_{16}$ given their predecessors).
+\item \texttt{pgerm} is the conditional mean value parameter for
+    Bernoulli distributions in the bottom (number germinate) layer
+    (of $y_{17}$, $\ldots$, $y_{20}$ given their predecessors).
+\end{itemize}
+
+We now explain the meaning of ``before truncation'' in the definition
+of \texttt{mflow}.
+Referring to the discussion of truncated Poisson
+distributions on the help page \verb@?families@ we see that if a Poisson
+distribution having (untruncated) mean \texttt{mflow} is zero-truncated,
+the corresponding conditional mean is
+<<before-truncation>>=
+beta.flow <- ppois(1, mflow, lower.tail = FALSE) / dpois(1, mflow)
+mflow + 1 / (1 + beta.flow)
+@
+Hence the conditional mean after truncation
+\Sexpr{round(mflow + 1 / (1 + beta.flow), 4)}
+is slightly more than the conditional mean before
+truncation $\texttt{mflow} = \Sexpr{mflow}$.
+
+Some facts that are perhaps not completely obvious
+\begin{itemize}
+\item The conditional distribution of $y_9$ given $y_1$ is zero-inflated
+    Poisson (and similarly for $y_{10}$ given $y_2$, etc.)
+\item The conditional distribution of $y_{13}$ given $y_9$ is Poisson
+    with mean $y_9 \times \texttt{mflow}$
+    (and similarly for $y_{14}$ given $y_{10}$, etc.)
+\item The conditional distribution of $y_{17}$ given $y_{13}$ is binomial
+    with sample size $y_{13}$ and success probability \texttt{pgerm}
+    (and similarly for $y_{18}$ given $y_{14}$, etc.)
+\end{itemize}
+
+Unconditional mean value parameters are found by multiplying conditional
+ones (in an aster model, not in general).
+<<unco-mean-flat>>=
+xi <- matrix(c(psurv, pflow, mflow, mseed, pgerm), 5, 4)
+xi
+mu <- xi
+mu[1, ] <- cumprod(mu[1, ])
+mu <- apply(mu, 2, cumprod)
+mu
+@
+Thus expected fitness --- lifetime expected number of germinating seeds ---
+in this model (with flat fitness landscape) is
+<<unco-mean-flat-fit>>=
+sum(mu[5, ])
+@
+
+The following are the conditional canonical parameters corresponding
+to the conditional mean value parameters defined above.
+<<simulation-truth-flat-canon-cond>>=
+theta.surv <- log(psurv) - log(1 - psurv)
+theta.flow <- log(pflow) - log(1 - pflow)
+theta.nflow <- log(mflow)
+theta.nseed <- log(mseed)
+theta.germ <- log(pgerm) - log(1 - pgerm)
+
+theta <- matrix(c(theta.surv, theta.flow, theta.nflow, theta.nseed,
+    theta.germ), 5, 4)
+theta
+@
+
+Now we are ready to simulate some data.  First we set the number of
+individuals.
+<<nind>>=
+nind <- 500
+@
+(This too can be changed by anyone who has obtained the RNW source
+for this document.) \label{rnw:3}
+
+Referring to the help page \verb@?raster@ we see that to simulate
+data on $n$ individuals, each having the same graph with $k$ nodes
+(variables), we hand the \texttt{raster} function an $n \times k$
+matrix \texttt{theta} whose rows are the conditional canonical parameter
+vectors for each individual.   In this case, since the fitness surface
+is flat, each individual has the same parameter vector.
+<<simulate-flat>>=
+theta.mat <- matrix(as.vector(t(theta)), nind, length(theta), byrow = TRUE)
+y <- raster(theta.mat, pred, fam, root = theta.mat^0)
+dim(y)
+@
+
+We also simulate a bivariate normal trait vector
+<<simulate-trait>>=
+library(MASS)
+z <- mvrnorm(nind, mu = c(0, 0), Sigma = matrix(c(1, 0.5, 0.5, 1), 2, 2))
+dim(z)
+@
+
+We then combine this in the usual way (see help page \verb@?aster@)
+to make a data frame ready for aster analysis
+<<make-data-frame-flat>>=
+data.flat <- cbind(y, z)
+vars <- outer(c("isurv", "iflow", "nflow", "nseed", "ngerm"), 1:4, paste,
+    sep = "")
+vars
+vars <- as.vector(t(vars))
+colnames(data.flat) <- c(vars, "z1", "z2")
+data.flat <- as.data.frame(data.flat)
+redata.flat <- reshape(data.flat, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+redata.flat <- data.frame(redata.flat, root = 1)
+names(redata.flat)
+@
+
+We are now ready to fit our first aster model
+<<fit-cond-flat>>=
+out1 <- aster(resp ~ varb + 0, pred, fam, varb, id, root,
+    data = redata.flat, type = "conditional")
+summary(out1)
+@
+All of the estimates are about what they are supposed to be
+(statistics works, no surprise).
+
+We now need to switch to an unconditional aster model because
+that's what we need to model fitness \citep{aster2}.
+<<fit-unco-flat>>=
+out2 <- aster(resp ~ varb + 0, pred, fam, varb, id, root,
+    data = redata.flat)
+# summary(out2)
+@
+
+\subsection{A Digression on Aster Model Theory} \label{sec:digress}
+
+We take a break from computing to re-explain a theoretical issue.
+Our previous attempt was Section~3.10 of \citet{aster2tr}.  This
+time we use a slightly different argument based on the inequality
+\begin{equation} \label{eq:mono-pure}
+   (\boldmu - \boldmu')^T (\boldphi - \boldphi') > 0
+\end{equation}
+which holds whenever $\boldphi$ and $\boldphi'$ are
+two distinct values of the linear predictor vector of an unconditional aster
+model and $\boldmu$ and $\boldmu'$ are the corresponding
+mean value parameter vectors \citep[Equation~28, p.~121]{barndorff}.
+A function that maps vector to vectors and has property \eqref{eq:mono-pure}
+is called \emph{strictly monotone} \citep[Definition~12.1]{raw}.  This
+is the multivariate analog of strictly increasing functions that map
+real numbers to real numbers.  Using this terminology, the mapping from
+the linear predictor parameter of an unconditional aster model to the
+unconditional mean value parameter is always strictly monotone.
+There is an analogous monotonicity relation for conditional aster models
+(Appendix~\ref{sec:conditional}), but it is not useful in modeling fitness
+landscapes.
+
+We consider the situation, which is the most common one, where fitness
+(or to be more pedantic the best surrogate of fitness) is the sum of data
+on a subset $G$ of nodes of the graph.  That is the situation in our example
+where $G$ is the bottom layer, the germination nodes.
+Observed fitness is $\sum_{j \in G} y_j$, and expected fitness is
+$\sum_{j \in G} \mu_j$, where $\mu_j = E(y_j)$ denotes components of the mean
+value parameter vector $\boldmu$.
+
+These models are unconditional aster models in which the linear predictor
+for each germination node has the form
+\begin{subequations}
+\begin{equation} \label{eq:eta-germ}
+   \varphi_j(\boldx, \boldz) = a_j(\boldx) + q(\boldz),
+\end{equation}
+that is, the linear predictor $\varphi_j$ for germination node $j$ is the same
+function $q(\boldz)$ of trait values $\boldz$ plus a possibly different
+function $a_j(\boldx)$ of other covariates $\boldx$.  At other
+(non-germination, not bottom layer of graph) nodes the linear predictor is
+\begin{equation} \label{eq:eta-non-germ}
+   \varphi_j(\boldx, \boldz) = a_j(\boldx)
+\end{equation}
+\end{subequations}
+(does not actually depend on trait values $\boldz$ despite the notation).
+In applications the functions $a_j(\boldx)$ and $q(\boldz)$ also depend
+on the regression coefficients, hence are estimated rather than known,
+but this does not matter for the issue under discussion, so is not indicated
+in the notation.
+
+Now if we consider the difference of linear predictor values for two
+individuals having different trait values $\boldz$ and $\boldz'$
+but the same values $\boldx$ of other covariates, we get
+\begin{equation} \label{eq:germ}
+   \varphi_j(\boldx, \boldz) - \varphi_j(\boldx, \boldz')
+   =
+   \begin{cases}
+      q(\boldz) - q(\boldz'), & j \in G
+   \\
+      0, & \text{otherwise}
+   \end{cases}
+\end{equation}
+
+Let $\boldmu(\boldx, \boldz)$ denote the corresponding
+mean value parameter vectors and $\mu_j(\boldx, \boldz)$ their
+components.
+In this particular case \eqref{eq:mono-pure} becomes
+\begin{equation} \label{eq:mono-unco}
+   \bigl( \boldmu(\boldx, \boldz) -
+       \boldmu(\boldx, \boldz') \bigr)^T
+   \bigl( \boldphi(\boldx, \boldz) -
+       \boldphi(\boldx, \boldz') \bigr) > 0
+\end{equation}
+and written out in coordinates this is
+$$
+   \sum_{j \in J} 
+   \bigl( \mu_j(\boldx, \boldz) - \mu_j(\boldx, \boldz') \bigr)
+   \bigl( \varphi_j(\boldx, \boldz) - \varphi_j(\boldx, \boldz')
+   \bigr)
+   > 0
+$$
+where $J$ is the set of all nodes.
+Using \eqref{eq:germ}, this becomes
+$$
+   \bigl( q(\boldz) - q(\boldz') \bigr)
+   \sum_{j \in G} 
+   \bigl( \mu_j(\boldx, \boldz) - \mu_j(\boldx, \boldz') \bigr)
+   > 0
+$$
+or
+\begin{equation} \label{eq:conclusion}
+   q(\boldz) > q(\boldz')
+   \quad \text{implies} \quad
+   \sum_{j \in G} \mu_j(\boldx, \boldz)
+   >
+   \sum_{j \in G} \mu_j(\boldx, \boldz')
+\end{equation}
+The sums on the right-hand side are expected fitness
+(unconditional expected number of germinated seeds summed over the
+four time periods).  So this says, in short, that expected fitness
+is a strictly monotone function of $q(\boldz)$.  There exists a strictly
+increasing function $F_{\boldx}$ such that expected fitness
+is $F_{\boldx}[q(\boldz)]$.
+
+We reiterate that it is important that we compare individuals having
+different trait values $\boldz$ but the same values $\boldx$ of other
+covariates.  Thus we treat $\boldz$ as a vector variable here and
+$\boldx$ as a fixed vector constant.
+The strictly increasing function $F_{\boldx}$ depends on which $\boldx$ value
+we fix, but this does not really matter since we do not have an explicit
+representation of this function anyway.  The important fact is that it is
+monotone so facts about fitness transformed to the linear predictor scale,
+i.~e., facts about $q(\boldz)$, imply
+facts about fitness itself, i.~e., $\boldmu(\boldx, \boldz)$.
+
+Fitness itself, being bounded below by zero, is hard to model sensibly,
+and we know that in generalized linear models, much less in aster models,
+which generalize them, it makes no sense to model means directly.  We have
+to work on the linear predictor scale to do any modeling at all.  Thus it
+is crucial that whatever function $q(\boldz)$ we use on the linear
+predictor scale maps monotonely to the mean value scale.  Without this
+monotonicity property, we couldn't interpret $q(\boldz)$: we wouldn't
+know that when $q(\boldz)$ is high then fitness is high and vice versa.
+
+We emphasize that the argument here
+applies to any aster model in which fitness is deemed $\sum_{j \in G}
+\mu_j(\boldz)$.  $G$ can be any set of nodes; they don't have to be
+thought of as the ``bottom layer'' of the graph; they don't have to be
+somehow similar.  This argument is further generalized
+in Appendix~\ref{sec:generalization}.
+
+\subsection{Fitness Landscape Quadratic on Linear Predictor Scale}
+
+Following \citet{la} we use a quadratic function $q(\boldz)$ to model fitness.
+Unlike them, we make fitness quadratic on the linear predictor scale rather
+than on the mean value scale.
+\begin{figure}
+\begin{center}
+<<label=scat,fig=TRUE,echo=FALSE>>=
+par(mar = c(2, 2, 1, 1) + 0.1)
+plot(data.flat$z1, data.flat$z2, xlab = "", ylab = "", pch = 20,
+    axes = FALSE)
+title(xlab = "z1", line = 1)
+title(ylab = "z2", line = 1)
+box()
+@
+\end{center}
+\caption{Scatterplot of simulated phenotypic traits $z_1$ and $z_2$.}
+\label{fig:scat}
+\end{figure}
+Figure~\ref{fig:scat} shows the scatter plot of the two (simulated)
+phenotypic traits $z_1$ and $z_2$.
+
+We center our quadratic function $q(\boldz)$ somewhat off-center in
+the scatter plot point cloud
+<<quadratic>>=
+c1 <- 2.0
+c2 <- 0.5
+a11 <- -1
+a22 <- -0.5
+a12 <- 0.5
+b0 <- 0.10
+b1 <- 0.045
+@
+Anyone wishing to see the results of changing these parameters can
+obtain the R noweb (RNW) file from which this document was created
+change these parameters and rerun. \label{rnw:4}
+Then we define
+\begin{align*}
+  q(\boldz)
+  & =
+  b_0 + b_1 \bigl( a_{11} (z_1 - c_1)^2
+  + a_{12} (z_1 - c_1) (z_2 - c_2)
+  + a_{22} (z_2 - c_2)^2 \bigr)
+  \\
+  & =
+  b_0 + b_1 \bigl[ (a_{1 1} c_1^2 + a_{1 2} c_1 c_2 + a_{2 2} c_2^2)
+  - (2 a_{1 1} c_1 + a_{1 2} c_2) z_1
+  - (2 a_{2 2} c_2 + a_{1 2} c_1) z_2
+  \\
+  & \qquad
+  + a_{1 1} z_1^2 + a_{2 2} z_2^2 + 2 a_{1 2} z_1 z_2 \bigr]
+\end{align*}
+%% b0 + b1 ( a11 (z1 - c1)^2 + a12 (z1 - c1) (z2 - c2) + a22 (z2 - c2)^2 )
+%% foo[z1_,z2_] =
+%% b0 + b1 ( a11 (z1 - c1)^2 + a12 (z1 - c1) (z2 - c2) + a22 (z2 - c2)^2 )
+%% foo1[z1_,z2_] = D[foo[z1,z2], z1]
+%% foo2[z1_,z2_] = D[foo[z1,z2], z2]
+%% Solve[ { foo1[z1,z2] == 0, foo2[z1,z2] == 0 }, {z1, z2} ]
+Note that because $a_{11}$ and $a_{2 2}$ are both negative, this
+is a case of stabilizing selection.  Since this is a simulation,
+we know the ``simulation truth'' parameter values, so there is no
+question about what the estimates should be estimating.
+
+First we need to set up the model structure for the quadratic model.
+To do that we fit the desired model to the data we have now.  The parameter
+values are not interesting, but the structure of the parameter vector
+(the meaning of each regression coefficient) is what we need.
+
+To do this we need to play a trick on the R formula mini-language.
+We want the trait values $\boldz$ to not count except for germination
+nodes.  Thus we set them to zero for other nodes.
+<<layer>>=
+layer <- substr(as.character(redata.flat$varb), 1, 5)
+unique(layer)
+redata.curve <- redata.flat
+redata.curve$z1[layer != "ngerm"] <- 0
+redata.curve$z2[layer != "ngerm"] <- 0
+@
+We then fit the model of interest
+<<fit-unco-curve>>=
+out3 <- aster(resp ~ varb + 0 + z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2),
+    pred, fam, varb, id, root, data = redata.curve)
+# summary(out3)
+@
+% What horrible looking output, let's fix up the coefficient names
+% <<fixup>>=
+% names.coef.save <- names(coefficients(out3))
+% names.coef <- names.coef.save
+% names.coef <- sub("poly([^)]*)", "poly.", names.coef, extended = FALSE)
+% names.coef <- sub("varb", "", names.coef, extended = FALSE)
+% names.coef
+% names(out3$coefficients) <- names.coef
+% summary(out3)
+% @
+% Looks better!
+
+Now we adjust the coefficients to follow our quadratic model
+<<adjust>>=
+coef <- out3$coef
+const <- b0 + b1 * (a11 * c1^2 + a12 * c1 * c2 + a22 * c2^2)
+coef["varbngerm1"] <- coef["varbngerm1"] + const
+coef["varbngerm2"] <- coef["varbngerm2"] + const
+coef["varbngerm3"] <- coef["varbngerm3"] + const
+coef["varbngerm4"] <- coef["varbngerm4"] + const
+coef["z1"] <- b1 * (- a11 * 2 * c1 - a12 * c2)
+coef["z2"] <- b1 * (- a22 * 2 * c2 - a12 * c1)
+coef["I(z1^2)"] <- b1 * a11
+coef["I(z1 * z2)"] <- b1 * a12
+coef["I(z2^2)"] <- b1 * a22
+beta.true <- coef
+@
+%% foo[z1_,z2_] = %% b1 * (- a11 * 2 * c1 - a12 * c2) * z1 +
+%% b1 * (- a22 * 2 * c2 - a12 * c1) * z2 +
+%% b0 + b1 ( a11 (z1 - c1)^2 + a12 (z1 - c1) (z2 - c2) + a22 (z2 - c2)^2 )
+%% foo1[z1_,z2_] = D[foo[z1,z2], z1]
+%% foo2[z1_,z2_] = D[foo[z1,z2], z2]
+%% Solve[ { foo1[z1,z2] == 0, foo2[z1,z2] == 0 }, {z1, z2} ]
+
+Then we plug this back into the \texttt{out3} structure because we need it
+as an argument to the \texttt{predict} function.
+<<predict-true>>=
+out3$coefficients <- beta.true
+mu.true <- predict(out3)
+phi.true <- predict(out3, parm.type = "canonical")
+theta.true <- predict(out3, parm.type = "canonical",
+    model.type = "conditional")
+# dim(mu.true)
+# dim(theta.true)
+# length(mu.true)
+# length(theta.true)
+# length(layer)
+sum(mu.true[layer == "ngerm"]) / nind
+@
+
+Now we are ready to simulate the data of interest.
+<<simulate-curve>>=
+theta.mat <- matrix(theta.true, nrow = nind)
+y <- raster(theta.mat, pred, fam, root = theta.mat^0)
+dim(y)
+dim(redata.curve)
+redata.curve$resp <- as.vector(y)
+@
+Now we have simulated the data we want and put it in its proper location
+in the proper order.
+
+So now we are ready to fit some models to these data.
+<<fit-new-curve>>=
+out4 <- aster(resp ~ varb + 0,
+    pred, fam, varb, id, root, data = redata.curve)
+out5 <- aster(resp ~ varb + 0 + z1 + z2,
+    pred, fam, varb, id, root, data = redata.curve)
+out6 <- aster(resp ~ varb + 0 + z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2),
+    pred, fam, varb, id, root, data = redata.curve)
+anova(out4, out5, out6)
+@
+
+<<foop,include=FALSE,echo=FALSE>>=
+foop <- anova(out4, out5, out6)
+foopp <- foop[3, 5]
+foopexp <- floor(log10(foopp))
+foopfrac <- round(foopp / 10^foopexp, 1)
+@
+The $P$-value for the comparison of ``Model~2''
+in which $q(\boldz)$ is linear in $\boldz$ and ``Model~3''
+in which $q(\boldz)$ is quadratic in $\boldz$ shows that the fit of
+Model~3 is highly statistically significantly better than that of Model~2
+($P = \Sexpr{foopfrac} \times 10^{\Sexpr{foopexp}}$) but not so significant
+that statistical analysis seems unnecessary.  We take this data set as our
+simulated data.
+
+Here are the regression coefficients
+<<show-coef-curve>>=
+# names(out6$coefficients) <- names.coef
+summary(out6)
+@
+
+\subsection{Data for Lande-Arnold Analysis}
+
+These data can also be used for Lande-Arnold analysis, the comparison
+of the two methodologies being the main point of this technical report,
+but they must be reshaped for that.  We need a data frame with three
+variables of length \texttt{nind}.  The response is observed fitness
+<<la-response>>=
+yfit <- redata.curve$resp[redata.curve$varb == "ngerm1"] +
+    redata.curve$resp[redata.curve$varb == "ngerm2"] +
+    redata.curve$resp[redata.curve$varb == "ngerm3"] +
+    redata.curve$resp[redata.curve$varb == "ngerm4"]
+@
+and the predictors \texttt{z1} and \texttt{z2} can be taken from
+the data frame \verb@data.flat@
+<<la-data>>=
+ladata <- data.frame(y = yfit, z1 = data.flat$z1, z2 = data.flat$z2)
+@
+
+Now we fit a quadratic model to these data using ordinary least squares (OLS).
+<<ols>>=
+lout <- lm(y ~ z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2), data = ladata)
+# lame.coef <- names(coefficients(lout))
+# lame.coef <- sub("poly([^)]*)", "poly.", lame.coef, extended = FALSE)
+# names(lout$coefficients) <- lame.coef
+summary(lout)
+@
+
+\subsection{Write Data}
+
+For use as a teaching tool, we write these data out for inclusion in
+a future version of the \texttt{aster} package.  We also write out the
+simulation truth parameter values, and the graph and family structure.
+We also remove all other R objects so we know what we do henceforth
+depends only on the saved data.
+<<write>>=
+redata <- redata.curve
+save(redata, ladata, beta.true, mu.true, phi.true, theta.true,
+    pred, fam, vars, file = "sim.rda")
+rm(list = ls())
+ls(all.names = TRUE)
+load("sim.rda")
+@
+
+\section{Estimation of Fitness Landscape}
+
+\subsection{Plot Fitness Landscape}
+
+First we make a grid of points on which to evaluate fitness.
+% the plot command in this chunk was not there in
+% the original Rnw file downloaded from conservancy.umn.edu
+% but it needs to be there to get the grid the right size
+% at least in modern versions of R.  Don't know why this
+% ever worked (if it did).  It may have something to do with the
+% rm(list = ls()) in the preceding chunk.
+% The text between here and the code chunk explains what we have
+% done.  It is not in
+% the original Rnw file downloaded from conservancy.umn.edu
+The plot here is just to get the right size for the plot to be
+stuffed into vector \texttt{ufoo}.  We don't show the plot.  It is
+the same as Figure~\ref{fig:scat} above.
+<<grid,fig=FALSE>>=
+par(mar = c(2, 2, 1, 1) + 0.1)
+plot(ladata$z1, ladata$z2, xlab = "", ylab = "", pch = 20,
+    axes = FALSE)
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+xfoo <- seq(ufoo[1], ufoo[2], length = nx)
+yfoo <- seq(ufoo[3], ufoo[4], length = ny)
+@
+Then we make a data frame like redata with these predictor values
+<<grid-redata>>=
+xx <- outer(xfoo, yfoo^0)
+yy <- outer(xfoo^0, yfoo)
+xx <- as.vector(xx)
+yy <- as.vector(yy)
+nn <- length(xx)
+foo <- rep(1, nn)
+bar <- list(z1 = xx, z2 = yy, root = foo)
+for (lab in levels(redata$varb)) {
+    bar[[lab]] <- foo
+    ##### response doesn't matter for prediction #####
+}
+bar <- as.data.frame(bar)
+rebar <- reshape(bar, varying = list(vars), direction = "long",
+    timevar = "varb", times = as.factor(vars), v.names = "resp")
+@
+We also have to zero out some non-bottom-layer elements of \texttt{z1}
+and \texttt{z2}, just like with the ``real'' (simulated) data
+<<layer-too>>=
+barlayer <- substr(as.character(rebar$varb), 1, 5)
+rebar$z1[barlayer != "ngerm"] <- 0
+rebar$z2[barlayer != "ngerm"] <- 0
+@
+and we are finally ready to fit data and make a prediction.
+We must redo \texttt{out6} because we threw it away.
+(The following can be the example for these data when added
+to the \texttt{aster} package.)
+<<out6-redo>>=
+out6 <- aster(resp ~ varb + 0 + z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2),
+    pred, fam, varb, id, root, data = redata)
+@
+Then we predict at the new points.
+<<out6-predict>>=
+pbar <- predict(out6, newdata = rebar, varvar = varb, idvar = id,
+    root = root)
+pbar <- matrix(pbar, nrow = nrow(bar))
+pbar <- pbar[ , grep("germ", vars)]
+zz <- apply(pbar, 1, sum)
+zz <- matrix(zz, nx, ny)
+@
+
+While we are at it, figure out the point where fitness is maximized
+<<out6-max>>=
+Afoo <- matrix(NA, 2, 2)
+Afoo[1, 1] <- out6$coef["I(z1^2)"]
+Afoo[2, 2] <- out6$coef["I(z2^2)"]
+Afoo[1, 2] <- out6$coef["I(z1 * z2)"] / 2
+Afoo[2, 1] <- out6$coef["I(z1 * z2)"] / 2
+bfoo <- rep(NA, 2)
+bfoo[1] <- out6$coef["z1"]
+bfoo[2] <- out6$coef["z2"]
+# Afoo
+# bfoo
+cfoo <- solve(- 2 * Afoo, bfoo)
+cfoo
+@
+The R statements make Figure~\ref{fig:nerf} (page~\pageref{fig:nerf})
+<<label=nerfshow,include=FALSE>>=
+par(mar = c(2, 2, 1, 1) + 0.1)
+plot(ladata$z1, ladata$z2, xlab = "", ylab = "", pch = 20,
+    axes = FALSE)
+title(xlab = "z1", line = 1)
+title(ylab = "z2", line = 1)
+box()
+contour(xfoo, yfoo, zz, add = TRUE, col = "blue", labcex = 1, lwd = 2)
+points(cfoo[1], cfoo[2], col = "blue", pch = 19)
+@
+\begin{figure}
+\begin{center}
+<<label=nerf,fig=TRUE,echo=FALSE>>=
+<<nerfshow>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+contours of the fitness landscape as estimated by the aster model (blue).}
+\label{fig:nerf}
+\end{figure}
+
+\subsection{Compare with Simulation Truth Fitness Landscape}
+
+We also want to compare with the simulation truth.
+<<out6-predict-truth>>=
+out6.true <- out6
+out6.true$coefficients <- beta.true
+pbar.true <- predict(out6.true, newdata = rebar, varvar = varb, idvar = id,
+    root = root)
+pbar.true <- matrix(pbar.true, nrow = nrow(bar))
+pbar.true <- pbar.true[ , grep("germ", vars)]
+zz.true <- apply(pbar.true, 1, sum)
+zz.true <- matrix(zz.true, nx, ny)
+@
+
+While we are at it, figure out the point where fitness is maximized
+<<beta-true-max>>=
+Abar <- matrix(NA, 2, 2)
+Abar[1, 1] <- beta.true["I(z1^2)"]
+Abar[2, 2] <- beta.true["I(z2^2)"]
+Abar[1, 2] <- beta.true["I(z1 * z2)"] / 2
+Abar[2, 1] <- beta.true["I(z1 * z2)"] / 2
+bbar <- rep(NA, 2)
+bbar[1] <- beta.true["z1"]
+bbar[2] <- beta.true["z2"]
+# Abar
+# bbar
+cbar <- solve(- 2 * Abar, bbar)
+cbar
+@
+The R statements make Figure~\ref{fig:turf} (page~\pageref{fig:turf})
+<<label=turfshow,include=FALSE>>=
+par(mar = c(2, 2, 1, 1) + 0.1)
+plot(ladata$z1, ladata$z2, xlab = "", ylab = "", pch = 20,
+    axes = FALSE)
+title(xlab = "z1", line = 1)
+title(ylab = "z2", line = 1)
+box()
+contour(xfoo, yfoo, zz.true, add = TRUE, col = "green3", labcex = 1, lwd = 2)
+# contour(xfoo, yfoo, zz, add = TRUE, levels = lev, col = "blue")
+points(cbar[1], cbar[2], col = "green3", pch = 19)
+@
+\begin{figure}
+\begin{center}
+<<label=turf,fig=TRUE,echo=FALSE>>=
+<<turfshow>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+contours of the simulation truth fitness landscape (green).}
+\label{fig:turf}
+\end{figure}
+
+\subsection{Compare with Lande-Arnold Estimate of Fitness Landscape}
+
+We also want to compare with the Lande-Arnold estimate, which is the best linear
+unbiased estimator of the best quadratic approximation to the fitness landscape.
+(We need to refit the Lande-Arnold estimate because we threw it away.)
+<<lout-predict>>=
+lout <- lm(y ~ z1 + z2 + I(z1^2) + I(z1*z2) + I(z2^2), data = ladata)
+zz.la <- predict(lout, newdata = bar)
+zz.la <- matrix(zz.la, nx, ny)
+@
+
+While we are at it, figure out the point where fitness is maximized
+<<beta-true-max-la>>=
+beta.la <- lout$coefficients
+Alob <- matrix(NA, 2, 2)
+Alob[1, 1] <- beta.la["I(z1^2)"]
+Alob[2, 2] <- beta.la["I(z2^2)"]
+Alob[1, 2] <- beta.la["I(z1 * z2)"] / 2
+Alob[2, 1] <- beta.la["I(z1 * z2)"] / 2
+blob <- rep(NA, 2)
+blob[1] <- beta.la["z1"]
+blob[2] <- beta.la["z2"]
+# Alob
+# blob
+clob <- solve(- 2 * Alob, blob)
+clob
+@
+The R statements make Figure~\ref{fig:lurf} (page~\pageref{fig:lurf})
+<<label=lurfshow,include=FALSE>>=
+par(mar = c(2, 2, 1, 1) + 0.1)
+plot(ladata$z1, ladata$z2, xlab = "", ylab = "", pch = 20,
+    axes = FALSE)
+title(xlab = "z1", line = 1)
+title(ylab = "z2", line = 1)
+box()
+contour(xfoo, yfoo, zz.la, add = TRUE, col = "red", labcex = 1, lwd = 2)
+# contour(xfoo, yfoo, zz, add = TRUE, levels = lev, col = "blue")
+points(clob[1], clob[2], col = "red", pch = 19)
+@
+\begin{figure}
+\begin{center}
+<<label=lurf,fig=TRUE,echo=FALSE>>=
+<<lurfshow>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{z1} versus \texttt{z2} with
+contours of the best quadratic approximation of the fitness landscape
+as estimated by the Lande-Arnold method (red).}
+\label{fig:lurf}
+\end{figure}
+
+\appendix
+
+\section{A Generalization of the Argument in Section~\ref{sec:digress}}
+\label{sec:generalization}
+
+The argument in Section~\ref{sec:digress} can be further generalized.
+Rewrite \eqref{eq:eta-germ} and \eqref{eq:eta-non-germ} as
+$$
+   \varphi_j = \begin{cases} a_j(\boldx) + b_j(\boldx) q(\boldz), &
+   j \in G \\ a_j(\boldx), & j \notin G \end{cases}
+$$
+where $b_j(\boldx)$ are arbitrary functions of the ``other'' covariates.
+Follow the same argument and the conclusion \eqref{eq:conclusion} becomes
+$$
+   q(\boldz) \ge q(\boldz')
+   \quad \text{implies} \quad
+   \sum_{j \in G} b_j(\boldx) \mu_j(\boldx, \boldz)
+   \ge
+   \sum_{j \in G} b_j(\boldx) \mu_j(\boldx, \boldz').
+$$
+It is important that the comparison is between
+individuals with different values $\boldz$ and $\boldz'$ of
+phenotypic covariates but the same value $\boldx$ of other covariates.
+
+In short, fitness, now defined as an arbitrary linear combination
+of unconditional expectations of nodes, is still a monotone function
+of $q(\boldz)$.  This would be useful, for example, if one wanted
+to take account of population growth rate $\lambda$ when fitness would
+be defined as $\sum_{j \in G} \lambda^{- t_j} \mu_j(\boldx, \boldz)$,
+where $t_j$ is the time at which the $j$-th node is observed.
+
+\section{Monotonicity in Conditional Aster Models}
+\label{sec:conditional}
+
+So-called conditional aster models may be of some use in some situations,
+but they are not useful in this context.  They too have a monotonicity
+property, but between the linear predictor and the conditional mean
+vector $\boldxi$ having components defined by
+$$
+   E(y_j \mid y_{p(j)}) = y_{p(j)} \xi_j
+$$
+where $p(j)$ denotes the predecessor of $j$, all arrows in the graph
+going
+$$
+   y_{p(j)} \longrightarrow y_j
+$$
+for various values of $j$.
+
+Conditional aster models actually satisfy a much stronger monotonicity
+property than unconditional aster models, because $\xi_j$ is a function
+of $\theta_j$ only (does not depend on the other components of $\boldtheta$)
+and the map $\theta_j \mapsto \xi_j$ is strictly increasing.  This does
+imply
+\begin{equation} \label{eq:mono-cond}
+   ( \boldxi - \boldxi' )^T
+   ( \boldtheta - \boldtheta' ) > 0,
+\end{equation}
+when $\boldtheta \neq \boldtheta'$,
+which is just like \eqref{eq:mono-unco} except that here conditional means
+replace unconditional means and the linear predictor vectors are those for
+the conditional model.
+
+However, this property is of no use in modeling fitness.
+The conditional means do determine the unconditional means
+and hence determine expected fitness, but the relationship
+is nonlinear and hence \eqref{eq:mono-cond} cannot be used
+to argue analogously to the argument proceeding from \eqref{eq:mono-pure}.
+Hence when a conditional model is used
+there is no monotone relationship between expected fitness
+and the function $q(\boldz)$ used on the linear predictor scale.
+Thus, in the context of estimating fitness landscapes, conditional aster
+models are of no use whatsoever.
+
+\begin{thebibliography}{}
+
+\bibitem[Barndorff-Nielsen(1978)]{barndorff}
+Barndorff-Nielsen, O.~E. (1978).
+\newblock \emph{Information and Exponential Families}.
+\newblock Chichester: John Wiley.
+
+\bibitem[Brown(1986)]{brown}
+Brown, L.~D. (1986).
+\newblock \emph{Fundamentals of Statistical Exponential Families: with
+    Applications in Statistical Decision Theory}.
+\newblock Hayward, CA: Institute of Mathematical Statistics.
+
+\bibitem[Geyer et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S. and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, \textbf{94}, 415--426.
+
+\bibitem[Lande and Arnold(1983)]{la}
+Lande, R. and Arnold, S.~J. (1983).
+\newblock The measurement of selection on correlated characters.
+\newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+% \bibitem[Lindgren(1993)]{lindgren}
+% Lindgren, B.~W. (1993).
+% \newblock \emph{Statistical Theory}, 4th ed.
+% \newblock New York: Chapman \& Hall.
+
+% \bibitem[Phillips and Arnold(1989)]{p+a}
+% Phillips, P.~C. and Arnold, S.~J. (1989).
+% \newblock Visualizing multivariate selection.
+% \newblock \emph{Evolution}, \textbf{43}, 1209--1222.
+
+\bibitem[R Development Core Team(2008)]{rcore}
+R Development Core Team (2008).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+\bibitem[Rockafellar and Wets(2004)]{raw}
+Rockafellar, R.~T. and Wets, R. J.-B. (2004).
+\newblock \emph{Variational Analysis}, corr.\ 2nd printing.
+\newblock Berlin: Springer-Verlag.
+
+\bibitem[Shaw, et al.(2008) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2008).
+\newblock Unifying life history analysis for inference of fitness and
+    population growth.
+\newblock \emph{American Naturalist}, in press.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Shaw, et al.(2007a) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2tr}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2007a).
+\newblock Supporting data analysis for ``Unifying life history analysis
+    for inference of fitness and population growth''.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~658
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Shaw, et al.(2007b) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2tr2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+    Etterson, J.~R. (2007b).
+\newblock More Supporting data analysis for ``Unifying life history analysis
+    for inference of fitness and population growth''.
+\newblock University of Minnesota School of Statistics Technical Report
+    No.~661
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\end{thebibliography}
+
+\end{document}
+
+\begin{center} \LARGE REVISED DOWN TO HERE \end{center}
