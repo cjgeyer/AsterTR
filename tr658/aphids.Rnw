@@ -1,0 +1,398 @@
+
+\chapter{Aster Analysis of Growth Rate} \label{ch:aphids}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+@
+
+\section{Introduction}
+
+\subsection{Data}
+
+\citet{aphids} give data (their Table~2) that is ideal for aster model
+analysis \citep{gws}.  These data are in a dataset \texttt{aphid} in
+version 0.7-2 or later of the \texttt{aster} contributed package for R.
+<<data>>=
+library(aster)
+data(aphid)
+names(aphid)
+@
+
+These data are already in ``long'' format, no need to use the \texttt{reshape}
+function on them to do aster analysis.  The ``original'' variables, those
+describe in \citet{aphids}, are all in the variable \texttt{resp}.
+Which components of \texttt{resp} correspond to which ``original'' variable
+is indicated by the variable \texttt{varb}, which has levels
+<<data-describe>>=
+levels(aphid$varb)
+@
+Which components of \texttt{resp} correspond to which ``original'' individual
+is indicated by the variable \texttt{id}, which has unique values
+<<data-describe-too>>=
+sort(unique(aphid$id))
+@
+so we have the \Sexpr{length(unique(aphid$id))} individuals recorded in
+the data of \citet{aphids}.
+
+The ``original'' variables labeled \texttt{S}$x$, where $x$ is a number
+between 1 and 13,
+are survival indicators (one for alive, zero for dead), and \texttt{root} is
+all ones (every individual was alive at the start of data collection).
+Our \texttt{root} corresponds to the \texttt{S0} of \citet{aphids}.
+The ``original'' variables labeled \texttt{B}$x$ where $x$ is a number
+between 2 and 9
+are the number of offspring born to that individual (all individuals are
+female aphids) in that time period.
+
+\subsection{Aster Model}
+
+We use an aster model for these data described as follows.
+\begin{itemize}
+\item Variable \texttt{root} is the predecessor of the variable \texttt{S1}.
+\item Variable \texttt{S1} is Bernoulli.
+\item Variable \texttt{S}$x$ is the predecessor of the variable \texttt{B}$x$.
+\item Variable \texttt{B}$x$ is Poisson given the variable \texttt{S}$x$.
+\item Variable \texttt{S}$(x - 1)$ is the predecessor of the variable
+    \texttt{S}$x$.
+\item Variable \texttt{S}$x$ is Bernoulli given the variable
+    \texttt{S}$(x - 1)$.
+\end{itemize}
+The graph for this model is shown in Figure~\ref{fig:graph:aphids}.
+\begin{figure}
+\begin{center}
+\setlength{\unitlength}{0.4 in}
+\begin{picture}(13.2,1.50)(-0.05,-1.25)
+\put(0,0){\makebox(0,0){$1$}}
+\put(1,0){\makebox(0,0){\ttfamily S1}}
+\put(2,0){\makebox(0,0){\ttfamily S2}}
+\put(3,0){\makebox(0,0){\ttfamily S3}}
+\put(4,0){\makebox(0,0){\ttfamily S4}}
+\put(5,0){\makebox(0,0){\ttfamily S5}}
+\put(6,0){\makebox(0,0){\ttfamily S6}}
+\put(7,0){\makebox(0,0){\ttfamily S7}}
+\put(8,0){\makebox(0,0){\ttfamily S8}}
+\put(9,0){\makebox(0,0){\ttfamily S9}}
+\put(10,0){\makebox(0,0){\ttfamily S10}}
+\put(11,0){\makebox(0,0){\ttfamily S11}}
+\put(12,0){\makebox(0,0){\ttfamily S12}}
+\put(13,0){\makebox(0,0){\ttfamily S13}}
+\put(2,-1){\makebox(0,0){\ttfamily B2}}
+\put(3,-1){\makebox(0,0){\ttfamily B3}}
+\put(4,-1){\makebox(0,0){\ttfamily B4}}
+\put(5,-1){\makebox(0,0){\ttfamily B5}}
+\put(6,-1){\makebox(0,0){\ttfamily B6}}
+\put(7,-1){\makebox(0,0){\ttfamily B7}}
+\put(8,-1){\makebox(0,0){\ttfamily B8}}
+\put(9,-1){\makebox(0,0){\ttfamily B9}}
+\multiput(0.35,0)(1,0){13}{\vector(1,0){0.3}}
+\multiput(2,-0.25)(1,0){8}{\vector(0,-1){0.5}}
+\end{picture}
+\end{center}
+\caption{Graph for \emph{Uroleucon rudbeckiae} data.
+Arrows go from one life history component to another indicating
+conditional dependence in the aster model.
+Nodes are labeled by their associated variables.
+Root nodes are associated with the constant variable $1$,
+indicating presence of individuals at the outset.
+If any parent variable is zero, then the child variable is also zero.
+Child variables are conditionally independent given the parent variable.
+If a parent variable is nonzero, then the conditional distribution
+of the child variable is as follows.
+\texttt{S}$i$ is (conditionally) Bernoulli (zero indicates mortality,
+one indicates survival) and
+\texttt{B}$i$ is (conditionally) zero-truncated Poisson.}
+\label{fig:graph:aphids}
+\end{figure}
+
+The data of \citet{aphids} included variables \texttt{B1} though \texttt{B13}.
+We have deleted some of them from the data.  If we had included them and
+fit a saturated aster model, then we have in addition to the structural
+zeroes in the data (dead individuals stay dead and cannot reproduce)
+non-structural zeroes (zeroes in the data that are not forced by the
+model structure).  Because we intend to use a saturated model for fecundity,
+for the purposes of this analysis only we deleted the \texttt{B}$x$ variables
+that were all zero.
+We do not recommend this in general nor do we claim this is the only way
+to analyze these data.  However the question of what to do with these
+non-structural zeroes is difficult, an open research question in statistics,
+and we do not wish to complicate our example with that.  If we were to use
+a non-saturated model, this would avoid the non-structural zeroes problem,
+but would require us to model fecundity as a function of time.  We do not
+wish to do that either.
+
+In contrast, we will attempt to model survivorship as a function of time,
+not so much because that is easier (though it may be), but just to illustrate
+both approaches.  Thus we do not need to drop any \texttt{S}$x$ variables.
+
+We now construct the aster model graphical structure as follows.
+<<graph>>=
+varb <- unique(as.character(aphid$varb))
+varb.letter <- substr(varb, 1, 1)
+varb.number <- as.numeric(substr(varb, 2, 10))
+varb.letter
+varb.number
+pred <- rep(0, length(varb))
+indx <- seq(along = varb)
+### B predecessors
+from <- indx[varb.letter == "B"]
+tovar <- paste("S", varb.number[from], sep = "")
+data.frame(from = varb[from], to = tovar)
+to <- match(tovar, varb)
+pred[from] <- to
+pred
+### S predecessors
+from <- indx[varb.letter == "S"]
+tovar <- paste("S", varb.number[from] - 1, sep = "")
+data.frame(from = varb[from], to = tovar)
+to <- match(tovar, varb)
+pred[from] <- to
+pred
+data.frame(from = varb, to = varb[pred])
+pred[is.na(pred)] <- 0
+@
+And the aster model family structure.
+<<fam>>=
+### families
+fam <- rep(1, length(varb))
+fam[varb.letter == "B"] <- 2
+@
+
+\section{Model Fitting}
+
+Unlike the examples discussed in \citet{gws}, these data require
+\emph{conditional} aster models.  We are interested in modeling
+survivorship and fecundity as instantaneous functions of time
+(or as close to that as we can get with discrete time periods).
+The use of unconditional aster models to address lifetime fitness,
+so prominent in \citet{gws}, is missing in this application.
+
+\subsection{Model One}
+
+We start with constant mortality rate.
+<<model-one>>=
+barb <- as.factor(sub("S[0-9]*", "S", as.character(aphid$varb)))
+aphid <- data.frame(aphid, barb = barb)
+out1 <- aster(resp ~ barb, pred, fam, varb, id, root = root,
+    data = aphid, type = "conditional")
+summary(out1, show.graph = TRUE)
+@
+
+\subsection{Model Two}
+
+We add a term linear in time for survival (not for fecundity).
+<<model-two>>=
+tim <- as.numeric(substr(as.character(aphid$varb), 2, 10))
+tim[grep("B", as.character(aphid$varb))] <- 0
+aphid <- data.frame(aphid, tim = tim)
+out2 <- aster(resp ~ barb + tim, pred, fam, varb, id, root = root,
+    data = aphid, type = "conditional")
+summary(out2)
+@
+
+\subsection{Model Three}
+
+We add a term quadratic in time for survival (not for fecundity).
+<<model-two>>=
+out3 <- aster(resp ~ barb + tim + I(tim^2), pred, fam, varb, id, root = root,
+    data = aphid, type = "conditional")
+summary(out3)
+anova(out1, out2, out3)
+@
+
+Everything we have put in seems statistically significant, but we stop here,
+since modeling is not the main point of the example.
+
+\section{Population Growth Rate}
+
+All of this is nice, but it does not directly address the question
+of interest to \citet{aphids}.  They are interested in the population
+growth rate $\phi$, which we can get a point estimate for using our
+methods as follows.
+
+\subsection{Prediction I}
+
+First we form ``new data'' for prediction that corresponds to just one
+individual in the old data.
+<<predict-data>>=
+renewdata <- aphid[aphid$id == 1, ]
+class(renewdata)
+names(renewdata)
+dim(renewdata)
+@
+<<predict-three>>=
+nind <- 1
+nnode <- length(varb)
+prednames <- grep("B", varb, value = TRUE)
+prednames
+predno <- as.numeric(substr(prednames, 2, 10))
+predno
+npred <- length(prednames)
+amat <- array(0, c(nind, nnode, npred))
+identical(varb, as.character(renewdata$varb))
+for (i in 1:npred)
+    amat[1, varb == prednames[i], i] <- 1
+amat[1, , ]
+class(out3$modmat)
+dim(out3$modmat)
+class(out3)
+tout3 <- predict(out3, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, amat = amat)
+names(tout3) <- prednames
+tout3
+@
+These are the unconditional expectations of the \verb@B@$x$ variables
+indicated by the names.  We claim these correspond to $\sigma_x \beta_x$
+(this product) in \citet{aphids}.
+
+\subsection{Point Estimation}
+
+To simplify notation we write $\mu_x = \sigma_x \beta_x$ so equation (1)
+in \citet{aphids} becomes
+\begin{equation} \label{eq:phi}
+   1 = \sum_{x = 0}^\infty \phi^{- (x + 1)} \mu_x.
+\end{equation}
+Of course, here the sum is finite, since we only have (nonzero) $\mu_x$
+for $x$ in the R variable \verb@predno@, ranging from \Sexpr{min(predno)}
+to \Sexpr{max(predno)}.
+
+The corresponding point estimate is found as follows.
+<<point>>=
+foo <- function(phi) sum(phi^(- (predno + 1)) * tout3) - 1
+uout <- uniroot(foo, lower = 1, upper = 2)
+uout
+phihat <- uout$root
+@
+Our point estimate is \Sexpr{round(phihat, 5)}.  Note this is different from
+the estimates presented in Table~3 in \citet{aphids}, although not much
+different from any of their bias-corrected estimators ($F'$, $F^*$, and $F''$).
+
+\subsection{The Delta Method}
+
+The \verb@aster@ package does not automatically do standard errors for
+nonlinear functions such as the function defined by
+<<dophi>>=
+dophi <- function(mu) {
+    foo <- function(phi) sum(phi^(- (predno + 1)) * mu) - 1
+    uout <- uniroot(foo, lower = 1, upper = 2)
+    return(uout$root)
+}
+@
+
+In order to apply the delta method we must find the gradient (vector
+of partial derivatives $\partial \phi / \partial \mu_x$) of the function
+defined implicitly by \eqref{eq:phi} and explicitly by the
+R function \verb@dophi@.
+
+Differentiating \eqref{eq:phi} with respect to $\mu_y$ we get
+$$
+   0 = \sum_{x = 0}^\infty - (x + 1) \phi^{- (x + 2)}
+   \frac{\partial \phi}{\partial \mu_y} \mu_x
+   +
+   \phi^{- (y + 1)}
+$$
+which, since the $\partial \phi / \partial \mu_y$ does not contain $x$
+and can be pulled outside the sum, can be solved
+for $\partial \phi / \partial \mu_y$ giving
+\begin{equation} \label{eq:partials}
+   \frac{\partial \phi}{\partial \mu_y}
+   =
+   \left( \sum_{x = 0}^\infty (x + 1) \phi^{- (x + 2) + (y + 1)} \mu_x
+   \right)^{-1}
+\end{equation}
+The partial derivatives are functions of the vector
+$\boldmu$ having components $\mu_y$.
+So we should write $\partial \phi(\boldmu) / \partial \mu_y$ to denote
+evaluation of the partial derivatives at the point $\boldmu$.
+
+Then the delta method says the estimator $\phi(\boldmuhat)$ has the
+same asymptotic variance as its linearization
+\begin{equation} \label{eq:phi-lin}
+   \phi_{\text{lin}}(\boldmuhat)
+   =
+   \phi(\boldmu)
+   +
+   \sum_{x = 0}^\infty \frac{\partial \phi(\boldmu)}{\partial \mu_x}
+   (\hat{\mu}_x - \mu_x)
+\end{equation}
+(Taylor series about $\boldmu$ with only zero-order and first-order terms).
+
+Since $\phi_{\text{lin}}$ is a linear function of $\boldmuhat$, we can
+calculate its asymptotic standard deviation using the \verb@aster@ package.
+
+<<do-delta>>=
+aphimat <- array(0, c(1, nnode, 1))
+for (i in 1:npred)
+    aphimat[1, varb == prednames[i], 1] <- 1 / sum((predno + 1) *
+        phihat^(- (predno + 2) + (predno[i] + 1)) * tout3)
+aphimat[1, , 1]
+tout3sd <- predict(out3, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, amat = aphimat, se.fit = TRUE)
+tout3sd$se.fit
+@
+This is much smaller than the standard errors derived from Table~3 in
+\citet{aphids}, but this is only to be expected.  Parametric estimators
+are generally more accurate than nonparametric estimators (when the parametric
+model is correct).
+
+Note that from the last call to \verb@predict.aster@
+we used only the standard error, not the point estimate.
+The estimate \verb@phihat@ had already been derived.
+Moreover, since \verb@aster.predict@ does not allow a constant term
+in the linear functions it estimates,
+we cannot make it estimate \eqref{eq:phi-lin}.  This does not matter, since
+we have gotten the desired
+point estimate $\phi(\boldmuhat) = \Sexpr{round(phihat, 3)}$
+from our earlier calculation.  The second calculation is only to get the
+standard errors of both $\phi(\boldmuhat)$ and $\phi_{\text{lin}}(\boldmuhat)$,
+which are the same \Sexpr{round(tout3sd$se.fit, 3)}.
+
+\subsection{Check of the Delta Method}
+
+We can derive the partial derivatives used in the delta method by finite
+difference approximation.  Consider the first
+<<check>>=
+epsilon <- 1e-5
+dophi <- function(phi) {
+    foo <- function(phi) sum(phi^(- (predno + 1)) * tout3) - 1
+    uout <- uniroot(foo, lower = 1, upper = 2, tol = 1e-8)
+    return(uout$root)
+}
+dophi <- function(mu) {
+    foo <- function(phi) sum(phi^(- (predno + 1)) * mu) - 1
+    uout <- uniroot(foo, lower = 1, upper = 2, tol = 1e-8)
+    return(uout$root)
+}
+mueps <- tout3
+mueps[1] <- mueps[1] + epsilon
+(dophi(mueps) - dophi(tout3)) / epsilon
+aphimat[1, 3, 1]
+@
+Pretty close.
+
+\section{Discussion}
+
+The point of this example is not that our methods are better than those
+of \citet{aphids}.  Ours being parametric and theirs being nonparametric,
+ours are better when the parametric model we use is correct (or nearly so),
+and theirs are better otherwise, assuming the sample size is large enough
+for the usual asymptotics of maximum likelihood to work (for our methods)
+or for the jackknife to work (for theirs).
+
+Our point is rather different: aster models can be made
+to do this other kind of life history analysis (LHA), which is rather different
+from the kind done in the example in \citet{gws}.  Because both kinds
+are done in the same framework, this means it is possible to do analyses
+which have some aspects of both kinds
+of LHA.  It stands to reason that many other kinds of LHA can be placed in the
+aster framework.
+  Our story is about \emph{unification}, not about
+one particular analysis being better than another for one particular data set.
+
+An unrelated lesson is that what \citet{gws} call a ``limitation''
+of the \verb@aster@ package, that its \verb@predict.aster@ function
+handles only linear functions of the various parameterizations known
+to it ($\boldbeta$, $\boldtheta$, $\boldvarphi$, $\boldtau$, and $\boldxi$),
+is a limitation only in terms of ease of use.  The package can be made
+to handle nonlinear functions, if one is willing and able to do the
+delta method partially by hand (as we did here).
+

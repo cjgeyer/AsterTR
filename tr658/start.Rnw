@@ -1,0 +1,193 @@
+
+\chapter{Recreating this Document}
+
+\section{Obtaining R and the Package}
+
+This document was created using the \texttt{aster} contributed package
+for the R statistical computing environment \citep{rcore}.  It requires
+version 0.7-2 or later of the \texttt{aster} package, because that was
+the first version that includes the datasets used for the analyses in
+this document.
+
+If the \texttt{aster} package has not yet been installed in your R
+installation, the R command
+\begin{verbatim}
+install.packages("aster")
+\end{verbatim}
+will do this.
+One can also do the equivalent using the GUI menus if on Apple Macintosh
+or Microsoft Windows.  This may require root or administrator privileges.
+
+After installation one issues the R command
+<<library>>=
+library(aster)
+@
+to use this package.
+One can also install the package in a nonstandard location (in one's
+home directory), but this requires changing the usage of the \texttt{library}
+function, and we do not explain this.
+
+If the \texttt{aster} package has been installed in your R
+installation, but is not the current version on CRAN, the R command
+\begin{verbatim}
+update.packages("aster")
+\end{verbatim}
+will upgrade to the current version.
+
+If R has not been installed, follow the instructions on CRAN
+(\url{http://cran.r-project.org/}).
+
+The version of R used to make this document is
+\Sexpr{paste(R.Version()$major, R.Version()$minor, sep = ".")}.
+
+<<baz,include=FALSE,echo=FALSE>>=
+baz <- library(help = "aster")
+baz <- baz$info[[1]]
+baz <- baz[grep("Version", baz)]
+baz <- sub("^Version: *", "", baz)
+@
+The version of the package used to make this document
+is \Sexpr{baz}.
+
+\section{Obtaining LaTeX}
+
+The \texttt{Sweave} command in R produces \LaTeX\ output.
+To process it, you need the \LaTeX\ document preparation system.
+If you are using Linux, this is probably just came with it.
+Free versions of \LaTeX\ are also available for Apple Macintosh
+and Microsoft Windows.
+
+\section{Obtaining Files}
+
+Download from the aster web site \url{http:www.stat.umn.edu/geyer/aster}
+the following files
+\begin{verbatim}
+tr658.tex
+start.Rnw
+newnew.Rnw
+chamae2.Rnw
+chamae.Rnw
+aphids.Rnw
+chamae2-alpha.rda
+chamae-alpha.rda
+\end{verbatim}
+and put them all in the same directory (``folder'' in GUI-speak).
+
+\section{Creating the Document}
+
+\subsection{Sweave}
+
+Start R, make the director (folder) with the files the current working
+directory (there is a menu item on the R GUI for this) and use
+the \texttt{Sweave} command on each of the files with suffix \texttt{Rnw},
+that is,
+\begin{verbatim}
+Sweave("start.Rnw")
+Sweave("newnew.Rnw")
+Sweave("chamae2.Rnw")
+Sweave("chamae.Rnw")
+Sweave("aphids.Rnw")
+\end{verbatim}
+Some of these, especially \texttt{chamae.Rnw} take a while.
+Each ``chunk'' processed
+is reported so you can see something is happening, but there is at least
+one chunk that takes several minutes.
+
+\subsection{LaTeX}
+
+When all of these have been done, the R commands in the files with
+suffix \texttt{Rnw} have been executed and the results, both text output
+and image files containing plots have been produced.  There will be new
+files with suffixes \texttt{tex}, \texttt{eps}, and \texttt{pdf}.
+
+Now running the latex command on the top-level file \texttt{tr658.tex}
+will produce the document.  On Linux just execute either of
+\begin{verbatim}
+latex tr658
+pdflatex tr658
+\end{verbatim}
+at the Linux command line to produce the document.  It will be necessary
+to run these several times (until one no longer sees the message
+``Label(s) may have changed. Rerun to get cross-references right'')
+to get all cross-references right.
+
+\subsection{Stangle}
+
+For those who do not want to mess with \LaTeX, the \texttt{Stangle} function
+can be used instead of \texttt{Sweave}.
+\begin{verbatim}
+Stangle("newnew.Rnw")
+Stangle("chamae2.Rnw")
+Stangle("chamae.Rnw")
+Stangle("aphids.Rnw")
+\end{verbatim}
+will produce the files
+\begin{verbatim}
+newnew.R
+chamae2.R
+chamae.R
+aphids.R
+\end{verbatim}
+that contain only the R commands (the code ``chunks'') from the files
+with suffix \texttt{Rnw}.
+They can then be sourced, run in batch mode, whatever the user pleases.
+
+\subsection{The Role of the RDA Files}
+
+The two files having suffix \texttt{rda} are R data (RDA) files.
+One contains one ``magic'' number; the other contains two of them.
+<<show-rda>>=
+rm(list = ls())
+load("chamae2-alpha.rda")
+ls()
+alpha.fruit
+rm(list = ls())
+load("chamae-alpha.rda")
+ls()
+alpha.fruit
+alpha.seed
+@
+
+These are shape parameters for negative binomial distributions used
+in Chapters~\ref{ch:chamae2} and~\ref{ch:chamae}.  These RDA files are
+read near the beginning of these chapters.  New values of these parameters
+are calculated by maximum likelihood in Sections~\ref{app:mle}
+and~\ref{app:mle:too} near the end of those chapters, and the new values
+are written out to the RDA files (clobbering the old values).
+
+Thus these RDA files must exist in order to run \texttt{Sweave}.
+If one were to create these file with different numbers other than the
+ones provided, it might take several runs
+\begin{verbatim}
+Sweave("chamae2.Rnw")
+Sweave("chamae.Rnw")
+\end{verbatim}
+for the values written out at the end to converge to these values.
+
+\section{Reproducible Research}
+
+``Reproducible research'' is a buzzphrase \citep{donoho,gent} that describes
+a simple basic idea.  The following is quoted from the web page
+\url{http://www.stat.umn.edu/~charlie/Sweave}.
+\begin{quotation}
+It's the scientific ideal.
+\begin{itemize}
+\item Research should be reproducible. Anything in a scientific paper should be reproducible by the reader.
+\item Whatever may have been the case in low tech days, this ideal has long gone. Much scientific research in recent years is too complicated and the published details to scanty for anyone to reproduce it.
+\item The lack of detail is not entirely the author's fault. Journals have severe page pressure and no room for full explanations.
+\item For many years, the only hope of reproducibility is old-fashioned person-to-person contact. Write the authors, ask for data, code, whatever. Some authors help, some don't. If the authors are not cooperative, tough.
+\item Even cooperative authors may be unable to help. If too much time has gone by and their archiving was not systematic enough and if their software was unportable, there may be no way to recreate the analysis.
+\item Fortunately, the internet comes to the rescue. No page pressure there!
+\item Nowadays, many scientific papers also point to supplementary materials on the internet, either at the journal's or the author's web site. It doesn't matter so long as the material is permanently available. Data, computer programs, whatever should be there. 
+\end{itemize}
+
+But even more, the entire analysis should be reproducible. In real science, this is hard. Redoing all the chemistry, or all the field work, or whatever is asking a lot.
+
+But in mathematical and computing sciences, like statistics, reproducibility is perfectly possible. It only takes will and knowledge to do it. 
+\end{quotation}
+The R \texttt{Sweave} function, created
+by Friedrich Leisch \citep{sweave1,sweave2},
+is very useful for reproducible research.
+
+This technical report and the paper \citet{aster2} are an example.
+

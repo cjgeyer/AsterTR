@@ -1,0 +1,249 @@
+
+\documentclass[11pt,twoside,notitlepage]{report}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+
+\RequirePackage{amsfonts}
+\newcommand{\boldbeta}{\boldsymbol{\beta}}
+\newcommand{\boldtheta}{\boldsymbol{\theta}}
+\newcommand{\boldvarphi}{\boldsymbol{\varphi}}
+\newcommand{\boldtau}{\boldsymbol{\tau}}
+\newcommand{\boldxi}{\boldsymbol{\xi}}
+\newcommand{\boldmu}{\boldsymbol{\mu}}
+\newcommand{\boldmuhat}{\boldsymbol{\hat{\mu}}}
+\newcommand{\bolda}{\mathbf{a}}
+\newcommand{\boldA}{\mathbf{A}}
+
+% original file downloaded from www.stat.umn.edu/geyer/aster/tr658
+% had hard-coded path to Sweave.sty that only worked on some computer
+% back in 2007
+\usepackage{Sweave}
+
+\usepackage{ifthen}
+\newboolean{techrept}
+\setboolean{techrept}{true}
+
+% remove room for headers, add to textheight
+
+  \addtolength{\textheight}{\headheight}
+  \addtolength{\textheight}{\headsep}
+  \setlength{\headheight}{0 pt}
+  \setlength{\headsep}{0 pt}
+
+% adjust so right and left hand pages have different margins
+% not sure why these particular numbers were picked or if they
+% still make sense
+
+  % \showthe\evensidemargin
+  % \showthe\oddsidemargin
+  % \showthe\textwidth
+
+  % \evensidemargin  15 pt
+  % \oddsidemargin 61.5 pt
+  % \textwidth 392.5 pt
+
+  \evensidemargin 28.75 pt
+  \oddsidemargin 75.25 pt
+  \textwidth 365 pt
+
+%%%%% NEW go with 1.25 inch margin on all sides
+
+\setlength{\textheight}{\paperheight}
+\addtolength{\textheight}{- 2 in}
+\setlength{\topmargin}{0.25 pt}
+\setlength{\headheight}{0 pt}
+\setlength{\headsep}{0 pt}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \topmargin}
+\addtolength{\textheight}{- \footskip}
+
+\setlength{\textwidth}{\paperwidth}
+\addtolength{\textwidth}{- 2 in}
+\setlength{\oddsidemargin}{0.25 in}
+\setlength{\evensidemargin}{0.25 in}
+\addtolength{\textwidth}{- \oddsidemargin}
+\addtolength{\textwidth}{- \evensidemargin}
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Supporting Data Analysis for \\
+    ``Unifying Life History Analysis for Inference \\
+    of Fitness and Population Growth''} \\
+    By \\
+    Ruth G. Shaw, Charles J. Geyer, Stuart Wagenius, \\
+    Helen H. Hangelbroek, and Julie R. Etterson \\
+    Technical Report No.~658 \\
+    School of Statistics \\
+    University of Minnesota \\
+%       April 20, 2005 \\
+    % original file downloaded from www.stat.umn.edu/geyer/aster/tr658
+    % said \today but printed in the PDF
+    July 7, 2007
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\begin{abstract}
+This technical report (TR) gives details of the data analyses backing up
+a paper \citep{aster2} having the same authors as this TR
+and having the title that is quoted in the title of this TR
+There are three data sets.
+The first data set (Example~1 in the paper, Chapter~\ref{ch:newnew} in
+this TR) is new, coming from
+Stuart Wagenius's group, and involves the perennial plant
+\emph{Echinacea angustifolia} (narrow leaved purple coneflower).
+The second data set (Example~2 in the paper, Chapters~\ref{ch:chamae2}
+and~\ref{ch:chamae} in this TR) has been previously analyzed
+\citep{es,etterson} and involves annual plant \emph{Chamaecrista fasciculata}
+(partridge pea).
+The third data set (Example~3 in the paper, Chapter~\ref{ch:aphids} in this TR)
+has been previously analyzed
+\citep{aphids} and involves the insect \emph{Uroleucon rudbeckiae}
+(brown ambrosia aphid).
+
+All analyses are done in R \citep{rcore}, all using the \texttt{aster}
+contributed package, described by \citet{gws} except for the analyses
+in the style of \citet{la}, which use ordinary least squares regression.
+All analyses are done using the \texttt{Sweave} function in R, so that
+they are completely reproducible by anyone who has R with the \texttt{aster}
+package installed and \LaTeX.
+\end{abstract}
+
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+
+\include{start}
+\include{newnew}
+\include{chamae2}
+\include{chamae}
+\include{aphids}
+
+\begin{thebibliography}{}
+
+\bibitem[Buckheit and Donoho(1995)]{donoho}
+Buckheit, J.~B. and Donoho, D.~L. (1995).
+\newblock WaveLab and reproducible research.
+\newblock \url{http://www-stat.stanford.edu/~donoho/Reports/1995/wavelab.pdf}
+
+\bibitem[Davison and Snell(1991)]{ds}
+Davison, A.~C., and Snell, E.~J. (1991).
+\newblock Residuals and diagnostics.
+\newblock In \emph{Statistical Theory and Modelling: In honour
+    of Sir David Cox, FRS\@.}  D.~V. Hinkley, N. Reid, E.~J. Snell (eds.)
+\newblock Chapman \& Hall.
+
+\bibitem[Etterson(2004)]{etterson}
+Etterson, J.~R. (2004)
+\newblock Evolutionary potential of \emph{Chamaecrista fasciculata} in
+    relation to climate change.  I. Clinal patterns of selection along
+    an environmental gradient in the great plains.
+\newblock \emph{Evolution}, \textbf{58}, 1446--1458.
+
+\bibitem[Etterson and Shaw(2001)]{es}
+Etterson, J.~R., and Shaw, R.~G. (2001).
+\newblock Constraint to adaptive evolution in response to global warming.
+\newblock \emph{Science}, \textbf{294}, 151--154.
+
+\bibitem[Gentleman and Temple Lang(2004)]{gent}
+Gentleman, R. and Temple Lang, D. (2004).
+\newblock Statistical analyses and reproducible research.
+\newblock Bioconductor Project Working Papers. Working Paper 2.
+\newblock \url{http://www.bepress.com/bioconductor/paper2}
+
+% \bibitem[Geyer(1994)]{g}
+% Geyer, C.~J. (1994).
+% \newblock On the convergence of Monte Carlo maximum likelihood calculations.
+% \newblock \emph{J. Roy.\ Statist.\ Soc.\ Ser.\ B}, \textbf{56}, 261--274.
+
+\bibitem[Geyer, et al.(2007)Geyer, Wagenius and Shaw]{gws}
+Geyer, C.~J., Wagenius, S. and Shaw, R.~G. (2007).
+\newblock Aster models for life history analysis.
+\newblock \emph{Biometrika}, in press.
+
+\bibitem[Lande and Arnold(1983)]{la}
+Lande, R. and Arnold, S.~J. (1983).
+\newblock The measurement of selection on correlated characters.
+\newblock \emph{Evolution}, \textbf{37}, 1210--1226.
+
+\bibitem[Leisch(2002a)]{sweave1}
+Leisch, F. (2002a).
+\newblock Sweave, part I: Mixing R and LATEX.
+\newblock \emph{R News}, \textbf{2}, 28--31.
+\newblock \url{http://cran.r-project.org/doc/Rnews}.
+
+\bibitem[Leisch(2002b)]{sweave2}
+Leisch, F. (2002b).
+\newblock Sweave: Dynamic generation of statistical reports using
+    literate data analysis.
+\newblock In Wolfgang H\"{a}rdle and Bernd R\"{o}nz, editors,
+    \emph{Compstat 2002 --- Proceedings in Computational Statistics},
+    pp.~575--580.
+\newblock Physica Verlag, Heidelberg.
+
+\bibitem[Lenski and Service(1982)]{aphids}
+Lenski, R.~E. and Service, P.~M. (1982).
+\newblock The statistical analysis of population growth rates calculated
+    from schedules of survivorship and fecunidity.
+\newblock \emph{Ecology}, \textbf{63}, 655--662.
+
+\bibitem[McCullagh and Nelder(1989)]{mn}
+McCullagh, P., and Nelder, J.~A. (1989).
+\newblock \emph{Generalized Linear Models}, 2nd ed.
+\newblock Chapman \& Hall.
+
+\bibitem[Mitchell-Olds and Shaw(1987)]{ms}
+Mitchell-Olds, T., and Shaw, R.~G. (1987).
+\newblock Regression analysis of natural selection: Statistical inference
+    and biological interpretation.
+\newblock \emph{Evolution}, \textbf{41}, 1149--1161.
+
+\bibitem[R Development Core Team(2006)]{rcore}
+\textsc{R Development Core Team} (2006).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+\bibitem[Shaw, et al.(submitted) Shaw, Geyer, Wagenius, Hangelbroek, and
+    Etterson]{aster2}
+Shaw, R.~G., Geyer, C.~J., Wagenius, S., Hangelbroek, H.~H., and
+Etterson, J.~R. (submitted).
+\newblock Unifying life history analysis for inference of fitness
+    and population growth.
+\newblock \url{http://www.stat.umn.edu/geyer/aster/}
+
+\bibitem[Stanton and Thiede(2005)]{st}
+Stanton, M.~L. and Thiede, D.~A. (2005).
+\newblock Statistical convenience vs biological insight: consequences
+    of data transformation
+    for the analysis of fitness variation in heterogeneous environments
+\newblock \emph{New Phytologist}, \textbf{166}, 319--338.
+
+\bibitem[Stein(1981)]{stein}
+Stein, C.~M. (1981).
+\newblock Estimation of the mean of a multivariate normal distribution.
+\newblock {Annals of Statistics}, \textbf{9}, 1135--1151.
+
+% \bibitem[Sung and Geyer(2006)]{sg}
+% Sung, Y.~J., and Geyer, C.~J. (2006).
+% \newblock Monte Carlo likelihood inference for missing data models.
+% \newblock Submitted.
+% \newblock \url{http://www.stat.umn.edu/geyer/bernor}.
+
+\end{thebibliography}
+
+\end{document}
+

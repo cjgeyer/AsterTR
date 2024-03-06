@@ -1,0 +1,787 @@
+
+\chapter{Comparison of Fitness Among Groups} \label{ch:newnew}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+ps.options(pointsize = 15)
+@
+
+\section{Introduction}
+
+Data were collected on \emph{Echinacea angustifolia}.
+These data are in the \texttt{echin2} dataset in the \texttt{aster}
+contributed package to the R statistical computing environment.
+The data set is based on 557 Echinacea angustifolia plants
+that were planted
+as sprouts in a growth chamber. Seedling survivors were then
+transplanted to an experimental
+garden.
+
+The components of fitness are the variables in the graphical model
+shown in Figure~\ref{fig:graph:echinacea}.
+\begin{figure}
+\begin{center}
+\setlength{\unitlength}{0.566 in}
+\begin{picture}(8.2,1.50)(-0.05,-1.25)
+\put(0,0){\makebox(0,0){$1$}}
+\put(1,0){\makebox(0,0){\ttfamily lds1}}
+\put(2,0){\makebox(0,0){\ttfamily lds2}}
+\put(3,0){\makebox(0,0){\ttfamily lds3}}
+\put(4,0){\makebox(0,0){\ttfamily ld01}}
+\put(5,0){\makebox(0,0){\ttfamily ld02}}
+\put(6,0){\makebox(0,0){\ttfamily ld03}}
+\put(6,-1){\makebox(0,0){\ttfamily r03}}
+\put(7,0){\makebox(0,0){\ttfamily ld04}}
+\put(7,-1){\makebox(0,0){\ttfamily r04}}
+\put(8,0){\makebox(0,0){\ttfamily ld05}}
+\put(8,-1){\makebox(0,0){\ttfamily r05}}
+\multiput(0.35,0)(1,0){8}{\vector(1,0){0.3}}
+\multiput(6,-0.25)(1,0){3}{\vector(0,-1){0.5}}
+\end{picture}
+\end{center}
+\caption{Graph for \emph{Echinacea angustifolia} data.
+Arrows go from one life history component to another indicating
+conditional dependence in the aster model.
+Nodes are labeled by their associated variables.
+Root nodes are associated with the constant variable $1$,
+indicating presence of individuals at the outset.
+If any parent variable is zero, then the child variable is also zero.
+Child variables are conditionally independent given the parent variable.
+If a parent variable is nonzero, then the conditional distribution
+of the child variable is as follows.
+\texttt{lds}$i$ and \texttt{ld0}$i$ are (conditionally) Bernoulli
+(zero indicates mortality, one indicates survival) and
+\texttt{r0}$i$ is (conditionally) zero-truncated Poisson.}
+\label{fig:graph:echinacea}
+\end{figure}
+
+All response variables are collected in the response vector \texttt{resp}
+in the data frame \texttt{echin2}.  Components of the response vector
+corresponding to the same individual have the same value of the \texttt{id}
+variable in \texttt{echin2}.  Components of the response vector
+corresponding to the same node of the graphical model (to the same
+``original variable'') have the same value of the \texttt{varb}
+variable in \texttt{echin2}.  The levels of \texttt{varb},
+the ``original variables'' are as follows.
+
+Variables \texttt{lds}$i$ measure survival of individuals in a growth chamber
+(periods are months).
+Variables \texttt{ld0}$i$ measure survival of individuals in an
+experimental field plot after transplanting (periods are years). 
+Variables \texttt{r0}$i$ count number of rosettes (basal leaf clusters),
+which are a surrogate of fitness.  The names use here are shortened
+from those in the dataset where they are \texttt{roct200}$i$.
+Individuals resulted from crosses in which (a)
+mates were from different remnant populations, (b)
+mates were chosen at random from the same remnant, or (c)
+mates shared their maternal parent (variable \texttt{crosstype}).
+Other variables in the data set measure location in the growth chamber
+(\texttt{flat}) or in the field plot (\texttt{posi} and \texttt{row})
+and year of crossing (1999 or 2000, variable \texttt{yearcross}).
+
+This data set was challenging because the covariate \texttt{flat} only
+makes sense in relation to response variables in the growth chamber
+(\texttt{lds}$i$) and the covariates \texttt{posi} and \texttt{row}
+only make sense in relation to response variables in the field plot
+(\texttt{ld0}$i$ and \texttt{r0}$i$).  The R formula mini-language
+is not designed to handle this sort of situation.  Thus model matrices
+must be constructed ``by hand.''
+
+Growth chamber is incorrectly referred to as ``greenhouse'' in the rest
+of this chapter.
+
+\section{Data}
+
+Load the data.  Look at number of variables, their names and types.
+<<input>>=
+library(aster)
+data(echin2)
+names(echin2)
+levels(echin2$varb)
+@
+
+\section{Set Up Aster Model}
+
+<<aster>>=
+vars <- c("lds1", "lds2", "lds3", "ld01", "ld02", "ld03", "roct2003", "ld04",
+    "roct2004", "ld05", "roct2005")
+pred <- c(0,1, 2, 3, 4, 5, 6, 6, 8, 8, 10)
+fam <- c(1, 1, 1, 1, 1, 1, 3, 1, 3, 1, 3)
+fam.default()[fam]
+@
+Variable \verb@vars@ gives the names of the variables in the data
+that are components of the aster response vector.
+Variable \verb@pred@ gives the graphical model: \verb@pred[i]@ gives
+the index of the parent variable of variable \verb@i@ or zero if the
+parent is a root node.
+Variable \verb@fam@ specifies families.  The original numeric code,
+now superseded, is 1 = Bernoulli, 2 = Poisson, 3 = zero-truncated Poisson.
+For backwards compatibility, these three models are still specified by
+the new function \verb@fam.default@.
+
+Count individuals and nodes
+<<nind>>=
+nind <- length(unique(echin2$id))
+nnode <- length(levels(echin2$varb))
+@
+
+\section{Hand Crafted Model Matrices}
+
+\subsection{Aster Models}
+
+We construct
+model matrices (which are really three-way arrays in aster) by hand.
+The sad fact is that the R formula mini-language hardly qualifies as
+a language.  It has minimal syntax and very little generality.  It
+is just not up to specifying the models we want to fit.
+
+However every aster model --- a canonical affine model, as the accepted
+version of the \emph{Biometrika} paper calls it --- is specified by
+having an affine predictor of the form
+\begin{equation} \label{eq:model} \tag{${*}$}
+   \eta = a + M \beta
+\end{equation}
+which is equation (8) in the paper with the left-hand side, which is
+$\varphi$ in the paper, replaced by $\eta$, which is our notation for
+a general canonical parameter (either unconditional $\varphi$ or conditional
+$\theta$, as the case may be).  In this document we are using unconditional
+models so we could have left (8) as it is in the paper with the canonical
+parameter denoted $\varphi$, but we strive for generality.
+
+Equation \eqref{eq:model} is a vector equation.  Variable $\eta$ is a vector
+whose length is the total number of nodes in the whole graph.  The notion
+of the graph changed from the first draft of the paper to the third in
+response to the referee's comments.  In the first draft (and this is what
+the \verb@aster@ package still implements).  The graph specified by the
+vector \verb@pred@ has, call it \verb@nnode@ nodes.  But this graph is
+repeated for, call it \verb@nind@ individuals.  In the second and third
+drafts of the paper, individuals are invisible.  The graph new sense is
+\verb@nind@ identical copies of the old-sense graph.  Hence the new sense
+graph has \verb@nind * nnode@ nodes.  The reasons for this change are two:
+there is no reason for the restriction to identical copies, the theory
+working perfectly well when individuals have different graphs and the
+combined graph is whatever it is, and the notation is simpler, the model
+matrices really being three-way arrays no longer being necessary (model
+matrices are really matrices in the version to appear in \emph{Biometrika},
+but the \verb@aster@ package is still stuck in the old notation).
+
+Now \eqref{eq:model}, which is new sense, is a vector equation, so the
+dimension of each term must have dimension \verb@nind * nnode@.
+That means $\eta$ has this dimension, so does the known ``origin'' vector
+$a$, and so does the term $M \beta$, which is a matrix multiplication,
+$M$ being a matrix, the \emph{model matrix} and $\beta$ being a vector
+of regression coefficients.  Say the length of $\beta$ is \verb@ncoef@.
+Then the row dimension of $M$ must be \verb@nind * nnode@ and
+the column dimension of $M$ must be \verb@ncoef@.
+
+We do not have to worry about specifying the ``origin'' vector $a$.
+Usually $M$ contains $a$ in its range space and that means that the
+fitted mean value parameters do not depend on $a$, although the regression
+coefficients themselves are different, yet another reason regression
+coefficients are meaningless.
+
+Our job is to construct the $M$ that specifies the model we want.
+The R formula mini-language does this automagically in simple cases.
+In cases too complicated for the stupid computer to understand
+(and the R formula mini-language has only rudimentary knowledge of
+statistical modeling), we have to just do it ourselves.
+
+After we have constructed the new sense model matrix $M$, then we must
+reshape it to use it with the \verb@aster@ function.  With \verb@nind@,
+\verb@nnode@, and \verb@ncoef@ defined as above, the following code
+\begin{verbatim}
+mold <- array(as.numeric(mnew), c(nind, nnode, ncoef))
+\end{verbatim}
+does this reshaping, turning the new sense model matrix \verb@mnew@,
+which is really a matrix, into the old sense model matrix \verb@mold@,
+which is really a three way array.  For each \verb@k@, the column
+\verb@mnew[ , k]@ of the new sense model matrix corresponding to one
+regression coefficient (one ``predictor vector'' in the regression jargon)
+corresponds to a matrix \verb@mold[ , , k]@ which has dimension \verb@nind@
+by \verb@nnode@.
+
+Our strategy will be to work with new sense model matrices, since they are
+simpler, being really honest-to-God matrices, and since they correspond to
+the paper to appear anyway.  Only at the end, just before they are fed
+into the \verb@aster@ function, will we reshape them to three-way arrays.
+
+We also need to reshape the data (response and root) in the same fashion
+<<reshape-x-r>>=
+x <- echin2$resp
+dim(x) <- c(nind, nnode)
+r <- 0 * x + 1
+@
+
+\subsection{Constructing One Model Matrix}
+
+Aster model matrices are just like any other model matrix used in regression.
+Theoretically they can be any matrix of the required dimension.  In practice,
+they often have many columns that are zero-or-one valued.  The columns that
+are zero-or-one valued are often called ``dummy'' predictor variables.
+Their effect is to add a constant, the corresponding regression coefficient
+$\beta_k$ to the affine predictor $\eta_i$ for the individuals having a
+one in $m_{i k}$.  So this just puts in an additive term for individuals
+in a certain class (the class indicated by the dummy variable thought of
+as an indicator variable).
+
+We have just one quantitative variable \verb@posi@.
+Everything else
+is qualitative and corresponds to one or more dummy variables.
+
+\subsubsection{One Categorical Variable}
+
+We start building the model matrix for the largest model we will
+consider (call it the ``supermodel'') as follows.
+<<modmat7-start>>=
+modmat.super <- NULL
+names.super <- NULL
+for (i in levels(echin2$varb)) {
+    modmat.super <- cbind(modmat.super, as.numeric(echin2$varb == i))
+    names.super <- c(names.super, i)
+}
+@
+It is a standard S trick to start a recursion with an empty object
+\verb@NULL@, which will act as a vector with no elements or a matrix
+with no columns.  Each trip through the loop adds one column to the
+model matrix and a corresponding label to what will eventually be the
+column names for the model matrix.
+Note that we don't bother to construct regression coefficient labels
+that are exactly the same as those constructed by the R formula mini-language.
+Those are ridiculously verbose, done by a computer that is really very stupid.
+If anyone doesn't like these labels, they can just change the way
+\verb@names.super@ is defined.
+
+Here we add one dummy variable for each element of
+<<modmat7-start-explain>>=
+levels(echin2$varb)
+@
+what we usually call the response variables, but that terminology
+does not fit well with aster terminology, which says there are really
+\verb@nrow(echin2)@ or \verb@nind * nnode@ response variables.
+Whatever we call them, we have now added one dummy variable for
+each one of them.  Thus each of these will
+have an independently fitted level (since each corresponds to a dummy
+variable).
+
+\subsubsection{A Definition}
+
+Next we define an indicator variable that indicates being in the
+greenhouse.
+<<modmat7-gh>>=
+in.greenhouse <- is.element(echin2$varb,
+    grep("lds", levels(echin2$varb), value = TRUE))
+print(unique(echin2$varb[in.greenhouse]), max.levels = 0)
+print(unique(echin2$varb[! in.greenhouse]), max.levels = 0)
+@
+
+\subsubsection{Another Categorical Variable}
+
+Now we have another loop that adds one column per trip through the
+loop.
+<<modmat7-flat>>=
+for (i in levels(echin2$flat))
+    if (i > "1") {
+        modmat.super <- cbind(modmat.super,
+            as.numeric(in.greenhouse & echin2$flat == i))
+        names.super <- c(names.super, paste("flat", i, sep = ""))
+    }
+@
+Here we add one column for each of
+<<modmat7-flat-explain>>=
+levels(echin2$flat)
+@
+that are greater than \verb@"1"@ in the sort order.
+
+The reason for dropping one of the dummy variables is well known and
+taught in every regression class.  The vector sum of all dummy variables
+corresponding to one categorical variable (in this case \verb@echin2$varb@)
+is a vector of all ones, since each observation falls in exactly one category.
+
+Since the same holds for every categorical variable, we must do one
+of the following in order to construct a model matrix that is not rank
+deficient.
+\begin{itemize}
+\item Drop one dummy variable from each group of dummy variables corresponding
+to one categorical variable.  Then add a dummy variable corresponding to no
+categorical variable that is a column of all ones, a so-called ``intercept''
+dummy variable.
+\item Drop one dummy variable from each group of dummy variables corresponding
+to one categorical variable, except for one group for which we keep them all.
+\end{itemize}
+Here we follow the latter strategy.  We have no ``intercept'' and do not
+drop any of the dummy variables made in the first loop, but drop one from
+each loop thereafter.
+
+Note that we do deal with the in-and-out-of-greenhouse issue explicitly
+and hence do what is obviously the Right Thing.  The dummy variables
+we construct have a one if and only if the item in question has
+\verb@in.greenhouse@ equal to \verb@TRUE@ and \verb@echin2$flat@ equal to
+the value we are constructing a dummy variable for.
+
+\subsubsection{Yet Another Categorical Variable}
+
+Now we have another loop that adds one column per trip through the
+loop.
+<<modmat7-row>>=
+for (i in levels(echin2$row))
+    if (i > "10") {
+        modmat.super <- cbind(modmat.super,
+            as.numeric((! in.greenhouse) & echin2$row  == i))
+        names.super <- c(names.super, paste("row", i, sep = ""))
+    }
+@
+Here we add one column for each of
+<<modmat7-row-explain>>=
+levels(echin2$row)
+@
+that are greater than \verb@"10"@ in the sort order.
+
+This is very similar to the preceding loop except the level \verb@"0"@
+is both bogus, a forlorn attempt to deal with the in-and-out of greenhouse
+issue.  We must drop one dummy variable besides the bogus one.
+
+Again we deal with the in-and-out-of-greenhouse issue explicitly
+and obviously do the Right Thing.  The dummy variables
+we construct have a one if and only if the item in question has
+\verb@in.greenhouse@ equal to \verb@FALSE@ and \verb@echin2$row@ equal to
+the value we are constructing a dummy variable for.
+
+\subsubsection{And Another Categorical Variable}
+
+Now we have another loop that adds one column per trip through the
+loop.
+<<modmat7-yearcross>>=
+for (i in levels(echin2$yearcross))
+    if (i >= "2000") {
+        modmat.super <- cbind(modmat.super, as.numeric(echin2$yearcross  == i))
+        names.super <- c(names.super, paste("yc", i, sep = ""))
+    }
+@
+Here we add one column for each of
+<<modmat7-yearcross-explain>>=
+levels(echin2$yearcross)
+@
+that are greater than or equal to \verb@"2000"@ in the sort order.
+
+This is very similar to the preceding loops, but simpler.
+There is no bogus level to deal with and there is no
+in-and-out-of-greenhouse issue.
+The fact that the body of the if statement only executes once
+and we only add one dummy variable (one column of the model matrix)
+is not a problem.  It just works.
+
+\subsubsection{Finally, a Quantitative Variable}
+
+No loop is needed to construct a predictor variable that is quantitative.
+We just make it a column of the model matrix.
+<<modmat7-posi>>=
+modmat.super <- cbind(modmat.super, as.numeric(! in.greenhouse) * echin2$posi)
+names.super <- c(names.super, "posi")
+@
+
+We do have to deal with the in-and-out-of-greenhouse issue.
+The Right Thing is to make the quantitative variable zero
+when it has no effect, because that makes zero contribution
+to the canonical parameter, which is obviously what is wanted.
+
+One might think that this ``locates'' all the in-greenhouse
+variables at \verb@posi@ equal to zero, but this is an illusion.
+The other dummy variables that in-greenhouse variables have
+give them independently fitted levels (corresponding to their
+regression coefficients), so there is no problem.
+
+\subsubsection{Interaction of Crosstype and Final Response in the Field}
+% \subsection{Constructing a Supermodel Matrix}
+
+We have another loop that adds, again one column per trip through the
+loop.
+<<modmat8-crosstype>>=
+for (i in levels(echin2$crosstype))
+    if (i > "W") {
+        modmat.super <- cbind(modmat.super, as.numeric(echin2$crosstype  == i &
+            echin2$varb == "roct2005"))
+        names.super <- c(names.super, paste("cross", i, sep = ""))
+    }
+@
+Here we add one column for each of
+<<modmat8-crosstype-explain>>=
+levels(echin2$crosstype)
+@
+that are greater than \verb@"W"@ in the sort order.
+
+Here we do something very tricky, only the same sort of trickiness
+involved in the \verb@- pop@ in the model formulae in the \emph{Biometrika},
+but even that was clear as mud, and when combined with the
+in-and-out-of-greenhouse issue, the R formula mini-language is just
+not up to the task.
+
+The dummy variable(s) we add, \Sexpr{sum(levels(echin2$crosstype) > "W")}
+of them,
+have a one if and only if the item in question has
+\verb@echin2$varb@ equal to \verb@"roct2005"@
+and \verb@echin2$crosstype@ equal to
+the value we are constructing a dummy variable for.
+
+\subsubsection{Interaction of Crosstype and Final Response in the Greenhouse}
+% \subsection{Constructing a Super-Supermodel Matrix}
+
+The columns
+we add here are just like those added in the preceding section
+except they involve the last greenhouse variable.
+<<modmat.super>>=
+for (i in levels(echin2$crosstype))
+    if (i > "W") {
+        modmat.super <- cbind(modmat.super, as.numeric(echin2$crosstype  == i &
+            echin2$varb == "lds3"))
+        names.super <- c(names.super, paste("crossgreen", i, sep = ""))
+    }
+@
+
+\subsection{Reshape This Matrix}
+
+<<reshape-supermat>>=
+nodename <- unique(as.character(echin2$var))
+modmat.super <- array(as.vector(modmat.super), c(dim(x), length(names.super)))
+dimnames(modmat.super) <- list(NULL, nodename, names.super)
+@
+The \verb@array@ function constructs arrays.
+We now assign appropriate dimnames using the
+\verb@names.super@ that we constructed as
+we constructed the matrix.
+
+\subsection{Extract Submatrices}
+
+Now we extract three submatrices of this supermodel matrix:
+one having only the field-crosstype effect,
+one having only the greenhouse-crosstype effect,
+and one having neither.
+<<extraction>>=
+ifield <- grep("crossW", names.super)
+names.super[ifield]
+igreen <- grep("crossgreenW", names.super)
+names.super[igreen]
+
+modmat.field <- modmat.super[ , , -igreen]
+modmat.green <- modmat.super[ , , -ifield]
+modmat.sub <- modmat.super[ , , -c(ifield, igreen)]
+@
+
+\section{Model Fits and Hypothesis Tests}
+
+\subsection{Fit Models}
+
+Fit aster models.
+Although it is not obvious from the syntax, the function \verb@aster@
+is generic with two methods \verb@aster.formula@ and \verb@aster.default@.
+If the first argument is a formula the former is used.
+If not, as here, the latter is used.
+<<fit-sub>>=
+out.sub <- aster(x, r, pred, fam, modmat.sub)
+summary(out.sub)
+@
+\pagebreak[3]
+<<fit-field>>=
+out.field <- aster(x, r, pred, fam, modmat.field)
+summary(out.field)
+@
+\pagebreak[3]
+<<fit-green>>=
+out.green <- aster(x, r, pred, fam, modmat.green)
+summary(out.green)
+@
+\pagebreak[3]
+<<fit-super>>=
+out.super <- aster(x, r, pred, fam, modmat.super)
+summary(out.super)
+@
+
+\subsection{Tests of Model Comparison}
+
+\begin{figure}
+\begin{center}
+\setlength{\unitlength}{0.5 in}
+\begin{picture}(3,3)(1,1)
+\put(2.5,3.5){\makebox(0,0){\tt out.super}}
+\put(1.5,2.5){\makebox(0,0){\tt out.field}}
+\put(3.5,2.5){\makebox(0,0){\tt out.green}}
+\put(2.5,1.5){\makebox(0,0){\tt out.sub}}
+\put(2.25,3.25){\vector(-1,-1){0.5}}
+\put(2.75,3.25){\vector(1,-1){0.5}}
+\put(1.75,2.25){\vector(1,-1){0.5}}
+\put(3.25,2.25){\vector(-1,-1){0.5}}
+\end{picture}
+\end{center}
+\caption{Relationship of Aster Models.  Arrows go from one model to
+another that is a nested submodel of it.}
+\label{fig:graph}
+\end{figure}
+Figure~\ref{fig:graph} shows the relationship between these models.
+The only models that are not nested and so cannot be directly compared
+are \verb@out.field@ and \verb@out.green@ (although something can be said
+from the comparison of each to the models above and below).
+
+The following \verb@anova@ commands do the four tests associated with the
+four arrows in Figure~\ref{fig:graph}.
+<<test>>=
+anova(out.sub, out.field, out.super)
+anova(out.sub, out.green, out.super)
+@
+<<test-hide,include=FALSE,echo=FALSE>>=
+tout.sub.field <- anova(out.sub, out.field)
+tout.sub.field.pval <- tout.sub.field[["P(>|Chi|)"]][2]
+tout.sub.field.pval.expo <- floor(log10(tout.sub.field.pval))
+tout.sub.field.pval.frac <- tout.sub.field.pval / 10^tout.sub.field.pval.expo
+tout.sub.green <- anova(out.sub, out.green)
+tout.sub.green.pval <- tout.sub.green[["P(>|Chi|)"]][2]
+tout.green.super <- anova(out.green, out.super)
+tout.green.super.pval <- tout.green.super[["P(>|Chi|)"]][2]
+tout.green.super.pval.expo <- floor(log10(tout.green.super.pval))
+tout.green.super.pval.frac <- tout.green.super.pval /
+    10^tout.green.super.pval.expo
+tout.field.super <- anova(out.field, out.super)
+tout.field.super.pval <- tout.field.super[["P(>|Chi|)"]][2]
+@
+
+We reach the following conclusions of a purely statistical nature
+(there is no point in scientific interpretations until the statistics
+is done).
+
+First look at the right-hand side of Figure~\ref{fig:graph}.  We see that,
+although the model with crosstype effect in the greenhouse only
+(\verb@out.green@) does fit significantly better
+($P = \Sexpr{round(tout.sub.green.pval, 3)}$) than
+the baseline model with no crosstype effect, it does not fit as well
+($P = \Sexpr{round(tout.green.super.pval.frac, 1)} \times
+10^{\Sexpr{tout.green.super.pval.expo}}$)
+as the supermodel with both crosstype effects.
+Thus looking at the right-hand side of Figure~\ref{fig:graph} only,
+the hypothesis tests of model comparison indicate that the supermodel
+(\verb@out.super@) is the only model that fits the data.
+
+Now we look at the left-hand side of Figure~\ref{fig:graph}.  We see that
+the model with crosstype effect in the field only
+(\verb@out.field@) not only fits significantly better
+($P = \Sexpr{round(tout.sub.field.pval.frac, 1)} \times
+10^{\Sexpr{tout.sub.field.pval.expo}}$)
+than the baseline model with no crosstype effect but also does not fit
+significantly worse
+($P = \Sexpr{round(tout.field.super.pval, 2)}$) than
+the supermodel with both crosstype effects.
+Thus looking at the left-hand side of Figure~\ref{fig:graph} only,
+the hypothesis tests of model comparison indicate that the middle model
+(\verb@out.field@) is the most parsimonious model that fits the data
+(the super model also fits the data but no better than \verb@out.field@).
+
+Now looking at all the tests, the overall conclusion is that
+(\verb@out.field@) is the most parsimonious model that fits the data.
+
+\section{Mean Value Parameters}
+
+\subsection{In the Field}
+
+We need to make a new model matrix for hypothetical individuals
+having the same data structure as \verb@modmat.super@.  We want three
+individuals,
+one for each value of ``cross.''  The easiest way to do this is to just
+use the first three ``rows'' (really layers of a three-way array) of
+\verb@modmat.field@ and adjust the predictors to be what we want.
+<<newmodmat-super>>=
+newmodmat.super <- modmat.super[1:3, , ]
+i <- grep("ld0[1-5]|lds[1-3]|roct200[3-5]", dimnames(newmodmat.super)[[3]])
+newmodmat.super[ , , -i] <- 0
+newmodmat.super[2, "roct2005", "crossWi"] <- 1
+newmodmat.super[3, "roct2005", "crossWr"] <- 1
+newmodmat.super[2, "lds3", "crossgreenWi"] <- 1
+newmodmat.super[3, "lds3", "crossgreenWr"] <- 1
+@
+
+We set all ``predictor'' values except for those corresponding to response
+variables to zero (which we take to be a ``neutral'' or ``typical'' value)
+and then set the ones for cross type back to what we want them to be:
+individual 2 is cross type \verb@"Wi"@,
+individual 3 is cross type \verb@"Wr"@,
+and
+individual 1 is the remaining cross type \verb@"Br"@.
+
+Now we extract the other new model matrices just like we did the old.
+<<newmodmat-other>>=
+newmodmat.field <- newmodmat.super[ , , -igreen]
+newmodmat.green <- newmodmat.super[ , , -ifield]
+newmodmat.sub <- newmodmat.super[ , , -c(ifield, igreen)]
+@
+
+Now we need root data and observed data of the appropriate shape to go
+with this model matrix, since the observed ``x'' data is ignored when
+we predict unconditional mean value parameters, we can use the same
+data structure for both.
+<<newmodmat-data>>=
+newroot <- array(1, dim = dim(newmodmat.field)[1:2])
+@
+
+We also need an \verb@amat@ argument that picks off the \verb@"roct2005"@
+elements of the mean value parameter vector.
+<<newmodmat-amat>>=
+amat <- array(0, dim = c(dim(newmodmat.field)[1:2], 3))
+for (i in 1:3)
+    amat[i, dimnames(newmodmat.field)[[2]] == "roct2005", i] <- 1
+@
+This says we want the \verb@i@-th component of the prediction to
+be the unconditional mean value parameter for \verb@"roct2005"@
+for the \verb@i@-th individual.
+
+Now we can predict
+<<newmodmat-predict>>=
+pout.super <- predict(out.super, newroot, newroot, newmodmat.super, amat,
+    se.fit = TRUE)
+pout.super$fit
+
+pout.field <- predict(out.field, newroot, newroot, newmodmat.field, amat,
+    se.fit = TRUE)
+pout.field$fit
+
+pout.green <- predict(out.green, newroot, newroot, newmodmat.green, amat,
+    se.fit = TRUE)
+pout.green$fit
+
+pout.sub <- predict(out.sub, newroot, newroot, newmodmat.sub, amat,
+    se.fit = TRUE)
+pout.sub$fit
+@
+
+Figure~\ref{fig:one} is produced by the
+following code
+<<collect-field>>=
+modelfits <- list(sub = pout.sub, green = pout.green, field = pout.field,
+    super = pout.super)
+@
+<<label=fig1plot,include=FALSE>>=
+conf.level <- 0.95
+crit <- qnorm((1 + conf.level) / 2)
+crossnames <- levels(echin2$crosstype)
+icross <- c(1, 3, 2)
+foo <- 0.05
+modelcolors <- c("blue", "green", "red", "black")
+modellty <- c(3, 2, 1, 4)
+ylim <- NULL
+for (i in seq(along = modelfits)) {
+    thefit <- modelfits[[i]]
+    ylim <- range(ylim, thefit$fit + crit * thefit$se.fit)
+    ylim <- range(ylim, thefit$fit - crit * thefit$se.fit)
+}
+xlim <- range(icross + 10 * foo, icross - 10 * foo)
+plot(NA, NA, xlim = xlim, ylim = ylim, xlab = "", ylab = "", axes = FALSE)
+for (i in seq(along = modelfits)) {
+    thefit <- modelfits[[i]]
+    ytop <- thefit$fit + crit * thefit$se.fit
+    ybot <- thefit$fit - crit * thefit$se.fit
+    ymid <- thefit$fit
+    col <- modelcolors[i]
+    lty <- modellty[i]
+    jcross <- icross + (i - mean(seq(along = modelfits))) * 3 * foo
+    segments(jcross, ybot, jcross, ytop, lty = lty)
+    segments(jcross - foo, ybot, jcross + foo, ybot, lty = lty)
+    segments(jcross - foo, ymid, jcross + foo, ymid, lty = lty)
+    segments(jcross - foo, ytop, jcross + foo, ytop, lty = lty)
+}
+axis(side = 2)
+axis(side = 1, at = icross, labels = crossnames)
+title(xlab = "cross type")
+@
+and appears on p.~\pageref{fig:one}.
+
+\begin{figure}
+\begin{center}
+<<label=fig1,fig=TRUE,echo=FALSE>>=
+<<fig1plot>>
+title(ylab = "unconditional expected rosette count")
+@
+\end{center}
+\caption{\Sexpr{100 * conf.level}\% confidence intervals for unconditional
+mean value parameter for fitness (rosette count in the last year recorded)
+for one ``typical'' individual for each cross type.  Colors indicate model:
+blue, \texttt{model.sub}; green, \texttt{model.green};
+red, \texttt{model.field}; black, \texttt{model.super}.}
+\label{fig:one}
+\end{figure}
+
+\subsection{In the Greenhouse} \label{sec:green-mean}
+
+This section is very similar to the preceding.  The only difference
+is that we want to predict \verb@lds3@ values rather than \verb@roct2005@
+values.
+
+We also need an \verb@amat@ argument that picks off the \verb@"lds3"@
+elements of the mean value parameter vector.
+<<newmodmat-amat>>=
+amat <- array(0, dim = c(dim(newmodmat.field)[1:2], 3))
+for (i in 1:3)
+    amat[i, dimnames(newmodmat.field)[[2]] == "lds3", i] <- 1
+@
+
+Now we can predict as before
+<<green-predict>>=
+<<newmodmat-predict>>
+modelfits.field <- modelfits
+modelfits <- list(sub = pout.sub, green = pout.green, field = pout.field,
+    super = pout.super)
+modelfits.green <- modelfits
+@
+
+Figure~\ref{fig:two} is now produced by the same code as Figure~\ref{fig:one}.
+and appears on p.~\pageref{fig:two}.
+\begin{figure}
+\begin{center}
+<<label=fig2,fig=TRUE,echo=FALSE>>=
+<<fig1plot>>
+title(ylab = "unconditional expected survival")
+@
+\end{center}
+\caption{\Sexpr{100 * conf.level}\% confidence intervals for unconditional
+mean value parameter for the best surrogate for fitness measured in the
+greenhouse (survival in the last year recorded)
+for one ``typical'' individual for each cross type.  Just as
+in Figure~\ref{fig:one}, colors indicate model:
+blue, \texttt{model.sub}; green, \texttt{model.green};
+red, \texttt{model.field}; black, \texttt{model.super}.}
+\label{fig:two}
+\end{figure}
+
+Note that Figure~\ref{fig:two} shows a similar pattern to Figure~\ref{fig:one}.
+Even though the mean value parameters predicted in Figure~\ref{fig:one}
+correspond to canonical parameter values that contain the regression
+coefficients that differ between the two models and the mean value
+parameters predicted in Figure~\ref{fig:two} do not.
+
+So the failure of model \verb@out.super@
+to be statistically significant does not mean that there are no fitness
+effects in the greenhouse; it merely means that what effects there are
+are adequately explained by an unconditional aster model with no additional
+parameters.
+
+\subsection{Plot for Paper}
+
+Here we assemble the two preceding plots into one postscript file
+(Figure~\ref{fig:pap}).
+\begin{figure}
+\begin{center}
+<<label=fig-pap,fig=TRUE,echo=FALSE>>=
+par(mfrow = c(1, 2), mar = c(5,4,4,0.25) + 0.1)
+modelfits <- modelfits.green
+<<fig1plot>>
+title(ylab = "unconditional expected survival")
+box()
+u <- par("usr")
+text(0.8 * u[1] + 0.2 * u[2], 0.8 * u[3] + 0.2 * u[4], "A", adj = 0.5, cex = 2)
+modelfits <- modelfits.field
+<<fig1plot>>
+title(ylab = "unconditional expected rosette count")
+box()
+u <- par("usr")
+text(0.8 * u[1] + 0.2 * u[2], 0.8 * u[3] + 0.2 * u[4], "B", adj = 0.5, cex = 2)
+@
+\end{center}
+\caption{Plots for paper. Line types: dotted ``sub'' model, dashed ``chamber''
+model, solid ``field'' model, and dot-dash ``super'' model.}
+\label{fig:pap}
+\end{figure}
+

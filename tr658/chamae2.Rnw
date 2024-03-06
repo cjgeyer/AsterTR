@@ -1,0 +1,1049 @@
+
+\chapter{Fitness Landscapes and Lande-Arnold Analysis using Aster Models}
+\label{ch:chamae2}
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 70)
+ps.options(pointsize = 15)
+@
+
+\section{Introduction}
+
+\citet{la} proposed using the vector $\beta$ of ordinary least squares
+(OLS) multiple regression coefficients (not including the intercept) from
+the regression of relative fitness on quantitative
+phenotypic characters as ``a general solution to the problem of
+measuring the forces of directional selection acting directly on the
+characters'' \citep[p.~1213]{la}.
+
+Lande and Arnold actually give two different arguments justifying their
+procedure.  The first argument, parts of which go back to Pearson
+(1903, cited by Lande and Arnold), involves a quantitative genetic model
+for the vector $z$ of phenotypic characters.  The second argument, which
+may have been independently invented by Lande and Arnold, but involves
+what statisticians call Stein's lemma \citep{stein}, does not involve a
+quantitative genetic model, and is the one we follow here.
+
+The assumptions made by \citet[p.~1213]{la}, somewhat generalized,
+are as follows.
+\begin{enumerate}
+\item[(i)] The vector of phenotypic characters $z$ is multivariate normal.
+\item[(ii)] The conditional expectation of relative fitness $w$ given $z$,
+    denote it
+\begin{equation} \label{eq:u}
+   u(z) = E(w \mid z),
+\end{equation}
+    is a continuously differentiable function.
+\item[(iii)] The expectation
+\begin{equation} \label{eq:beta-def}
+   \beta = E \{ \nabla u(z) \}
+\end{equation}
+    exists.
+\item[(iv)] The limits
+\begin{align*}
+    \lim_{z_i \to \infty} & u(z) f(z)
+    \\
+    \lim_{z_i \to - \infty} & u(z) f(z)
+\end{align*}
+exist and are zero, letting each coordinate $z_i$ go to plus or minus
+infinity, holding the rest fixed (\citealp{la}, assume $u$ is bounded,
+which is a sufficient condition for the limits above to be zero,
+but not a necessary condition).
+\end{enumerate}
+Then it follows by integration by parts \citep[p.~1213]{la} and from
+the definition of relative fitness, which requires $E(w) = 1$, that
+\begin{equation} \label{eq:beta}
+   \beta = E \{ \nabla u(z) \} = \var(z)^{-1} \cov(w, z) 
+\end{equation}
+and for this reason Lande and Arnold call $\beta$ the
+\emph{directional selection gradient}.  They also observe that
+the obvious empirical estimate of $\beta$, which is
+\begin{equation} \label{eq:beta-hat}
+   \hat{\beta}_{\text{OLS}} = \widehat{\var}(z)^{-1} \widehat{\cov}(w, z),
+\end{equation}
+where the hats on the $\var$ and $\cov$ operators denote the empirical
+analogs, is the ordinary least squares (OLS) regression estimate of
+$w$ on $z$, done with intercept, which is not considered part of $\hat{\beta}$.
+They therefore seem to recommend \eqref{eq:beta-hat} as an estimator of
+\eqref{eq:beta}; this is not completely clear since they do not actually
+distinguish between \eqref{eq:beta} and \eqref{eq:beta-hat}, between
+the parameter $\beta$ and its estimate $\hat{\beta}_{\text{OLS}}$.
+They do, however, use \eqref{eq:beta-hat} as an estimator of \eqref{eq:beta}
+in their examples, and a large literature has followed them in this practice
+(Google Scholar, \url{http://scholar.google.com}, says ``Cited by 816'' as
+this is written).
+
+Assumption (i) above, which we should also note in passing is also required
+by the ``first argument'' in \citet{la}, implies that $\widehat{\var}(z)$ will
+be a good estimator of $\var(z)$, so long as the dimension of $z$ is not
+too large relative to the amount of data.  Assumptions (ii) through (iv) above
+are very weak.  They do not even imply, for example, that $\var(w \mid z)$
+is finite.
+They do imply, by the integration by parts argument, that $\cov(w, z)$ exists,
+which we should also note in passing is also required
+by the ``first argument'' in \citet{la}, but this does not imply that
+$\widehat{\cov}(w, z)$ is a good estimator of it.  It may be a very bad
+estimator, in which case \eqref{eq:beta-hat} will be a very bad estimator
+of \eqref{eq:beta}.  In fact, this should be expected when the distribution
+of $w$ is heavy tailed (since relative fitness $w$ is nonnegative, this means
+heavy upper tail).
+
+To start a search for better estimators, we make the following
+observation (which follows from the iterated conditional expectation theorem)
+\begin{equation} \label{eq:iterated}
+   \cov(w, z) = \cov\bigl( u(z), z \bigr),
+\end{equation}
+where $u(z)$ is defined by \eqref{eq:u}.  This says that we can just as
+well use
+\begin{equation} \label{eq:beta-hat-new}
+   \hat{\beta} = \widehat{\var}(z)^{-1} \widehat{\cov}\bigl( \hat{u}(z), z\bigr)
+\end{equation}
+as an estimator of \eqref{eq:beta}, where $\hat{u}(z)$ is any estimator
+of $u(z)$ that we can construct, such as, predicted mean values in any
+model we happen to have for the conditional distribution of $w$ given $z$.
+If one uses a conventional linear, normal-theory, OLS regression model, then
+substituting \eqref{eq:beta-hat-new} for \eqref{eq:beta-hat} will do nothing
+(regressing OLS predicted values on predictors gives the same regression
+coefficients as the original regression), but there may be very large
+differences between \eqref{eq:beta-hat-new} and \eqref{eq:beta-hat} if
+one uses any other kind of regression model, for example, a generalized
+linear model \citep{mn} or an aster model \citep{gws}.
+
+We make one more generalization, which is not new here, having been
+used in many examples in the literature \citep{ms}, but for which an
+adequate theoretical explanation has not yet been provided.  Suppose
+we also have a vector of other variables $e$ that we also wish to add
+to the regression.  These may not be normally distributed, they may be
+categorical, for example, and may also be nonrandom (fixed by experimental
+design).  Thus they cannot be considered part of the $z$ in the Lande-Arnold
+argument (because $z$ must be multivariate normal).  They may also not
+be phenotypic characters.  They may be environmental (hence our use of $e$
+to denote them), but they may also be just ``other.''
+
+We apply the Lande-Arnold argument separately for each value of $e$.
+We assume
+\begin{enumerate}
+\item[(i)] The vector of phenotypic characters $z$ is conditionally
+    multivariate normal given $e$.
+\item[(ii)] The conditional expectation of relative fitness $w$ given $z$
+    and $e$, denote it
+\begin{equation} \label{eq:u-e}
+   u_e(z) = E(w \mid z, e)
+\end{equation}
+    is a continuously differentiable function of $z$.
+\item[(iii)] The expectation
+\begin{equation} \label{eq:beta-def-e}
+   \beta(e) = E \{ \nabla u_e(z) \mid e \}
+\end{equation}
+    exists for each value of $e$.
+\item[(iv)] The limits
+\begin{align*}
+    \lim_{z_i \to \infty} & u_e(z) f(z)
+    \\
+    \lim_{z_i \to - \infty} & u_e(z) f(z)
+\end{align*}
+exist and are zero, letting each coordinate $z_i$ go to plus or minus
+infinity, holding the rest of the coordinates of $z$ fixed and all
+coordinates of $e$ fixed.
+\end{enumerate}
+Then applying the Lande-Arnold argument for each value of $e$ gives
+\begin{equation} \label{eq:beta-e}
+   \beta(e) = E \{ \nabla u_e(z) \} = \var(z \mid e)^{-1} \cov(w, z \mid e) 
+\end{equation}
+This trivial extension of Lande-Arnold theory may not at first sight seem
+to do much.  Typically, there will be far too many $e$ values for $\beta(e)$
+to be estimated naively using OLS regression to work.  Since we have already
+seen that OLS regression may be a very bad idea for other reasons, this is
+no impediment.  We proceed as everywhere else in statistics trying to find
+simple models for the gradient-vector-valued function (of ``other''
+variables~$e$) that is $\beta(e)$.
+
+For example, the simplest model is that $\beta(e)$ is a constant function,
+which seems to get us back to using \eqref{eq:beta-hat-new}, but it does not.
+Recall that $\beta$ or $\hat{\beta}$ uses OLS regression of something
+(preferably predicted mean values for a good model of the conditional
+distribution of $w$ given $z$ and $e$) on $z$ and $e$
+and drops the intercept.  Thus we model $\beta(e)$ as a constant
+function of $e$ if we do OLS regression of something
+on $z$ and $e$ with only the intercept depending on $e$.
+Note that this allows the intercept term to depend on $e$ in an
+arbitrarily complicated way.  We just don't have ``interaction'' terms
+between $z$ and $e$ in the regression model.  If we were going to write
+the kind of models just discussed in conventional terms, we would write
+$$
+   w = \alpha(e) + \beta^T z + \text{error}
+$$
+where $\alpha(e)$ is an arbitrary function (of course, we don't believe
+the ``+ error'' part of this ``model,'' which is given only to help the reader
+understand the structure of the assumed regression function).
+Of course we don't have to stop with this simplest model for $\beta(e)$,
+but it is interesting that even the simplest case of this theory (with $e$)
+is nontrivial.
+
+When one uses the OLS regression estimator \eqref{eq:beta-hat},
+the question arises about how to do statistical inference about $\beta$
+when the normality assumptions required for OLS $F$-tests are clearly violated.
+There is a large literature on this subject \citep[see][and references
+cited therein]{ms,st}.  Transforming $w$ to make it more normal, for example,
+doing OLS regression of $\log w$ on $z$ is biologically wrong
+\citep{st}, destroying the logic of the Lande-Arnold theory which
+requires OLS regression of $w$ (untransformed) on $z$.
+\citet{la} say that $z$ may be transformed to make it more normal,
+hence more closely satisfy condition (i) above, but this may or may not
+make the distribution of $w$ given (transformed) $z$ more nearly satisfy
+OLS regression assumptions.
+
+Sometimes, as in our example (Section~\ref{sec:data} below), it is impossible
+to transform $w$ to conditional normality given $z$.  This happens,
+in particular, when a sizable fraction of individuals have (measured) fitness
+zero.
+The normal distribution is continuous.  Any transformation of $w$ has a large
+atom at whatever point zero is transformed to, hence is far from being
+continuous.  The standard trick $\tilde{w} = \log(w + 1) - 1$,
+may make the distribution of $\tilde{w}$ have a more normal looking upper tail,
+but can do nothing about the fact that $\tilde{w}$ is nonnegative with a large
+atom at zero.
+
+Having already decided to abandon OLS regression and use estimators
+of the form \eqref{eq:beta-hat-new} or their analogs for estimating
+$\beta(e)$, which we have not provided equations for, we do not have
+the problem of depending on a procedure whose assumptions are badly violated.
+
+If we can find an adequate model for the conditional distribution of $w$
+given $z$, we can simulate the sampling distribution of our estimator
+of $\beta$ or $\beta(e)$ and use the simulations to make confidence intervals
+or do tests of significance.
+Strictly speaking, our simulation distribution depends on estimated parameters,
+hence is a parametric bootstrap.  Our simulation will be valid if and only if
+our model actually is adequate and its
+estimated parameters are close enough to the
+true unknown parameters so that the
+simulation distribution is close to the true unknown distribution of
+$w$ given~$z$.
+
+\citet{ms} considered nonparametric bootstrap and jackknife methods
+in this situation, but the conditions for those procedures may be
+violated in many applications, particularly when fitness zero has appreciable
+probability.  \citet{ms} ``wish to emphasize that resampling techniques
+are not a panacea'' and cite literature cautioning about violations of
+required assumptions, in particular ``both techniques are based on asymptotic
+theory (sample size must be `large'), they assume residuals are identically
+and independently distributed $\ldots.$''
+That last point is a killer in the current context.
+There is no generally accepted way to resample residuals for generalized
+linear models, much less for aster models.
+Resampling cases does not mimic the conditional distribution of response
+given predictors, which is what is crucial in this application.
+
+\section{Data} \label{sec:data}
+
+We reanalyze a subset of the data analyzed by \citet{es}.
+These data are in the \texttt{chamae2} dataset in the \texttt{aster}
+contributed package to the R statistical computing environment.
+This dataset is restricted to the Minnesota site of the original (larger)
+data.
+
+These data are already in ``long'' format, no need to use the \texttt{reshape}
+function on them to do aster analysis.  We will, however, need the
+``wide'' format for Lande-Arnold analysis.  So we do that, before
+making any changes (we will add newly defined variables) to \texttt{chamae2}.
+<<wide>>=
+library(aster)
+data(chamae2)
+chamae2w <- reshape(chamae2, direction = "wide", timevar = "varb",
+    v.names = "resp", varying = list(levels(chamae2$varb)))
+names(chamae2w)
+@
+
+Individuals of \emph{Chamaecrista fasciculata} (common name, partridge pea)
+were obtained from three locations in the country and planted in three field
+sites.  Of the complete data we only reanalyze here individuals from one
+site (Minnesota).
+For each individual, many characteristics were measured, three of which we
+consider phenotypic characters (so our $z$ is three-dimensional), and others
+which combine to make up an estimate of fitness.
+The three phenotypic characters are reproductive stage (\verb@STG1N@),
+log leaf number (\verb@LOGLVS@), and log leaf thickness (\verb@LOGSLA@).
+``At the natural end of the growing season, [they] recorded total pod number
+and seed counts from three representative pods; from these measures, [they]
+estimated [fitness]'' \citep[further explained in their note 12]{es}.
+
+% There are several complications in the estimation of fitness.
+% Some fruits (pods) had already dehisced by the time data were collected,
+% so seeds could not be counted.  The number of dehisced fruits are not recorded
+% in the data we are working with (although they could be reconstructed from
+% the original data).  Some individuals had fewer than three (non-dehisced)
+% fruits to count.  Furthermore, preliminary analysis (not shown in this
+% chapter, see Chapter~\ref{ch:chamae}) seems to indicate that seed count
+% is nearly constant, having
+% little effect on fitness.  Hence to avoid all of these complications,
+% in this chapter, we analyze fruit count only as a measure of fitness.
+
+In this chapter we take fruit count as the measure of fitness
+because that gives the best example of aster analysis.
+(In Chapter~\ref{ch:chamae} we combine fruit count and seed count,
+but the aster analysis is not as simple as in this chapter.)
+
+We model fruit count as having a zero-inflated negative binomial distribution.
+The zero inflation allows for excess (or deficit) of individuals having
+zero fruit (over and above the small number of zeros that would occur
+if the distribution were pure negative binomial).  In an aster model
+this is done by having a Bernoulli node followed by a zero-truncated
+negative binomial node (each individual having a simple graph with two nodes).
+This means the event that an individual has one or more fruits is modeled
+as Bernoulli, and the distribution of the number of fruit given that the
+number is at least one is modeled as zero-truncated negative binomial.
+
+\section{Aster Analysis}
+
+Then we set up the aster model framework.
+<<setup-aster>>=
+vars <- c("fecund", "fruit")
+pred <- c(0, 1)
+@
+
+We need to choose the non-exponential-family parameters (sizes)
+for the negative binomial distributions, since the \verb@aster@ package
+only does maximum likelihood for exponential family parameters.
+We start with the following values, which were chosen with knowledge
+of the maximum likelihood estimates for these parameters, which we find
+in Section~\ref{app:mle}.
+<<setup-aster-families>>=
+load("chamae2-alpha.rda")
+print(alpha.fruit)
+famlist <- list(fam.bernoulli(), 
+    fam.truncated.negative.binomial(size = alpha.fruit, truncation = 0))
+fam <- c(1,2)
+@
+
+We can now fit our first aster model.
+<<out1>>=
+out1 <- aster(resp ~ varb + BLK, pred, fam, varb, id, root,
+    data = chamae2, famlist = famlist)
+summary(out1, show.graph = TRUE)
+@
+The ``response'' \verb@resp@ is a numeric vector containing all the
+response variables (\verb@fecund@ and \verb@fruit@).
+The ``predictor'' \verb@varb@ is a factor with two levels distinguishing
+with \verb@resp@ which original response variable an element is.
+The predictor \verb@BLK@ has not been mentioned so far.
+It is block within the field where the plants were grown.
+
+% Delete as per Ruth criticism.
+% A more complicated model (that still has no phenotypic variables
+% as predictors) is \verb@varb * BLK@.
+% <<out1foo>>=
+% out1foo <- aster(resp ~ varb * BLK, pred, fam, varb, id, root,
+%     data = chamae2, famlist = famlist)
+% summary(out1foo)
+% anova(out1, out1foo)
+% @
+% As the analysis of deviance table shows, this model does not fit
+% significantly better, so we do not use it.
+
+Now we add phenotypic variables.
+<<out2>>=
+out2 <- aster(resp ~ varb + BLK + LOGLVS + LOGSLA + STG1N,
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out2, info.tol = 1e-9)
+@
+
+One might think we should use \verb@varb * (LOGLVS + LOGSLA + STG1N)@.
+<<out2foo>>=
+out2foo <- aster(resp ~ BLK + varb * (LOGLVS + LOGSLA + STG1N),
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out2foo, info.tol = 1e-11)
+feig <- eigen(out2foo$fisher, symmetric = TRUE, only.values = TRUE)$values
+range(feig)
+anova(out2, out2foo)
+@
+It turns out the Fisher information is nearly singular, as shown
+by the need for the \verb@info.tol = 1e-11@ argument to the \verb@summary@
+command and also by the eigenvalues of the Fisher information matrix,
+the condition number (ratio of largest and smallest eigenvalues) being
+$\Sexpr{round((max(feig) / min(feig)) / 10^(floor(log10(max(feig) / min(feig)))), 1)} \times 10^{\Sexpr{floor(log10(max(feig) / min(feig)))}}$.
+Thus we do not use this model.
+% Delete as per Ruth criticism.
+% Moreover, we do not wish to use up all our degrees of freedom (which
+% we clearly now have) before trying quadratic models.
+
+An alternative model with the same number of parameters as
+\verb@out2@ puts in the regression coefficients only at the ``fitness'' level
+(here \verb@fruit@).  This is similar to the example in \citet{gws}.
+Because we are fitting an unconditional aster model, the effects of these
+terms are passed down to \verb@fecund@.
+<<out6>>=
+foo <- as.numeric(as.character(chamae2$varb) == "fruit")
+chamae2$LOGLVSfr <- chamae2$LOGLVS * foo
+chamae2$LOGSLAfr <- chamae2$LOGSLA * foo
+chamae2$STG1Nfr <- chamae2$STG1N * foo
+
+out6 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr + STG1Nfr,
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out6, info.tol = 1e-9)
+@
+It is not possible to compare \verb@out2@ and \verb@out6@ by standard
+methods (likelihood ratio test) because the models are not nested.
+They seem to fit equally well, and \verb@out6@ more directly models
+the relation of fitness (here defined as \verb@fruit@) to phenotypic
+variables.
+
+<<foofoo,include=FALSE,echo=FALSE>>=
+boo2 <- summary(out2, info.tol = 1e-11)$coefficients
+boo6 <- summary(out6, info.tol = 1e-9)$coefficients
+poo2 <- boo2["STG1N", "Pr(>|z|)"]
+poo6 <- boo6["STG1Nfr", "Pr(>|z|)"]
+poo2.exp <- floor(log10(poo2))
+poo2.frac <- poo2 / 10^poo2.exp
+poo6.exp <- floor(log10(poo6))
+poo6.frac <- poo6 / 10^poo6.exp
+@
+In both \verb@out2@ and \verb@out6@ the regression coefficient for
+the phenotypic variable \verb@STG1N@ is statistically significant
+($P = \Sexpr{round(poo2.frac, 1)} \times 10^{\Sexpr{poo2.exp}}$
+and $P = \Sexpr{round(poo6.frac, 1)} \times 10^{\Sexpr{poo6.exp}}$,
+respectively, although
+one should treat with extreme caution any $P$-values printed out when
+the \verb@info.tol@ argument is used in the \verb@summary@ call).
+
+We now want to model the canonical parameter corresponding to fitness
+as a quadratic function of phenotype variables.
+Since \verb@STG1N@ is quite discrete, taking only six
+theoretically possible values with the vast majority of individuals having only
+two of these,
+<<show-stg1n>>=
+sort(unique(chamae2w$STG1N))
+tabulate(chamae2w$STG1N)
+@
+it does not make sense to model fitness as a quadratic function of
+\verb@STG1N@.  Thus we drop this phenotypic variable from the analysis.
+<<out7>>=
+out7 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr,
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out7)
+@
+
+Now we add quadratic terms, looking for a maximum of the fitness function.
+<<out8>>=
+out8 <- aster(resp ~ varb + BLK + LOGLVSfr + LOGSLAfr +
+    I(LOGLVSfr^2) + I(LOGSLAfr^2) + I(2 * LOGLVSfr * LOGSLAfr),
+    pred, fam, varb, id, root, data = chamae2, famlist = famlist)
+summary(out8, info.tol = 1e-9)
+anova(out7, out8)
+@
+The quadratic term is highly significant.  We could try more experimentation
+with different models, but we deem this one satisfactory and base our
+analysis on this (\verb@out8@).
+See Section~\ref{sec:fit} below for residual analysis.
+
+\section{The Regression Function for Fitness}
+
+In this section we examine the regression function $u_e(z)$ that
+corresponds to the model.  For simplicity, we answer a slightly different
+question: what is $E(W \mid z, e)$ changing from $w$ (relative fitness)
+to $W$ (raw fitness).  Since $E(w \mid z, e)$ and $E(W \mid z, e)$ are
+proportional, they have maxima, minima, or saddle points (as the case
+may be) in the same place.
+
+By assumption (in this chapter) $W$ is the variable \verb@fruit@,
+a canonical statistic of the aster model.  Thus its conditional expectation
+is the corresponding mean value parameter ($\tau$ in the notation
+of \citealp{gws}).  Since the map from canonical parameter
+($\varphi$ in the notation of \citealp{gws}) is monotone increasing,
+it maps maxima to maxima, minima to minima, and saddle points to saddle
+points (see Section~\ref{sec:mono} for \label{pg:mono} details).
+Thus we can look at $\varphi$ as a function of the phenotypic
+predictor variables (which is quadratic) to see which type of stationary
+point we have (if we have any, which we must because a quadratic function
+always has stationary points) and where the stationary point is.
+
+The regression function for canonical parameter, ignoring intercept
+terms (which do not affect the location or type of stationary point
+and which depend on the environmental or ``other'' predictors $e$),
+is quadratic, letting $\varphi_1$ denote the canonical parameter
+for \verb@LOGLVSfr@ and $\varphi_2$ denote the canonical parameter
+for \verb@LOGSLAfr@, it is of the form
+\begin{equation} \label{eq:regfun}
+   \bolda^T \boldvarphi + \boldvarphi^T \boldA \boldvarphi
+\end{equation}
+where $\bolda$ is a vector and $\boldA$ a matrix defined as follows.
+<<regfun-setup>>=
+a1 <- out8$coefficients["LOGLVSfr"]
+a2 <- out8$coefficients["LOGSLAfr"]
+a <- c(a1, a2)
+A11 <- out8$coefficients["I(LOGLVSfr^2)"]
+A22 <- out8$coefficients["I(LOGSLAfr^2)"]
+A12 <- out8$coefficients["I(2 * LOGLVSfr * LOGSLAfr)"]
+A <- matrix(c(A11, A12, A12, A22), 2, 2)
+@
+Since the eigenvalues of $\boldA$ are all negative
+<<regfun-hessian>>=
+eigen(A, symmetric = TRUE, only.values = TRUE)$values
+@
+the regression function has a (unique) maximum.  The derivative
+of \eqref{eq:regfun} being
+$$
+   \bolda^T + 2 \boldvarphi^T \boldA
+$$
+the maximum is achieved at the point
+$$
+   - \tfrac{1}{2} \boldA^{-1} \bolda
+$$
+which is computed in R by
+<<regfun-maximum>>=
+max8 <- (- solve(A, a) / 2)
+print(max8)
+@
+
+Figure~\ref{fig:surf} (page~\pageref{fig:surf})
+shows the scatterplot of data values for \texttt{LOGLVS} and \texttt{LOGSLA}
+and the contours of the estimated quadratic fitness function \eqref{eq:regfun}.
+It is made by the following code.
+<<label=surftoo,include=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = "LN", ylab = "SLA")
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+z <- matrix(NA, nx, ny)
+x <- seq(ufoo[1], ufoo[2], length = nx)
+y <- seq(ufoo[3], ufoo[4], length = ny)
+points(max8[1], max8[2], pch = 19)
+for (i in 1:nx) {
+    for (j in 1:ny) {
+        b <- c(x[i], y[j])      
+        z[i, j] <- sum(a * b) + as.numeric(t(b) %*% A %*% b)
+    }
+}
+b <- as.numeric(max8)
+# z <- z - sum(a * b) + as.numeric(t(b) %*% A %*% b)
+contour(x, y, z, add = TRUE)
+contour(x, y, z, levels = c(0.325), add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=surf,fig=TRUE,echo=FALSE>>=
+<<surftoo>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{LOGLVS} versus \texttt{LOGSLA} with
+contours of the estimated quadratic fitness function.  Variable names
+in axis labels changes to \texttt{LN} and \texttt{SLA}, respectively
+to agree with paper, which used these names.
+Solid dot is the point where the estimated
+fitness function achieves its maximum.
+Note ``z'' coordinate is only a monotone function of fitness \eqref{eq:regfun},
+not actual fitness (compare Figure~\ref{fig:nerf}).}
+\label{fig:surf}
+\end{figure}
+
+\section{Lande-Arnold Analysis}
+
+In contrast to the aster analysis, the Lande-Arnold analysis is very simple.
+<<ols>>=
+chamae2w$relfit <- chamae2w$fruit / mean(chamae2w$fruit)
+lout1 <- lm(relfit ~ LOGLVS + LOGSLA + STG1N, data = chamae2w)
+summary(lout1)
+@
+The information contained in the printout of \verb@summary(lout1)@
+with the exception of
+the \verb@Estimate@ column is unreliable because
+the OLS model assumptions are not satisfied,
+as acknowledged by \citet{es} and \citet{etterson}.
+Therefore measures of statistical significance including standard
+errors (\verb@Std. Error@ column), $t$-statistics (\verb@t value@ column),
+and $P$-values (\verb@Pr(>|t|)@ column) are erroneous.
+
+Also the \verb@(Intercept)@ regression is of no interest
+(not part of $\beta$ or $\gamma$).
+
+We can also estimate $\beta(e)$ as a constant function, where
+$e$ is \verb@BLK@, our comments about that applying to OLS
+regression estimates as well as to (our as yet to be determined ``better''
+estimates).
+<<ols-e>>=
+lout2 <- lm(relfit ~ BLK + LOGLVS + LOGSLA + STG1N, data = chamae2w)
+summary(lout2)
+@
+Note that if we paid attention to the putative $P$-values from the OLS
+regression (which we should not because the assumptions for OLS do not
+hold) we would make the wrong decision about which phenotypic variable
+to drop from the analysis (dropping \verb@LOGSLA@ and keeping \verb@STG1N@).
+
+Note also that there is no reason why predictors that are important for
+the regression function itself are important for its average gradient
+(even assuming that the assumptions for Stein's lemma hold).  Thus there
+is no reason why our aster analysis should agree with the Lande-Arnold
+analysis.  When the analyses disagree, our approach, which directly
+estimates the regression function $u(z)$ or $u_e(z)$ itself, has
+more direct evolutionary implications.
+
+\citet{la} also gave a justification for quadratic regression with an
+appeal to integration by parts (Stein's lemma).  Let us try that, using
+the same predictors as for our aster model \verb@out8@ so that we get
+a direct comparison.
+<<ols-quad>>=
+lout8 <- lm(relfit ~ BLK + LOGLVS + LOGSLA +
+    I(LOGLVS^2) + I(LOGSLA^2) + I(2 * LOGLVS * LOGSLA),
+    data = chamae2w)
+summary(lout8)
+@
+
+Note that the Lande-Arnold analysis seems to have gotten the wrong
+sign for the coefficient of \verb@I(LOGLVS^2)@, where ``wrong'' means
+disagreeing with the aster analysis.  Again, this is no surprise.
+The OLS model is not actually trying to fit the regression surface
+so there is no surprise that it tells us little about the
+regression surface and what it does say is misleading.  Since we
+cannot tell whether a matrix is positive definite or indefinite by
+looking at its coefficients, we must form the matrix of coefficients
+of quadratic terms and look at its eigenvalues to see what we really have.
+
+<<ols-regfun-setup>>=
+a1 <- lout8$coefficients["LOGLVS"]
+a2 <- lout8$coefficients["LOGSLA"]
+olsa <- c(a1, a2)
+A11 <- lout8$coefficients["I(LOGLVS^2)"]
+A22 <- lout8$coefficients["I(LOGSLA^2)"]
+A12 <- lout8$coefficients["I(2 * LOGLVS * LOGSLA)"]
+olsA <- matrix(c(A11, A12, A12, A22), 2, 2)
+@
+Since the eigenvalues of $\boldA$ are all negative
+<<ols-regfun-hessian>>=
+eigen(olsA, symmetric = TRUE, only.values = TRUE)$values
+@
+Since one eigenvalue is positive and the other negative the OLS
+regression suggests dispersive selection in one direction and
+stabilizing selection in another.  Of course, since the assumptions
+for OLS regression are not met, there is no reason to trust this
+``suggestion''.
+
+Figure~\ref{fig:gurf} (page~\pageref{fig:gurf}) is just like
+Figure~\ref{fig:surf} except it shows the quadratic fitness function
+estimated by OLS (the Lande-Arnold analysis) rather than by aster.
+\begin{figure}
+\begin{center}
+<<label=gurf,fig=TRUE,echo=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = "LN", ylab = "SLA")
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+z <- matrix(NA, nx, ny)
+x <- seq(ufoo[1], ufoo[2], length = nx)
+y <- seq(ufoo[3], ufoo[4], length = ny)
+for (i in 1:nx) {
+    for (j in 1:ny) {
+        b <- c(x[i], y[j])      
+        z[i, j] <- sum(olsa * b) + as.numeric(t(b) %*% olsA %*% b)
+    }
+}
+contour(x, y, z, add = TRUE)
+# contour(x, y, z, levels = c(0.315, 0.3175), add = TRUE)
+@
+\end{center}
+\caption{Scatterplot of \texttt{LOGLVS} versus \texttt{LOGSLA} with
+contours of the quadratic fitness function estimated by OLS.
+As in Figure~\ref{fig:surf} variable names
+in axis labels changes to \texttt{LN} and \texttt{SLA}, respectively
+to agree with paper, which used these names.
+This surface does not have a maximum, so, unlike
+Figure~\ref{fig:surf} no maximum is shown.}
+\label{fig:gurf}
+\end{figure}
+
+\section{More on Quadratic Lande-Arnold Analysis}
+
+With $u(z)$ defined by \eqref{eq:u}, \citet{la} defined
+\begin{subequations}
+\begin{align}
+   \beta = E \{ \nabla u(z) \}
+   \label{eq:beta-def-too}
+   \\
+   \gamma = E \{ \nabla^2 u(z) \}
+   \label{eq:gamma-def}
+\end{align}
+\end{subequations}
+calling \eqref{eq:beta-def-too} the \emph{directional selection gradient}
+and \eqref{eq:gamma-def} the \emph{stabilizing selection gradient}.
+Equation \eqref{eq:beta-def} just repeats \eqref{eq:beta-def} above.
+Note that $\beta$ is a vector and $\gamma$ is a matrix.
+
+Because $\beta$ and $\gamma$ are averages over the assumed multivariate
+normal distribution of $z$, it may not make sense to draw plots like our
+Figure~\ref{fig:gurf}.  In fact, such a figure is the fitness landscape
+$u(z)$ only if $\nabla^2 u(z)$ is constant (not, in
+fact, a function of $z$) and the fitness landscape is actually quadratic.
+
+\citet{la} show that, if $z$ is jointly mean-zero multivariate normal,
+then $\beta$ and $\gamma$ can be estimated by the linear and quadratic
+regression coefficients in the OLS regression of relative fitness on $z$.
+This depends crucially on $z$ being jointly multivariate normal.
+In our data, $z$ is the two-dimensional
+vector with components \texttt{LOGLVS} and \texttt{LOGSLA}.
+
+For our data (and for most data sets), this multivariate normality assumption
+is not correct, although perhaps not too badly violated for these two
+variables.  The scatterplot of these variables is the pattern of dots in
+Figure~\ref{fig:surf} or~\ref{fig:gurf} and although not elliptical is not
+too far from that.
+
+One technical issue that we ignored, is that \citet{la} require that
+predictor variables be centered, so that (again assuming joint multivariate
+normality) the estimates for $\beta$ will be the same whether or not
+the quadratic term is added.  Thus we try this.
+<<ols-center>>=
+chamae2w$cLOGLVS <- chamae2w$LOGLVS - mean(chamae2w$LOGLVS)
+chamae2w$cLOGSLA <- chamae2w$LOGSLA - mean(chamae2w$LOGSLA)
+lout1too <- lm(relfit ~ BLK + cLOGLVS + cLOGSLA, data = chamae2w)
+summary(lout1too)
+lout1took <- lm(relfit ~ BLK + LOGLVS + LOGSLA, data = chamae2w)
+summary(lout1took)
+as.numeric(coefficients(lout1too)[4:5])
+as.numeric(coefficients(lout1took)[4:5])
+@
+Note that centering does not change the estimates of $\beta$.
+
+Now for the quadratic regression.
+<<ols-quad-center>>=
+lout8too <- lm(relfit ~ BLK + cLOGLVS + cLOGSLA +
+    I(cLOGLVS^2) + I(cLOGSLA^2) + I(2 * cLOGLVS * cLOGSLA),
+    data = chamae2w)
+summary(lout8too)
+as.numeric(coefficients(lout8too)[6:8])
+as.numeric(coefficients(lout8)[6:8])
+@
+Note that centering does not change the estimates of $\gamma$.
+
+However, the estimates of $\beta$ do change
+depending on whether the quadratic terms are in or out.
+<<show-beta>>=
+as.numeric(coefficients(lout1too)[4:5])
+as.numeric(coefficients(lout8too)[4:5])
+@
+They do not change much, but they do change.
+We may regard this as a failure of the multivariate normality assumption
+about the phenotype vector, since \citet{la} state that the coefficients
+would not change if $z$ were multivariate normal.
+
+\section{Goodness of Fit} \label{sec:fit}
+
+In this section we examine goodness of fit to the
+assumed conditional distributions for \verb@fruit@ 
+given \verb@fecund == 1@ by looking at a residual plot.
+
+Residual analysis of generalized linear models (GLM) is tricky.
+(Our aster model becomes a GLM when we consider only the conditional
+distribution associated with one arrow.)
+Many different residuals have been proposed \cite{ds}.
+We start with the simplest, so called Pearson residuals.
+
+<<conditional-mvp-and-canon>>=
+xi.hat <- predict(out8, model.type = "cond", parm.type = "mean")
+xi.hat <- matrix(xi.hat, nrow = nrow(out8$x), ncol = ncol(out8$x))
+theta.hat <- predict(out8, model.type = "cond", parm.type = "canon")
+theta.hat <- matrix(theta.hat, nrow = nrow(out8$x), ncol = ncol(out8$x))
+@
+<<pearson-fruit>>=
+woof <- chamae2w$fruit[chamae2w$fecund == 1]
+range(woof)
+nwoof <- length(woof)
+woof.theta <- theta.hat[chamae2w$fecund == 1, 2]
+woof.xi <- xi.hat[chamae2w$fecund == 1, 2]
+wgrad <- double(nwoof)
+winfo <- double(nwoof)
+for (i in 1:nwoof) {
+    wgrad[i] <- famfun(famlist[[2]], deriv = 1, woof.theta[i])
+    winfo[i] <- famfun(famlist[[2]], deriv = 2, woof.theta[i])
+}
+all.equal(woof.xi, wgrad)
+pearson <- (woof - woof.xi) / sqrt(winfo)
+@
+Figure~\ref{fig:fig-pearson-fruit} (page~\pageref{fig:fig-pearson-fruit})
+shows the scatter plot of the Pearson residuals for fruit count plotted
+against the expected fruit count given that fruit count is nonzero
+(for each individual) for individuals with nonzero fitness only.
+\begin{figure}
+\begin{center}
+<<label=pearfruit,fig=TRUE,echo=FALSE>>=
+plot(woof.xi, pearson, xlab = "fitted values",
+    ylab = "Pearson residuals")
+@
+\end{center}
+\caption{Pearson residuals for fruit count given nonzero fitness plotted
+against fitted values.}
+\label{fig:fig-pearson-fruit}
+\end{figure}
+
+\section{Maximum Likelihood Estimation of Size} \label{app:mle}
+
+The \verb@aster@ function does not calculate the correct likelihood
+when the size parameters are considered unknown, because it drops
+terms that do not involve the exponential family parameters.
+However, the full log likelihood is easily calculated in R.
+<<full>>=
+x <- out8$x
+logl <- function(alpha.fruit, theta, x) {
+    x.fecund <- x[ , 1]
+    theta.fecund <- theta[ , 1]
+    p.fecund <- 1 / (1 + exp(- theta.fecund))
+    logl.fecund <- sum(dbinom(x.fecund, 1, p.fecund, log = TRUE))
+    x.fruit <- x[x.fecund == 1, 2]
+    theta.fruit <- theta[x.fecund == 1, 2]
+    p.fruit <- (- expm1(theta.fruit))
+    logl.fruit <- sum(dnbinom(x.fruit, size = alpha.fruit,
+        prob = p.fruit, log = TRUE) - pnbinom(0, size = alpha.fruit,
+        prob = p.fruit, lower.tail = FALSE, log = TRUE))
+    logl.fecund + logl.fruit
+}
+@
+We then calculate the profile likelihood for the size parameter
+\verb@alpha.fruit@ maximizing over the other parameters,
+evaluating the profile log likelihood on a grid of points.
+<<full-gas>>=
+alpha.fruit.seq <- seq(1.5, 4.5, 0.25)
+logl.seq <- double(length(alpha.fruit.seq))
+for (i in 1:length(alpha.fruit.seq)) {
+    famlist.seq <- famlist
+    famlist.seq[[2]] <- fam.truncated.negative.binomial(size =
+        alpha.fruit.seq[i], truncation = 0)
+    out8.seq <- aster(out8$formula, pred, fam, varb, id, root,
+        data = chamae2, famlist = famlist.seq, parm = out8$coefficients)
+    theta.seq <- predict(out8.seq, model.type = "cond",
+        parm.type = "canon")
+    dim(theta.seq) <- dim(x)
+    logl.seq[i] <- logl(alpha.fruit.seq[i], theta.seq, x)
+}
+
+##### interpolate #####
+alpha.foo <- seq(min(alpha.fruit.seq), max(alpha.fruit.seq), 0.01)
+logl.foo <- spline(alpha.fruit.seq, logl.seq, n = length(alpha.foo))$y
+imax <- seq(along = alpha.foo)[logl.foo == max(logl.foo)]
+alpha.fruit <- alpha.foo[imax]
+save(alpha.fruit, file = "chamae2-alpha.rda", ascii = TRUE)
+@
+At the end of this chunk we save the maximum likelihood estimates
+in a file which is read in at the beginning of this chapter.
+
+Figure~\ref{fig:contour} (page~\pageref{fig:contour})
+shows the profile log likelihood for the size parameters.
+\begin{figure}
+\begin{center}
+<<label=contour,fig=TRUE,echo=FALSE>>=
+plot(alpha.fruit.seq, logl.seq - max(logl.foo),
+    ylab = "log likelihood", xlab = expression(alpha))
+lines(alpha.foo, logl.foo - max(logl.foo))
+points(alpha.foo[imax], 0, pch = 19)
+@
+\end{center}
+\caption{Profile log likelihood for size parameter for the (zero-truncated)
+negative binomial distribution of fruit.  Hollow dots are points at which
+the log likelihood was evaluated exactly.  Curve is the interpolating
+spline.  Solid dot is maximum likelihood estimate.}
+\label{fig:contour}
+\end{figure}
+
+\section{OLS Diagnostic Plots} \label{sec:ols-diag}
+
+Although unnecessary because we know the assumptions justifying OLS are
+badly violated, here are some diagnostic plots for the OLS regression.
+
+Figure~\ref{fig:foo1} (page~\pageref{fig:foo1})
+shows the plot of residuals versus fitted values made by the R statement
+<<label=foo1too,include=FALSE>>=
+plot(lout8, which = 1, add.smooth = FALSE, id.n = 0,
+    sub.caption = "", caption = "")
+@
+\begin{figure}
+\begin{center}
+<<label=foo1,fig=TRUE,echo=FALSE>>=
+<<foo1too>>
+@
+\end{center}
+\caption{Residuals versus Fitted plot for OLS fit with blocks.}
+\label{fig:foo1}
+\end{figure}
+
+Figure~\ref{fig:foo2} (page~\pageref{fig:foo2})
+shows the Normal Q-Q (quantile-quantile) plot made by the R statement
+<<label=foo2too,include=FALSE>>=
+plot(lout8, which = 2, id.n = 0, sub.caption = "")
+@
+\begin{figure}
+\begin{center}
+<<label=foo2,fig=TRUE,echo=FALSE>>=
+<<foo2too>>
+@
+\end{center}
+\caption{Normal Q-Q plot for OLS fit with blocks.}
+\label{fig:foo2}
+\end{figure}
+
+% Both look terrible.
+Clearly the errors are highly non-normal
+% (a fact we did not need plots to know).
+
+\section{Monotone Transformation of Fitness} \label{sec:mono}
+
+This section makes explicit the monotonicity argument used
+on p.~\pageref{pg:mono} that allows us to look at the quadratic surface
+shown in Figure~\ref{fig:surf} rather than the fitness surface (landscape)
+itself.
+
+This argument holds whenever an unconditional aster model is used and
+one component of the canonical statistic is taken to be observed fitness
+and the corresponding canonical parameter the only parameter taken to be
+a function of phenotypic predictor variables $z$.
+
+The argument is very simple but a bit confusing since it applies to a
+aster model that is not the actual model used.  Consider any unconditional
+aster model.  Then
+$$
+   \varphi = a + M \beta
+$$
+gives the relation between the unconditional canonical parameter vector
+$\varphi$ and the vector of regression coefficients $\beta$
+and
+$$
+   Y = M^T X
+$$
+gives the relation between the original data vector $X$ and the canonical
+statistic vector $Y$ (which is the minimal sufficient statistic).
+These are (8) and (9) in \citet{gws}.
+
+We are supposing that one component of $Y$, say $Y_k$ is observed fitness
+Let
+$$
+   w = E_\beta(Y_k)
+$$
+be expected fitness.  Then the relationship between expected fitness and
+the corresponding canonical parameter $\beta_k$ is given by (22) in \citet{gws}
+$$
+   \frac{\partial w}{\beta_k} = \frac{\partial E_\beta(Y_k)}{\partial \beta_k}
+   > 0
+$$
+which means that, other components of $\beta$ being held fixed, $w$ is
+a strictly increasing function of $\beta_k$.
+
+Now suppose that we make $\beta_k$ and no other component of $\beta$ a
+function of phenotypic predictor variables $z$.  Then by the argument
+given above
+$$
+   w(z) = E_{\beta(z)}(Y_k)
+$$
+is a strictly increasing function of $\beta_k(z)$ other predictor variables
+being held fixed.  Hence $w(z)$ has a maximum where $\beta_k(z)$ has a maximum,
+and so forth.
+
+That is the end of the argument, but there is still the tricky part to deal
+with.  When we actually fit an aster model, we cannot have regression
+coefficients that are arbitrary functions of predictors.  We have to write
+them as linear functions of other coefficients.  So in our example
+(p.~\pageref{pg:mono}) we actually had
+$$
+   \beta_k(z) = \beta_{k 1} z_1 + \beta_{k 2} z_2
+              + \beta_{k 1 1} z_1^2 + 2 \beta_{k 1 2} z_1 z_2
+              + \beta_{k 2 2} z_2^2
+$$
+So what is one regression coefficient $\beta_k$ in our argument becomes
+several regression coefficients in the actual model.
+
+So let us repeat the argument keeping track of what is fitness in the
+actual example.  There fitness is fruit count.  Therefore our argument
+requires that phenotypic predictors only directly affect fruit count
+(only involve fruit count variables), and this is what we have done
+by creating the predictor variables \verb@LOGLVSfr@ and \verb@LOGSLAfr@.
+
+\section{Plotting the Fitness Landscape} \label{sec:fit-surf}
+
+If one does not want to use the argument of the preceding section
+or if one wants to see the actual (modeled) fitness surface rather
+than a plot like Figure~\ref{fig:surf}, which is only a monotone
+transformation of the fitness surface, this section shows how to do that.
+
+Figure~\ref{fig:nerf} (page~\pageref{fig:nerf})
+shows the scatterplot of data values for \texttt{LOGLVS} and \texttt{LOGSLA}
+and the contours of the estimated fitness function that is the transform
+of \eqref{eq:regfun} to the mean value parameter scale.
+It is made by the following code.
+<<label=nerftoo,include=FALSE>>=
+plot(chamae2w$LOGLVS, chamae2w$LOGSLA, xlab = "LN", ylab = "SLA")
+points(max8[1], max8[2], pch = 19)
+ufoo <- par("usr")
+nx <- 101
+ny <- 101
+x <- seq(ufoo[1], ufoo[2], length = nx)
+y <- seq(ufoo[3], ufoo[4], length = ny)
+xx <- outer(x, y^0)
+yy <- outer(x^0, y)
+xx <- as.vector(xx)
+yy <- as.vector(yy)
+n <- length(xx)
+newdata1 <- data.frame(
+    BLK = factor(rep("1", n), levels = levels(out8$data$BLK)),
+    varb = factor(rep("fecund", n), levels = levels(out8$data$varb)),
+    LOGLVSfr = rep(0, n),
+    LOGSLAfr = rep(0, n),
+    resp = rep(1, n),
+    id = 1:n)
+newdata2 <- data.frame(
+    BLK = factor(rep("1", n), levels = levels(out8$data$BLK)),
+    varb = factor(rep("fruit", n), levels = levels(out8$data$varb)),
+    LOGLVSfr = xx,
+    LOGSLAfr = yy,
+    resp = rep(1, n),
+    id = 1:n)
+newdata <- rbind(newdata1, newdata2)
+pout <- predict(out8, newdata = newdata, varvar = varb, idvar = id,
+    root = rep(1, 2 * n))
+zz <- pout[newdata$varb == "fruit"]
+zz <- matrix(zz, nx, ny)
+contour(x, y, zz, add = TRUE)
+contour(x, y, zz, levels = c(10, 25), add = TRUE)
+@
+\begin{figure}
+\begin{center}
+<<label=nerf,fig=TRUE,echo=FALSE>>=
+<<nerftoo>>
+@
+\end{center}
+\caption{Scatterplot of \texttt{LOGLVS} versus \texttt{LOGSLA} with
+contours of the estimated fitness landscape.  Variable names
+in axis labels changes to \texttt{LN} and \texttt{SLA}, respectively
+to agree with paper, which used these names.
+Solid dot is the point where the estimated
+fitness function achieves its maximum.  Compare Figure~\ref{fig:surf}.}
+\label{fig:nerf}
+\end{figure}
+
+\section{Diagnostic Plots for Paper}
+
+Here we just put Figure~\ref{fig:fig-pearson-fruit} and Figure~\ref{fig:foo1}
+in one plot.
+\begin{figure}
+\begin{center}
+<<label=diag,fig=TRUE,echo=FALSE,height=8>>=
+par(mfrow = c(2, 1), mar = c(1, 3, 1, 1) + 0.1)
+plot(woof.xi, pearson, xlab = "", ylab = "", axes = FALSE)
+box()
+axis(side = 2)
+abline(h = 0)
+usr <- par("usr")
+xrelpos <- 0.9
+xpos <- (1 - xrelpos) * usr[1] + xrelpos * usr[2]
+text(xpos, 6, "A", cex = 2)
+library(MASS)
+plot(fitted(lout8), stdres(lout8), xlab = "", ylab = "", axes = FALSE)
+box()
+axis(side = 2)
+abline(h = 0)
+usr <- par("usr")
+xpos <- (1 - xrelpos) * usr[1] + xrelpos * usr[2]
+text(xpos, 3, "B", cex = 2)
+@
+\end{center}
+\caption{Diagnostic Plots.  A: Pearson residuals for fruit count
+given nonzero fitness plotted against fitted values.
+B: standardized OLS residuals for fruit count plotted against
+fitted values.}
+\label{fig:diag}
+\end{figure}
+
