@@ -7,7 +7,7 @@ to work with current version of R.
 
 Done
 
-| document | source | note |
+| document | official version | note |
 |----------|--------|------|
 | [tr698r](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr698r.pdf) | https://hdl.handle.net/11299/172272 | |
 | [tr696](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr696.pdf) | https://hdl.handle.net/11299/152355 | |
@@ -22,5 +22,5 @@ Done
 | [tr666](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr666.pdf) | https://www.stat.umn.edu/geyer/aster/tr666/tr666.Rnw |
 | [tr661](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr661.pdf) | https://www.stat.umn.edu/geyer/aster/tr661/tr661.Rnw | 
 | [tr658](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr658.pdf) | https://www.stat.umn.edu/geyer/aster/tr658/ |
-| [tr644](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr644.pdf) | original sources lost |
+| [tr644](https://raw.githubusercontent.com/cjgeyer/AsterTR/main/tr644.pdf) | https://www.stat.umn.edu/geyer/aster/tr644.pdf |
 
