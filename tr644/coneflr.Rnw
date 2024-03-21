@@ -1,0 +1,595 @@
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+# Sys.setlocale(category = "LC_ALL", locale = "C")
+@
+
+\section{Preliminaries}
+
+Load the \verb@aster@ package and the data.
+<<library>>=
+library(aster)
+data(echinacea)
+names(echinacea)
+@
+the variables with numbers in the names are the columns of the response
+matrix of the aster model.
+The variables \verb@ld0@$x$ (where $x$ is
+a digit) are the survival indicator variables for year 200$x$
+(one for alive, zero for dead).
+The variables \verb@fl0@$x$ are the flowering indicator variables
+(one for any flowers, zero for none).
+The variables \verb@hdct0@$x$ are the inflorescence (flower head) count
+variables (number of flower heads).
+The variables without numbers are other predictors.
+The variables \verb@ewloc@ and \verb@nsloc@ are spatial positions (east-west
+and north-south location, respectively).  
+The variable \verb@pop@ is the remnant population of origin of the plant,
+so plants
+with different values of \verb@pop@ may be more genetically diverse
+than those with the same values of \verb@pop@.
+
+Make the graph (of the graphical model, specified by a function $p$ given
+by an R vector \verb@pred@).
+<<graph>>=
+pred <- c(0, 1, 2, 1, 2, 3, 4, 5, 6)
+fam <- c(1, 1, 1, 1, 1, 1, 3, 3, 3)
+@
+Reshape the data.
+<<reshape>>=
+vars <- c("ld02", "ld03", "ld04", "fl02", "fl03", "fl04",
+    "hdct02", "hdct03", "hdct04")
+redata <- reshape(echinacea, varying = list(vars),
+     direction = "long", timevar = "varb", times = as.factor(vars),
+     v.names = "resp")
+redata <- data.frame(redata, root = 1)
+names(redata)
+@
+
+\section{Modeling}
+
+\subsection{First Model}
+
+For our first model we try something simple (moderately simple).
+We have no population effects.  We put in a mean and effect of north-south
+and east-west position for each of the nine variables.  That gives
+us $3 \times 9 = 27$ parameters.
+<<model-1>>=
+out1 <- aster(resp ~ varb + varb:nsloc + varb:ewloc,
+    pred, fam, varb, id, root, data = redata)
+summary(out1, show.graph = TRUE)
+@
+
+\subsection{Second Model}
+
+So now we put in population.
+<<site>>=
+levels(echinacea$pop)
+@
+Let us put \verb@pop@ in only at the top level in this model
+(just to see what happens).  In order to do that we have to add
+a predictor that ``predicts'' the top level.
+<<model-2>>=
+hdct <- grep("hdct", as.character(redata$varb))
+hdct <- is.element(seq(along = redata$varb), hdct)
+redata <- data.frame(redata, hdct = as.integer(hdct))
+names(redata)
+
+out2 <- aster(resp ~ varb + varb:nsloc + varb:ewloc + hdct * pop - pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out2)
+anova(out1, out2)
+@
+
+\paragraph{Comment}
+The last bit of the summary that the ``original predictor'' \verb@hdct@
+was ``dropped (aliased)'' means just what it (tersely) says.
+The R formula mini-language as implemented in the R functions
+\verb@model.frame@ and \verb@model.matrix@ produces a model matrix that
+is not full rank.  In order to estimate anything we must drop some
+dummy variable that it constructed.  In this particular case the
+(dummy variable that is the indicator of) \verb@hdct@ is equal to the
+sum of the (dummy variables that are the indicators of) \verb@varbhdct02@,
+\verb@varbhdct03@, and \verb@varbhdct04@.  Thus we must drop one of these
+variables for the model to be identifiable.  So \verb@aster@ does.
+
+\paragraph{Comment}
+The reason for the \verb@- pop@ in the formula is not obvious.  In fact,
+we originally did not write the formula this way and got the wrong model
+(see ``Tenth Model'' in Section~\ref{sec:ten} below).  It took some grovelling
+in various bits of R documentation to come up with this \verb@- pop@ trick,
+but once you see it, the effect is clear.
+
+We want population effects only at the ``hdct'' level.  But the
+\verb@hdct * pop@ crosses the \verb@hdct@ indicator variable, which
+has two values (zero and one) with the \verb@pop@ variable, which has
+seven values (the seven populations), giving 14 parameters, one of which R
+drops (because it is aliased with the intercept).  But that's not what
+we want.  We don't want \verb@pop@ effects at the ``non-hdct'' levels.
+The way the R formula mini-language allows us to specify that is
+\verb@- pop@ which means to leave out the population main effects
+(7 fewer parameters, leaving 6) and we see that we do indeed have
+6 degrees of freedom difference between models one and two.
+
+\subsection{Third Model}
+
+Let us now put \verb@pop@ in at all levels in this model.
+<<model-3>>=
+level <- gsub("[0-9]", "", as.character(redata$varb))
+redata <- data.frame(redata, level = as.factor(level))
+
+out3 <- aster(resp ~ varb + varb:nsloc + varb:ewloc + level * pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out3)
+anova(out1, out2, out3)
+@
+
+\paragraph{Comment} This would finish a sensible analysis, but we're really
+not sure we have dealt with the ``geometry'' (the variables \verb@ewloc@
+and \verb@nsloc@) correctly.
+
+\subsection{Fourth Model, Less Geometry}
+
+Thus we experiment with different ways to put in the spatial effects.
+First we reduce the geometry to a product, either year or level.
+<<model-4>>=
+year <- gsub("[a-z]", "", as.character(redata$varb))
+year <- paste("yr", year, sep = "")
+redata <- data.frame(redata, year = as.factor(year))
+
+out4 <- aster(resp ~ varb + (level + year):(nsloc + ewloc) + level * pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out4)
+anova(out4, out3)
+@
+So we have goodness of fit, and this can be our ``big model''.
+
+\subsection{Fifth Model, Much Less Geometry}
+
+Now we reduce the geometry to just two predictors.
+<<model-5>>=
+out5 <- aster(resp ~ varb + nsloc + ewloc + level * pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out5)
+anova(out5, out4, out3)
+@
+So we do not have goodness of fit, and this cannot be our ``big model''.
+
+\subsection{Sixth Model, Intermediate Geometry, Levels}
+
+So we try again with the geometry.
+<<model-6>>=
+out6 <- aster(resp ~ varb + level:(nsloc + ewloc) + level * pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out6)
+anova(out5, out6, out4, out3)
+@
+So we have goodness of fit, and this can be our ``big model''.
+But why drop year rather than level?
+
+\subsection{Seventh Model, Intermediate Geometry, Years}
+
+So we try again with the geometry.
+<<model-7>>=
+out7 <- aster(resp ~ varb + year:(nsloc + ewloc) + level * pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out7)
+anova(out5, out7, out4, out3)
+@
+
+And we do not have goodness of fit!  So Model Six is our ``big model''
+and we have been logical in our model selection.
+Note that it is not valid to compare Models Six and Seven because they
+are not nested, but both fit between Models Five and Four, so Six and Seven
+can each be compared to both Five and Four (and this tells us what we want
+to know).
+
+\subsection{Eighth Model, Like Models Two and Six}
+
+We need to make a model with the structure of Model Two with respect
+to variables and like Model Six with respect to geometry.
+<<model-8>>=
+out8 <- aster(resp ~ varb + level:(nsloc + ewloc) + hdct * pop - pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out8)
+anova(out8, out6)
+@
+
+\subsection{Ninth Model, Like Models One and Eight}
+
+We need to make a model with the structure of Model Eight except
+no populations.
+<<modmat-9>>=
+out9 <- aster(resp ~ varb + level:(nsloc + ewloc),
+    pred, fam, varb, id, root, data = redata)
+summary(out9)
+anova(out9, out8, out6)
+@
+
+\subsection{Tenth Model, Between Models Six and Eight} \label{sec:ten}
+
+We accidentally created a new tenth model by not understanding the
+``minus populations'' stuff in the formulae for Models Two and Eight.
+<<modmat-10>>=
+out10 <- aster(resp ~ varb + level:(nsloc + ewloc) + hdct * pop,
+    pred, fam, varb, id, root, data = redata)
+summary(out10)
+anova(out9, out8, out10, out6)
+@
+So this says that Model Ten (which only has 12 d.~f.\ for ``pop'')
+can be the big model.
+
+% <<dump>>=
+% save(redata, out6, out8, out9, out10, pred, fam, file = "coneflr.RData")
+% @
+
+\section{Mean Value Parameters}
+
+\subsection{Unconditional}
+
+As argued in Chapter~\ref{ch:aster}, canonical parameters are ``meaningless.''
+Only mean value parameters have real world, scientific interpretability.
+
+So in this section we compare predicted values for a typical individual
+(say zero-zero geometry) in each population under both Models Six and Eight.
+The functional of mean value parameters we want is \emph{total head count},
+since this has the biological interpretation of
+the best surrogate measure of fitness
+in this data set.  A biologist (at least an evolutionary biologist)
+is interested in the ``ancestor variables'' of head count only insofar
+as they contribute to head count.  Two sets of parameter values that
+``predict'' the same expected total head count (over the three years the
+data were collected) have the same contribution to fitness.  So that is
+the ``prediction'' (really functional of mean value parameters) we ``predict.''
+
+To do this we must construct ``newdata'' for these hypothetical individuals.
+<<predict-newdata>>=
+newdata <- data.frame(pop = levels(echinacea$pop))
+for (v in vars)
+    newdata[[v]] <- 1
+newdata$root <- 1
+newdata$ewloc <- 0
+newdata$nsloc <- 0
+renewdata <- reshape(newdata, varying = list(vars),
+     direction = "long", timevar = "varb", times = as.factor(vars),
+     v.names = "resp")
+names(redata)
+names(renewdata)
+hdct <- grep("hdct", as.character(renewdata$varb))
+hdct <- is.element(seq(along = renewdata$varb), hdct)
+renewdata$hdct <- as.integer(hdct)
+level <- gsub("[0-9]", "", as.character(renewdata$varb))
+renewdata$level <- as.factor(level)
+year <- gsub("[a-z]", "", as.character(renewdata$varb))
+year <- paste("yr", year, sep = "")
+renewdata$year <- as.factor(year)
+setequal(names(redata), names(renewdata))
+@
+We are using bogus data $x_{i j} = 1$ for all $i$ and $j$ because
+unconditional mean value parameters do not depend on $x$.  We have
+to have an \verb@x@ argument because that's the way the aster package
+functions work (ultimately due to limitations of the R formula mini-language).
+So it doesn't matter what we make it.  In the following section,
+the predictions will depend on \verb@x@, but then (as we shall argue),
+this is the \verb@x@ we want.
+
+<<predict-out>>=
+nind <- nrow(newdata)
+nnode <- length(vars)
+amat <- array(0, c(nind, nnode, nind))
+for (i in 1:nind)
+    amat[i , grep("hdct", vars), i] <- 1
+pout6 <- predict(out6, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, se.fit = TRUE, amat = amat)
+pout8 <- predict(out8, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, se.fit = TRUE, amat = amat)
+@
+
+Figure~\ref{fig:one} is produced by the
+following code
+<<conf-level>>=
+conf.level <- 0.95
+crit <- qnorm((1 + conf.level) / 2)
+@
+<<label=fig1plot,include=FALSE>>=
+popnames <- as.character(newdata$pop)
+fit8 <- pout8$fit
+i <- seq(along = popnames)
+ytop <- fit8 + crit * pout8$se.fit
+ybot <- fit8 - crit * pout8$se.fit
+plot(c(i, i), c(ytop, ybot), type = "n", axes = FALSE, xlab = "", ylab = "")
+segments(i, ybot, i, ytop)
+foo <- 0.1
+segments(i - foo, ybot, i + foo, ybot)
+segments(i - foo, ytop, i + foo, ytop)
+segments(i - foo, fit8, i + foo, fit8)
+axis(side = 2)
+title(ylab = "unconditional mean value parameter")
+axis(side = 1, at = i, labels = popnames)
+title(xlab = "population")
+@
+and appears on p.~\pageref{fig:one}.
+\begin{figure}
+\begin{center}
+<<label=fig1,fig=TRUE,echo=FALSE>>=
+<<fig1plot>>
+@
+\end{center}
+\caption{\Sexpr{100 * conf.level}\% confidence intervals for unconditional
+mean value parameter for fitness (sum of head count for all years) at each
+population for a ``typical'' individual having position zero-zero and having
+the parameterization of Model Eight.  Tick marks
+in the middle of the bars are the center (the MLE).}
+\label{fig:one}
+\end{figure}
+
+Figure~\ref{fig:two} is produced by the
+following code
+<<label=fig2plot,include=FALSE>>=
+fit6 <- pout6$fit
+i <- seq(along = popnames)
+foo <- 0.1
+y8top <- fit8 + crit * pout8$se.fit
+y8bot <- fit8 - crit * pout8$se.fit
+y6top <- fit6 + crit * pout6$se.fit
+y6bot <- fit6 - crit * pout6$se.fit
+plot(c(i - 1.5 * foo, i - 1.5 * foo, i + 1.5 * foo, i + 1.5 * foo),
+    c(y8top, y8bot, y6top, y6bot), type = "n", axes = FALSE,
+    xlab = "", ylab = "")
+segments(i - 1.5 * foo, y8bot, i - 1.5 * foo, y8top)
+segments(i - 2.5 * foo, y8bot, i - 0.5 * foo, y8bot)
+segments(i - 2.5 * foo, y8top, i - 0.5 * foo, y8top)
+segments(i - 2.5 * foo, fit8, i - 0.5 * foo, fit8)
+segments(i + 1.5 * foo, y6bot, i + 1.5 * foo, y6top, lty = 2)
+segments(i + 2.5 * foo, y6bot, i + 0.5 * foo, y6bot)
+segments(i + 2.5 * foo, y6top, i + 0.5 * foo, y6top)
+segments(i + 2.5 * foo, fit6, i + 0.5 * foo, fit6)
+axis(side = 2)
+title(ylab = "unconditional mean value parameter")
+axis(side = 1, at = i, labels = popnames)
+title(xlab = "population")
+@
+and appears on p.~\pageref{fig:two}.
+\begin{figure}
+\begin{center}
+<<label=fig2,fig=TRUE,echo=FALSE>>=
+<<fig2plot>>
+@
+\end{center}
+\caption{\Sexpr{100 * conf.level}\% confidence intervals for unconditional
+mean value parameter for fitness (sum of head count for all years) at each
+population for a ``typical'' individual having position zero-zero and having
+the parameterization of Model Eight (solid bar) or Model Six (dashed bar).
+Tick marks in the middle of the bars are the center (the MLE).}
+\label{fig:two}
+\end{figure}
+
+\subsection{Conditional} \label{sec:conditional}
+
+This section is very incomplete.  We don't redo everything using conditional
+models.  That's not the point.  We only want to show that conditional models
+and conditional mean value parameters just don't do the same thing as
+unconditional models (which is obvious, but some people like examples, and
+in any case, this gives us an opportunity to show some options of aster
+model fitting).
+
+\subsubsection{Conditional Models}
+
+Let us redo Figure~\ref{fig:two} based on conditional models with the
+same model matrices (a dumb idea, since the meaning of the models is
+entirely different despite the similarity in algebra, but we want to
+hammer the point home).
+<<conditional-foo>>=
+cout6 <- aster(resp ~ varb + level:(nsloc + ewloc) + level * pop,
+    pred, fam, varb, id, root, data = redata, type = "conditional")
+cout8 <- aster(resp ~ varb + level:(nsloc + ewloc) + hdct * pop - pop,
+    pred, fam, varb, id, root, data = redata, type = "conditional")
+pcout6 <- predict(cout6, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, se.fit = TRUE, amat = amat)
+pcout8 <- predict(cout8, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, se.fit = TRUE, amat = amat)
+@
+Note that these are exactly like the analogous statements making the
+analogous objects without the ``c'' in their names except
+for the \verb@type = "conditional"@ arguments in the two \verb@aster@
+function calls.  Then we make Figure~\ref{fig:three} just like
+Figure~\ref{fig:two} except for using \verb@pcout6@ and \verb@pcout8@
+instead of \verb@pout6@ and \verb@pout8@.
+\begin{figure}
+\begin{center}
+<<label=fig3,fig=TRUE,echo=FALSE>>=
+fit6 <- pcout6$fit
+fit8 <- pcout8$fit
+i <- seq(along = popnames)
+foo <- 0.1
+y8top <- fit8 + crit * pcout8$se.fit
+y8bot <- fit8 - crit * pcout8$se.fit
+y6top <- fit6 + crit * pcout6$se.fit
+y6bot <- fit6 - crit * pcout6$se.fit
+plot(c(i - 1.5 * foo, i - 1.5 * foo, i + 1.5 * foo, i + 1.5 * foo),
+    c(y8top, y8bot, y6top, y6bot), type = "n", axes = FALSE,
+    xlab = "", ylab = "")
+segments(i - 1.5 * foo, y8bot, i - 1.5 * foo, y8top)
+segments(i - 2.5 * foo, y8bot, i - 0.5 * foo, y8bot)
+segments(i - 2.5 * foo, y8top, i - 0.5 * foo, y8top)
+segments(i - 2.5 * foo, fit8, i - 0.5 * foo, fit8)
+segments(i + 1.5 * foo, y6bot, i + 1.5 * foo, y6top, lty = 2)
+segments(i + 2.5 * foo, y6bot, i + 0.5 * foo, y6bot)
+segments(i + 2.5 * foo, y6top, i + 0.5 * foo, y6top)
+segments(i + 2.5 * foo, fit6, i + 0.5 * foo, fit6)
+axis(side = 2)
+title(ylab = "unconditional mean value parameter")
+axis(side = 1, at = i, labels = popnames)
+title(xlab = "population")
+@
+\end{center}
+\caption{\Sexpr{100 * conf.level}\% confidence intervals for unconditional
+mean value parameter for fitness (sum of head count for all years) at each
+population for a ``typical'' individual having position zero-zero and having
+the parameterization of Model Eight (solid bar) or Model Six (dashed bar).
+Tick marks in the middle of the bars are the center (the MLE).   The
+difference between this figure and Figure~\ref{fig:two} is that the models
+fitted are \emph{conditional} rather than \emph{unconditional}.}
+\label{fig:three}
+\end{figure}
+It appears on p.~\pageref{fig:three}.
+
+Note the huge difference between Figure~\ref{fig:two}
+and Figure~\ref{fig:three}.  The same model matrices are used in both
+cases.  The linear predictor satisfies $\boldeta = \boldM \boldbeta$,
+but in one case (Figure~\ref{fig:two}) the linear predictor is the
+unconditional canonical parameter ($\boldeta = \boldvarphi$) and
+in the other case (Figure~\ref{fig:three}) the linear predictor is the
+conditional canonical parameter ($\boldeta = \boldtheta$).
+In one case (Figure~\ref{fig:two}) the predictions of a linear functional
+of the unconditional mean value parameter ($\boldtau$) are nearly the same
+for the two models and in the other case (Figure~\ref{fig:three}) the
+predictions of the same linear functional of $\boldtau$ are wildly different.
+
+\textbf{Conclusion:} conditional models and unconditional models are different.
+That's the whole point.  That's why unconditional models were invented, because
+conditional models can't be made to do the same thing.
+
+\subsubsection{More on Conditional Models}
+
+Let us redo the analysis of deviance table in Section~\ref{sec:ten} based
+on conditional models with the same model matrices (again we reiterate,
+this is a very dumb idea, since the meaning of the models is
+entirely different despite the similarity in algebra, but we want to
+hammer the point home).
+<<more-on>>=
+cout9 <- aster(resp ~ varb + level:(nsloc + ewloc),
+    pred, fam, varb, id, root, data = redata, type = "cond")
+cout10 <- aster(resp ~ varb + level:(nsloc + ewloc) + hdct * pop,
+    pred, fam, varb, id, root, data = redata, type = "cond")
+anova(cout9, cout8, cout10, cout6)
+@
+
+It is hard to know what lesson to draw from this.  Presumably since
+all three ``large'' models fit about equally well, none of them fit
+as well as the corresponding unconditional models
+(we see from the analysis in the preceding
+section).  But since conditional and unconditional models are not nested,
+we cannot use standard likelihood ratio test methodology to test this.
+(So we have no clear lesson here, but leave it in to not hide anything).
+
+\subsubsection{Conditional Parameter}
+
+Let us redo Figure~\ref{fig:two} now not changing the model (we still
+use the fits \verb@out6@ and \verb@out8@) but changing the thingummy
+we ``predict''.  In Figure~\ref{fig:two} we ``predict'' a linear functional
+$\boldA' \boldtau$ of the unconditional mean value parameter (the sum of
+three components of $\boldtau$, those for flower head count).
+In Figure~\ref{fig:four} we predict the same linear functional
+$\boldA' \boldxi$ of the \emph{conditional} mean value parameter $\boldxi$.
+<<conditional-bar>>=
+pxout6 <- predict(out6, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, se.fit = TRUE, amat = amat, model.type = "conditional")
+pxout8 <- predict(out8, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, se.fit = TRUE, amat = amat, model.type = "conditional")
+@
+Note that these are exactly like the analogous statements making the
+analogous objects without the ``x'' in their names except
+for the \verb@model.type = "conditional"@ arguments in the two \verb@predict@
+function calls.  Then we make Figure~\ref{fig:four} just like
+Figure~\ref{fig:two} except for using \verb@pxout6@ and \verb@pxout8@
+instead of \verb@pout6@ and \verb@pout8@.
+\begin{figure}
+\begin{center}
+<<label=fig4,fig=TRUE,echo=FALSE>>=
+fit6 <- pxout6$fit
+fit8 <- pxout8$fit
+i <- seq(along = popnames)
+foo <- 0.1
+y8top <- fit8 + crit * pxout8$se.fit
+y8bot <- fit8 - crit * pxout8$se.fit
+y6top <- fit6 + crit * pxout6$se.fit
+y6bot <- fit6 - crit * pxout6$se.fit
+plot(c(i - 1.5 * foo, i - 1.5 * foo, i + 1.5 * foo, i + 1.5 * foo),
+    c(y8top, y8bot, y6top, y6bot), type = "n", axes = FALSE,
+    xlab = "", ylab = "")
+segments(i - 1.5 * foo, y8bot, i - 1.5 * foo, y8top)
+segments(i - 2.5 * foo, y8bot, i - 0.5 * foo, y8bot)
+segments(i - 2.5 * foo, y8top, i - 0.5 * foo, y8top)
+segments(i - 2.5 * foo, fit8, i - 0.5 * foo, fit8)
+segments(i + 1.5 * foo, y6bot, i + 1.5 * foo, y6top, lty = 2)
+segments(i + 2.5 * foo, y6bot, i + 0.5 * foo, y6bot)
+segments(i + 2.5 * foo, y6top, i + 0.5 * foo, y6top)
+segments(i + 2.5 * foo, fit6, i + 0.5 * foo, fit6)
+axis(side = 2)
+title(ylab = "conditional mean value parameter")
+axis(side = 1, at = i, labels = popnames)
+title(xlab = "population")
+@
+\end{center}
+\caption{\Sexpr{100 * conf.level}\% confidence intervals for conditional
+mean value parameter for fitness (sum of head count for all years) at each
+population for a ``typical'' individual having position zero-zero and having
+the parameterization of Model Eight (solid bar) or Model Six (dashed bar).
+Tick marks in the middle of the bars are the center (the MLE).   The
+difference between this figure and Figure~\ref{fig:two} is that the parameters
+``predicted'' are \emph{conditional} rather than \emph{unconditional}.}
+\label{fig:four}
+\end{figure}
+It appears on p.~\pageref{fig:four}.
+
+Note the huge difference between Figure~\ref{fig:two}
+and Figure~\ref{fig:four}.  The same models are used in both
+cases but 
+in one case (Figure~\ref{fig:two}) we ``predict'' a linear functional
+$\boldA' \boldtau$ of the unconditional mean value parameter ($\boldtau$)
+and in the other case (Figure~\ref{fig:four}) we ``predict'' the \emph{same}
+linear functional $\boldA' \boldxi$ of the conditional mean value parameter
+($\boldxi$).
+
+\textbf{Conclusion:} conditional expectations and unconditional expectations
+are different.  (Duh!)
+The two sorts of predictions can't be made to do the same thing.
+
+\section{Plot for the Paper}
+
+We redo Figure~\ref{fig:two} changing the models compared to
+Model~8 and Model~10 (fits in \verb@out8@ and \verb@out10@).
+<<app-predict-out>>=
+pout10 <- predict(out10, varvar = varb, idvar = id, root = root,
+    newdata = renewdata, se.fit = TRUE, amat = amat)
+@
+\begin{figure}
+\begin{center}
+<<label=fig-app,fig=TRUE,echo=FALSE>>=
+fit8 <- pout8$fit
+fit10 <- pout10$fit
+i <- seq(along = popnames)
+foo <- 0.1
+y8top <- fit8 + crit * pout8$se.fit
+y8bot <- fit8 - crit * pout8$se.fit
+y10top <- fit10 + crit * pout10$se.fit
+y10bot <- fit10 - crit * pout10$se.fit
+plot(c(i - 1.5 * foo, i - 1.5 * foo, i + 1.5 * foo, i + 1.5 * foo),
+    c(y8top, y8bot, y10top, y10bot), type = "n", axes = FALSE,
+    xlab = "", ylab = "")
+segments(i - 1.5 * foo, y8bot, i - 1.5 * foo, y8top)
+segments(i - 2.5 * foo, y8bot, i - 0.5 * foo, y8bot)
+segments(i - 2.5 * foo, y8top, i - 0.5 * foo, y8top)
+segments(i - 2.5 * foo, fit8, i - 0.5 * foo, fit8)
+segments(i + 1.5 * foo, y10bot, i + 1.5 * foo, y10top, lty = 2)
+segments(i + 2.5 * foo, y10bot, i + 0.5 * foo, y10bot)
+segments(i + 2.5 * foo, y10top, i + 0.5 * foo, y10top)
+segments(i + 2.5 * foo, fit10, i + 0.5 * foo, fit10)
+axis(side = 2)
+title(ylab = "unconditional mean value parameter")
+axis(side = 1, at = i, labels = popnames)
+title(xlab = "population")
+@
+\end{center}
+\caption{\Sexpr{100 * conf.level}\% confidence intervals for unconditional
+mean value parameter for fitness (sum of head count for all years) at each
+population for a ``typical'' individual having position zero-zero and having
+the parameterization of Model Eight (solid bar) or Model Ten (dashed bar).
+Tick marks in the middle of the bars are the center (the MLE).}
+\label{fig:app}
+\end{figure}
+It appears on p.~\pageref{fig:app}.
+
+% \begin{center} \LARGE REVISED DOWN TO HERE \end{center}
+

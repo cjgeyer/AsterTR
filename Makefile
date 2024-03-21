@@ -3,7 +3,7 @@
 	latexmk -pdf $<
 
 all: tr698r.pdf tr696.pdf tr692.pdf tr675r.pdf tr674r.pdf tr671r.pdf \
-        tr670.pdf tr669.pdf tr666.pdf tr661.pdf tr658.pdf
+        tr670.pdf tr669.pdf tr666.pdf tr661.pdf tr658.pdf tr644.pdf
 
 tr698r.pdf :
 	cd tr698 && $(MAKE)

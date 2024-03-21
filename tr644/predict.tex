@@ -1,0 +1,318 @@
+
+\section{Introduction}
+
+\subsection{Functions of Regression Coefficients}
+
+Suppose we have an aster model, a maximum likelihood estimate
+$\boldbetahat$, and Fisher information $I(\boldbetahat)$,
+whether observed or expected makes no difference.  The asymptotic
+distribution of $\boldbetahat$ is
+$$
+   \text{Normal}\bigl(\boldbeta, I(\boldbetahat)^{-1} \bigr)
+$$
+where $\boldbeta$ is the true unknown parameter value.
+
+But we usually don't want to make predictions about $\boldbeta$
+(regression coefficients are meaningless, only probabilities and expectations
+are directly interpretable) but about some function
+$g(\boldbeta)$, where $g$ is a scalar-valued or vector-valued function.
+The delta method then says that the asymptotic distribution of
+$g(\boldbetahat)$ is
+$$
+   \text{Normal}\bigl(g(\boldbeta),
+   [\nabla g(\boldbetahat)] I(\boldbetahat)^{-1} [\nabla g(\boldbetahat)]^T
+   \bigr)
+$$
+Since we already have $\boldbetahat$ and $I(\boldbetahat)$,
+we only need $\nabla g(\boldbetahat)$ to finish our problem.
+
+\subsection{Functions of Other Parameters}
+
+Since regression coefficients are meaningless, users will typically
+want to specify a function of some other parameter, for example the
+unconditional mean value parameter $\boldtau$, which, of course,
+is itself a function of $\boldbeta$ if the model
+is correct.  That is, we have a composition
+$$
+   g = h \circ f_{\boldbeta, \boldtau}
+$$
+where $h$ is an arbitrary function specified by the user
+and $f_{\boldbeta, \boldtau}$ is the map $\boldbeta \mapsto \boldtau$.
+The point is that $f_{\boldbeta, \boldtau}$ is quite complicated
+but is understood (or should be understood) by the computer,
+whereas $h$ may be quite simple.
+
+Of course, from the chain rule we have
+\begin{subequations}
+\begin{equation} \label{eq:chain-one}
+   \nabla g(\boldbeta)
+   = 
+   \nabla h(\boldtau) \circ \nabla f_{\boldbeta, \boldtau}(\boldbeta)
+\end{equation}
+Since $\nabla h(\boldtau)$ and $\nabla f_{\boldbeta, \boldtau}(\boldbeta)$
+are linear operators represented by matrices (of partial derivatives),
+the composition here is represented by matrix multiplication.
+Of course, we want to use this with estimates plugged in.
+\begin{equation} \label{eq:chain-two}
+   \nabla g(\boldbetahat)
+   = 
+   \nabla h(\boldtauhat) \circ \nabla f_{\boldbeta, \boldtau}(\boldbetahat)
+\end{equation}
+So the general idea is that the user supplies the easy part,
+the matrix representing $\nabla h(\boldtauhat)$, and the computer does
+the hard part, the matrix
+representing $\nabla f_{\boldbeta, \boldtau}(\boldbetahat)$.
+
+There is one slight complication.  The user often provides part of the
+specification of $\nabla f_{\boldbeta, \boldtau}(\boldbetahat)$,
+for which see Section~\ref{sec:covariate} below.
+
+\subsection{What Other Parameters?}
+
+We suppose that in place of $\boldtau$ in the preceding section, the
+user may chose to specify $h$ in terms of any of the parameters we use
+in discussing aster models.  There are four (the one already
+mentioned and three others)
+\begin{itemize}
+\item $\boldtheta$, the conditional canonical parameters.
+\item $\boldvarphi$, the unconditional canonical parameters.
+\item $\boldxi$, the conditional mean value parameters.
+\item $\boldtau$, the unconditional mean value parameters.
+\end{itemize}
+Letting $\boldzeta$ stand for any one of these parameters,
+we replace $\boldtau$ by $\boldzeta$ in \eqref{eq:chain-two}
+obtaining
+\begin{equation} \label{eq:chain-three}
+   \nabla g(\boldbetahat)
+   = 
+   \nabla h(\boldzetahat) \circ \nabla f_{\boldbeta, \boldzeta}(\boldbetahat)
+\end{equation}
+we need the user to be able to specify a $\nabla h(\boldzetahat)$ and
+have the computer produce the required
+$\nabla f_{\boldbeta, \boldzeta}(\boldbetahat)$.
+
+\subsection{What Covariates?} \label{sec:covariate}
+
+An important thing the \verb@predict.lm@ function in R does is allow
+prediction at covariate values other than those in the observed data.
+In fact, this is its main ``feature.''  The multiplicity of parameter
+values found in aster models is absent in simple least squares
+regression.
+
+Let $\boldeta$ be the canonical parameter that is linearly modeled in
+terms of $\boldbeta$ (either $\boldtheta$ for a conditional model
+or $\boldvarphi$ for an unconditional model).  Then the ``generalized linear''
+part of the aster model is
+$$
+   \boldeta = \boldM \boldbeta
+$$
+where $\boldM$ is a linear operator, represented by a matrix
+(the model matrix), but, \emph{and this is important}, the $\boldM$
+used in the prediction problem need not be the $\boldM$ used in fitting
+the model to observed data.  The two model matrices must have the same
+column dimension and the columns must have the same meaning (covariate
+variables), but the rows need bear no analogy.  Each row of the model
+matrix for the real data corresponds to a real individual, but rows of
+the model matrix for a prediction problem may correspond to entirely
+hypothetical individuals, or newly observed individuals not in the
+original data, or whatever.  In this note
+we use the notation $\boldM$
+to stand for the model matrix involved in our prediction problem.
+The model matrix for the original data, when needed, will be
+denoted $\boldM_{\text{orig}}$.
+
+Now we can write our function to predict as the composition
+$$
+   g = h \circ f_{\boldeta, \boldzeta} \circ \boldM
+$$
+and the chain rule with plug-in becomes
+\begin{equation} \label{eq:chain-four}
+   \nabla g(\boldbetahat)
+   = 
+   \nabla h(\boldzetahat) \circ \nabla f_{\boldeta, \boldzeta}(\boldetahat)
+   \circ \boldM
+\end{equation}
+\end{subequations}
+(the derivative of a linear operator being the operator itself).
+
+So the division of labor we envisage is that the user will specify the
+two matrices $\nabla h(\boldzetahat)$ and $\boldM$ (the latter either
+explicitly or, more usually, implicitly
+by specifying a new data frame to be used with the formula for the regression)
+and the computer must figure out $\nabla f_{\boldeta, \boldzeta}(\boldetahat)$
+by itself.
+
+\section{Changes of Parameter}
+
+\subsection{Identity}
+
+For two ``changes of parameter'' of interest to us,
+$f_{\boldeta, \boldzeta}$ is the identity mapping and hence so is
+$\nabla f_{\boldeta, \boldzeta}$.
+These are the cases $\boldeta = \boldzeta = \boldtheta$
+and $\boldeta = \boldzeta = \boldvarphi$.
+In these cases the computer's part of \eqref{eq:chain-four} is trivial.
+
+\subsection{Conditional Canonical to Unconditional Canonical}
+
+This section deals with $f_{\boldtheta, \boldvarphi}$, which is described
+by \eqref{eq:new-iid}.
+Let $\Delta \theta_{i j}$ denote an increment in $\theta_{i j}$
+and similarly for $\Delta \varphi_{i j}$.  Then
+\begin{equation} \label{eq:theta-to-phi}
+   \Delta \varphi_{i j}
+   =
+   \Delta \theta_{i j}
+   -
+   \sum_{k \in S(j)} \psi_k'(\hat{\theta}_{i k}) \Delta \theta_{i k}
+\end{equation}
+provides a description of $\nabla f_{\boldtheta, \boldvarphi}(\boldthetahat)$.
+It is a linear operator that
+maps a vector with components $\Delta \theta_{i j}$
+to a vector with components $\Delta \varphi_{i j}$.
+
+It is perhaps easier to understand this (and more useful to the actual
+computer programming of predictions) if we compute the composition
+$\nabla f_{\boldeta, \boldzeta}(\boldetahat) \circ \boldM$, the last
+two bits of \eqref{eq:chain-four}.  We get, in this case where
+$\boldeta = \boldtheta$,
+$$
+   \frac{\partial \varphi_{i j}}{\partial \beta_k}
+   =
+   m_{i j k}
+   -
+   \sum_{l \in S(j)} \psi_l'(\hat{\theta}_{i l}) m_{i l k}
+$$
+where $m_{i j k}$ are the components of $\boldM$.
+
+\subsection{Unconditional Canonical to Conditional Canonical}
+
+This section deals with $f_{\boldvarphi, \boldtheta}$, which is implicitly
+described by \eqref{eq:new-iid}.
+It is clear that inverting \eqref{eq:theta-to-phi} gives
+\begin{equation} \label{eq:phi-to-theta}
+   \Delta \theta_{i j}
+   =
+   \Delta \varphi_{i j}
+   +
+   \sum_{k \in S(j)} \psi_k'(\hat{\theta}_{i k}) \Delta \theta_{i k}
+\end{equation}
+
+Since \eqref{eq:phi-to-theta} has $\Delta \theta_{i m}$ terms on both
+sides, it must be used recursively, as with many other aster
+model equations, including \eqref{eq:new-iid} itself.
+Clearly, if \eqref{eq:phi-to-theta} is used when $S(j)$ is empty,
+it is trivial.  This gives us \eqref{eq:phi-to-theta} for all ``leaf''
+notes of the graph.  We can then use \eqref{eq:phi-to-theta} for $j$
+such that $S(j)$ is contained in the leaf nodes.  This gives us more
+nodes done, and we can repeat, at each stage being able to use
+\eqref{eq:phi-to-theta} for $j$ such that $S(j)$ is contained in the
+set of nodes already done.  When the graphical model is drawn,
+like Figure~\ref{fig:graph}, with
+parents above children then the recursion moves up the graph
+from children to parents to grandparents and so forth.
+
+If $\boldG = \nabla f_{\boldeta, \boldzeta}(\boldetahat) \circ \boldM$
+had components $g_{i j k}$ and $\boldM$ has components $m_{i j k}$, then
+we get in this case where $\boldeta = \boldvarphi$,
+\begin{equation} \label{eq:D-beta-to-phi-to-theta}
+   g_{i j k}
+   =
+   m_{i j k}
+   +
+   \sum_{l \in S(j)} \psi_l'(\hat{\theta}_{i l}) g_{i l k}
+\end{equation}
+and (as discussed above), since $g_{i \cdot k}$ is on both sides of
+the equation \eqref{eq:D-beta-to-phi-to-theta} must be used recursively
+going from the leaves of the graph toward the roots.
+
+\subsection{Conditional Canonical to Conditional Mean Value}
+
+This section deals with $f_{\boldtheta, \boldxi}$, which is trivial
+given exponential family theory.  This map is given by
+equation \eqref{eq:mvp-cond} which we repeat here
+$$
+   \xi_{i j} = X_{i p(j)} \psi_j'(\theta_{i j})
+$$
+and so the derivative is trivially
+\begin{equation} \label{eq:theta-to-xi}
+   \frac{\partial \xi_{i j}}{\partial \theta_{i j}}
+   =
+   X_{i p(j)} \psi_j''(\theta_{i j})
+\end{equation}
+(other partial derivatives being zero).
+
+\subsection{Unconditional Canonical to Unconditional Mean Value}
+
+This section deals with $f_{\boldvarphi, \boldtau}$, which is also trivial
+given exponential family theory.  This map is given by
+equation \eqref{eq:mvp-exp} which we repeat here
+$$
+   \boldtau
+   =
+   f_{\boldvarphi, \boldtau}(\boldvarphi)
+   =
+   \nabla \psi(\boldvarphi)
+$$
+and so the derivative is trivially
+\begin{equation} \label{eq:phi-to-tau}
+   \nabla f_{\boldvarphi, \boldtau}(\boldvarphi)
+   =
+   \nabla^2 \psi(\boldvarphi).
+\end{equation}
+Although algebraically complicated, this map is already known to
+the computer, since it needs it to calculate Fisher information
+for unconditional models.  It is completely described
+by equations \eqref{eq:fish-food} and \eqref{eq:fish-hook} in
+Section~\ref{sec:FEFth}.
+
+\subsection{Conditional Canonical to Unconditional Mean Value}
+
+This section deals with $f_{\boldtheta, \boldtau}$, which could be
+considered already done because
+of $f_{\boldtheta, \boldtau}
+= f_{\boldvarphi, \boldtau} \circ f_{\boldtheta, \boldvarphi}$.
+We could compute derivatives using the chain rule.
+
+But let us try something different.  We have a simple expression of
+$\boldtau$ in terms of $\boldtheta$ given by \eqref{eq:mvp-exp} in
+Chapter~\ref{ch:aster}
+$$
+   \tau_{i j}(\boldtheta)
+   =
+   X_{i f(j)}
+   \prod_{\substack{m \in J \\ j \preceq m \prec f(j)}}
+   \psi_m'(\theta_{i m}).
+$$
+We can easily differentiate this directly
+$$
+   \frac{\partial  \tau_{i j}(\boldtheta)}{\partial \theta_{i m}}
+   =
+   \tau_{i j}(\boldtheta)
+   \frac{\psi_m''(\theta_{i m})}{ \psi_m'(\theta_{i m})},
+   \qquad j \preceq m \prec f(j)
+$$
+(and other partial derivatives are zero).
+
+\subsection{Unconditional Canonical to Conditional Mean Value}
+
+This section deals with $f_{\boldvarphi, \boldxi}$, and this one
+we probably should consider already done using $f_{\boldvarphi, \boldxi}
+= f_{\boldtheta, \boldxi} \circ f_{\boldvarphi, \boldtheta}$.
+We compute derivatives using the chain rule
+$$
+   \nabla f_{\boldvarphi, \boldxi}(\boldvarphihat)
+   =
+   \nabla f_{\boldtheta, \boldxi}(\boldthetahat)
+   \circ
+   \nabla f_{\boldvarphi, \boldtheta}(\boldvarphihat)
+$$
+since one of these $\nabla f_{\boldtheta, \boldxi}(\boldthetahat)$
+is diagonal, given by \eqref{eq:theta-to-xi}, this should be easy.
+The other bit $\nabla f_{\boldvarphi, \boldtheta}(\boldvarphihat)$
+is given by \eqref{eq:D-beta-to-phi-to-theta} and the following discussion.
+
+\section{Discussion}
+
+All of this is a bit brief, but it is the design document that was used
+to implement and test the code in the \verb@aster@ package for R.

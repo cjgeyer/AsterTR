@@ -1,0 +1,147 @@
+
+\documentclass[11pt,twoside,notitlepage]{report}
+
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+
+\usepackage{Sweave}
+
+\usepackage{ifthen}
+\newboolean{techrept}
+\setboolean{techrept}{true}
+\newboolean{submit}
+\setboolean{submit}{false}
+
+\input{macros}
+
+% remove room for headers, add to textheight
+
+  \addtolength{\textheight}{\headheight}
+  \addtolength{\textheight}{\headsep}
+  \setlength{\headheight}{0 pt}
+  \setlength{\headsep}{0 pt}
+
+% adjust so right and left hand pages have different margins
+% not sure why these particular numbers were picked or if they
+% still make sense
+
+  % \showthe\evensidemargin
+  % \showthe\oddsidemargin
+  % \showthe\textwidth
+
+  % \evensidemargin  15 pt
+  % \oddsidemargin 61.5 pt
+  % \textwidth 392.5 pt
+
+  \evensidemargin 28.75 pt
+  \oddsidemargin 75.25 pt
+  \textwidth 365 pt
+
+\begin{document}
+
+  \vspace*{0.9375in}
+  \begin{center}
+    {\bfseries Aster Models for Life History Analysis} \\
+    By \\
+    Charles J. Geyer, Stuart Wagenius, and Ruth G. Shaw \\
+    Technical Report No.~644 \\
+    School of Statistics \\
+    University of Minnesota \\
+%       April 20, 2005 \\
+%       \today
+    September 5, 2005
+  \end{center}
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+  \thispagestyle{empty}
+
+\input{abstract}
+
+\vspace{0.2in}
+\sloppypar
+\noindent
+Keywords:
+    Conditional Exponential Family;
+    Curved Exponential Family;
+    Flat Exponential Family;
+    Generalized Linear Model;
+    Graphical Model;
+ %  Life History Analysis;  %%%% now in title
+    Maximum Likelihood;
+    Nuisance Variable.
+
+\vspace{0.2in}
+\sloppypar
+This technical report consists of a draft paper about aster models
+supplemented by 5 appendicies on technical subjects.
+\begin{itemize}
+\item Appendix~\ref{ch:predict} (p.~\pageref{ch:predict})
+gives details about ``prediction''
+(what the \verb@predict.aster@ function does), although the technical
+details are about change-of-parameter formulas and their derivatives.
+\item Appendix~\ref{ch:unit} (p.~\pageref{ch:unit})
+gives details about the one-parameter exponential families currently
+available as conditional distribution of variables given their parent variable
+in the \verb@aster@ package.
+\item Appendix~\ref{ch:sim} (p.~\pageref{ch:sim})
+gives details about simulating a Poisson distribution conditional on being
+nonzero (the only non-trivial issue being getting efficient simulation for
+unconditional means close to zero).
+\item Appendix~\ref{ch:coneflr} (p.~\pageref{ch:coneflr})
+gives details of the data analysis that is briefly described
+in the draft paper.
+\item Appendix~\ref{ch:spaces} (p.~\pageref{ch:spaces})
+shows that steepness of conditional exponential families
+implies stepness of corresponding unconditional families,
+and the full unconditional family gets no new parameter points (that do not
+correspond to conditional parameter points).
+\end{itemize}
+
+Note added for this git repository.  The text file of the draft paper
+that was used to make this technical report seems to have been lost.
+(We were not using version control when the paper was written.)
+So this document does not reproduce the technical report exactly
+(the text here is the text of the published version of the paper).
+The PDF of the original technical is found
+at \url{https://www.stat.umn.edu/geyer/aster/tr644.pdf}.
+
+  \thispagestyle{empty}
+  \cleardoublepage
+  \setcounter{page}{1}
+
+\chapter{Draft Paper} \label{ch:aster}
+
+\input{body}
+
+\appendix
+
+\chapter{More Details on Prediction} \label{ch:predict}
+
+\input{predict}
+
+\chapter{Some One-Parameter Exponential Families for Aster Models}
+\label{ch:unit}
+
+\input{unit}
+
+\chapter{Simulation of Poisson Conditioned on Being Nonzero} \label{ch:sim}
+
+\input{sim}
+
+\chapter{Example Analysis of Purple Coneflower
+    (\emph{Echinacea angustifolia}) Data} \label{ch:coneflr}
+
+\input{coneflr}
+
+\chapter{Canonical Parameter Spaces of Aster Models} \label{ch:spaces}
+
+\input{nats}
+
+\end{document}
+

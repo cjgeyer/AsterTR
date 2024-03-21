@@ -1,0 +1,256 @@
+
+\section{Bernoulli}
+
+\subsection{Density}
+
+$$
+   f_p(x) = p^x (1 - p)^{1 - x}
+$$
+
+\subsection{Canonical Parameter}
+
+The log density is
+\begin{align*}
+   \log f_p(x)
+   & = 
+   x \log p + (1 - x) \log (1 - p)
+   \\
+   & = 
+   x \log \left(\frac{p}{1 - p}\right) + \log (1 - p)
+\end{align*}
+from which it is seen that the canonical parameter is
+$$
+   \theta = \logit(p) = \log \left(\frac{p}{1 - p}\right)
+$$
+Note that the inverse map is
+$$
+   p = \logit^{-1}(\theta) = \frac{1}{1 + e^{- \theta}}
+$$
+
+\subsection{Cumulant Function}
+
+We must have
+$$
+   \log f_p(x) = x \theta - \psi(\theta) + h(x)
+$$
+from which we get
+\begin{align*}
+   \psi(\theta)
+   & =
+   - \log(1 - p)
+   \\
+   & =
+   - \log \left( \frac{1}{1 + e^\theta} \right)
+   \\
+   & =
+   \log \left( 1 + e^\theta \right)
+\end{align*}
+
+\subsection{Mean Function}
+
+By \emph{mean function} we mean the map between the canonical parameter
+and the mean value parameter
+$$
+   \tau(\theta) = E_\theta X = \psi'(\theta).
+$$
+Here
+$$
+   \tau(\theta) = \frac{1}{1 + e^{- \theta}}
+$$
+
+\subsection{Variance Function}
+
+By \emph{variance function} we mean the derivative of $\tau$
+$$
+   \nu(\theta) = \tau'(\theta) = \var_\theta X = \psi''(\theta).
+$$
+Here
+$$
+   \nu(\theta) = \frac{e^{- \theta}}{(1 + e^{- \theta})^2}
+$$
+
+\subsection{Check}
+
+We do have
+\begin{align*}
+   \tau(\theta) & = p
+   \\
+   \nu(\theta) & = p (1 - p)
+\end{align*}
+the familiar mean and variance of the Bernoulli distribution.
+
+\section{Poisson}
+
+\subsection{Density}
+
+$$
+   f_\mu(x) = \frac{\mu^x}{x !} e^{- \mu}
+$$
+
+\subsection{Canonical Parameter}
+
+The log density is
+\begin{align*}
+   \log f_\mu(x)
+   & =
+   x \log \mu - \mu - \log (x !)
+\end{align*}
+from which it is seen that the canonical parameter is
+\begin{subequations}
+\begin{equation} \label{eq:fred}
+   \theta = \log(\mu)
+\end{equation}
+Note that the inverse map is
+\begin{equation} \label{eq:fred-inv}
+   \mu = e^\theta
+\end{equation}
+\end{subequations}
+
+\subsection{Cumulant Function}
+
+And
+\begin{align*}
+   \psi(\theta)
+   & =
+   \mu
+   \\
+   & =
+   e^\theta
+\end{align*}
+
+\subsection{Mean Function}
+
+And
+$$
+   \tau(\theta) = e^\theta
+$$
+
+\subsection{Variance Function}
+
+And
+$$
+   \nu(\theta) = e^\theta
+$$
+
+\subsection{Check}
+
+We do have
+\begin{align*}
+   \tau(\theta) & = \mu
+   \\
+   \nu(\theta) & = \mu
+\end{align*}
+the familiar mean and variance of the Poisson distribution.
+
+\section{Poisson Conditioned on Non-Zero}
+
+\subsection{Density}
+
+\begin{align*}
+   f_\mu(x)
+   & =
+   \frac{\mu^x}{x !} \cdot \frac{e^{- \mu}}{1 - e^{- \mu}}
+   \\
+   & =
+   \frac{\mu^x}{x !} \cdot \frac{1}{e^\mu - 1}
+\end{align*}
+($\mu$ is the mean of the Poisson distribution not this distribution).
+%%%
+%%% <<Statistics`DiscreteDistributions`
+%%% dist = PoissonDistribution[mu]
+%%% den[x_, mu_] = PDF[dist, x]
+%%% con[mu_] = Sum[den[x, mu], {x, 1, Infinity}]
+%%%
+%%% newden[x_, mu_] = den[x, mu] / con[mu]
+
+\subsection{Canonical Parameter}
+
+The log density is
+\begin{align*}
+   \log f_\mu(x)
+   & =
+   x \log \mu - \log \left( e^\mu - 1 \right) - \log (x !)
+\end{align*}
+from which it is seen that the canonical parameter and its
+inverse are still given by \eqref{eq:fred} and \eqref{eq:fred-inv}.
+
+\subsection{Cumulant Function}
+
+And
+\begin{align*}
+   \psi(\theta)
+   & =
+   \log \left( e^\mu - 1 \right)
+   \\
+   & =
+   \log \left( e^{e^\theta} - 1 \right)
+\end{align*}
+%%%
+%%% newpsi[theta_] = x theta - Log[newden[x, Exp[theta]]]
+%%% newpsi[theta_] = PowerExpand[newpsi[theta]]
+
+\subsection{Mean Function}
+
+Here
+\begin{align*}
+   \tau(\theta)
+   & =
+   \frac{e^{e^\theta} e^\theta}{e^{e^\theta} - 1}
+   \\
+   & =
+   \frac{e^\theta}{1 - e^{- e^\theta}}
+\end{align*}
+%%%
+%%% tau[theta_] = D[newpsi[theta], theta]
+%%% Limit[tau[theta], theta -> - Infinity ]
+%%% Plot[tau[theta], {theta, -3, 3} ]
+
+
+\subsection{Variance Function}
+
+And
+\begin{align*}
+   \nu(\theta)
+   & =
+   \frac{e^\theta}{1 - e^{- e^\theta}}
+   -
+   \frac{e^{- e^\theta} e^{2 \theta}}{(1 - e^{- e^\theta})^2}
+   \\
+   & =
+   \tau(\theta) \left(1 - \tau(\theta) e^{- e^\theta} \right)
+\end{align*}
+%%%
+%%% nu[theta_] = D[tau[theta], theta]
+%%% nu[Log[mu]]
+%%% nu[theta] - tau[theta] (1 - tau[theta] Exp[- Exp[theta]])
+%%% Plot[nu[theta], {theta, -3, 3} ]
+%%% Plot[nu[theta], {theta, -5, 1} ]
+
+\subsection{Check}
+
+We do have
+\begin{align*}
+   \tau(\theta) & = \frac{\mu}{1 - e^{- \mu}}
+   \\
+   \nu(\theta) & = \frac{\mu [1 - (1 + \mu) e^{- \mu}]}{(1 - e^{- \mu})^2}
+   \\
+   & = \tau(\theta) [ 1 - \tau(\theta) e^{- \mu} ]
+\end{align*}
+the somewhat unfamiliar mean and variance of the Poisson distribution
+conditioned on not being zero.
+%%%
+%%% newmu = Sum[ x newden[x, mu], {x, 1, Infinity} ]
+%%% newmu - tau[Log[mu]]
+%%% newvar = Sum[ (x - newmu)^2 newden[x, mu], {x, 1, Infinity} ]
+%%% newvar = Sum[ (x - newmu)^2 newden[x, mu], {x, 1, Infinity} ]
+%%% newvar = Simplify[%]
+%%% newvar - (mu (1 - (1 + mu) Exp[- mu])) / (1 - Exp[- mu])^2
+%%%
+%%% tau[Log[mu]] - mu / (1 - Exp[- mu])
+%%%
+%%% nu[Log[mu]] - tau[Log[mu]] (1 - tau[Log[mu]] Exp[- mu])
+%%% nu[Log[mu]] - newvar
+Despite it not being obvious from the formula, $\nu(\theta)$ is indeed
+nonnegative, as a variance must be, and goes to zero as $\theta$ goes
+to minus infinity.
+

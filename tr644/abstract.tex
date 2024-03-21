@@ -1,0 +1,23 @@
+
+\begin{center} \bfseries Summary \end{center}
+
+We present a new class of statistical models,
+designed for life history analysis of plants and animals,
+that allow joint analysis of data on survival and reproduction
+over multiple years, allow for variables
+having different probability distributions, and correctly
+account for the dependence of variables on earlier variables.
+We illustrate their utility with an analysis of data
+taken from an experimental study of \emph{Echinacea angustifolia}
+sampled from remnant prairie populations in western Minnesota.
+These models generalise both generalised linear models and survival analysis.
+The joint distribution is factorised as a product of conditional distributions,
+each an exponential family with the conditioning variable being the sample
+size of the conditional distribution.
+The model may be heterogeneous, each conditional distribution being from
+a different exponential family.
+We show that the joint distribution is from a flat exponential family and
+derive its canonical parameters, Fisher information and other properties.
+These models are implemented in an R package `aster' available from
+the Comprehensive R Archive Network, CRAN.
+

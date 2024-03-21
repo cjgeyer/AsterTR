@@ -1,0 +1,96 @@
+
+<<foo,include=FALSE,echo=FALSE>>=
+options(keep.source = TRUE, width = 65)
+@
+
+How to simulate Poisson conditional on nonzero?
+We have two cases.
+\begin{itemize}
+\item For large $\mu$, we can do rejection sampling.
+    Just simulate $\text{Poisson}(\mu)$ random variates until
+    we get one greater than zero, and return it.
+\item For small $\mu$, naive rejection sampling can be arbitrarily slow.
+    So we need another strategy.
+\end{itemize}
+
+Let us be slightly more sophisticated about our rejection sampling for
+small $\mu$.  The density of $X$ is
+$$
+   f_\mu(x) = \frac{\mu^x}{x !} \frac{e^{- \mu}}{1 - e^{- \mu}},
+   \qquad x = 1, 2, \ldots.
+$$
+Consider rejection sampling from $Y$ which is one plus a $\text{Poisson}(\nu)$.
+The density of $Y$ is
+$$
+   g_\nu(y) = \frac{\nu^{y - 1}}{(y - 1) !} e^{- \nu},
+   \qquad y = 1, 2, \ldots.
+$$
+The ratio of the two densities is
+\begin{align*}
+   \frac{f_\mu(x)}{g_\nu(x)}
+   & =
+   \frac{\mu^x}{\nu^{x - 1}}
+   \cdot
+   \frac{(x - 1)!}{x !}
+   \cdot
+   \frac{e^{- \mu}}{1 - e^{- \mu}}
+   \cdot
+   \frac{1}{e^{- \nu}}
+   \\
+   & =
+   \left(\frac{\mu}{\nu}\right)^{x - 1}
+   \cdot
+   \frac{1}{x}
+   \cdot
+   \frac{\mu e^{- \mu}}{1 - e^{- \mu}}
+   \cdot
+   e^{\nu}
+\end{align*}
+This is bounded above considered as a function of $x$
+(so rejection sampling is possible at all) if and only if $\mu \le \nu$.
+
+Introduce the notation
+$$
+   \tau = \frac{\mu}{1 - e^{- \mu}}
+$$
+for the mean of $X$.  And the upper bound is
+$$
+   \max_{x \ge 1}
+   \frac{f_\mu(x)}{g_\nu(x)}
+   =
+   \frac{f_\mu(1)}{g_\nu(1)}
+   =
+   \tau e^{- \mu}
+   \cdot
+   e^{\nu}
+$$
+
+If we're not worried about being maximally clever, then we can take
+$\mu = \nu$, so the upper bound becomes just $\tau$.  And what happens
+if we take the break point between the two schemes to be $\mu = 1$?
+The first scheme then has worst case rejection fraction
+<<first>>=
+dpois(0, 1)
+@
+And the second scheme then has worst case rejection fraction
+<<second>>=
+mu <- 1
+tau <- mu / (1 - exp(- mu))
+print(tau)
+fmu <- function(x) dpois(x, mu) / (1 - dpois(0, mu))
+gnu <- function(y) dpois(y - 1, mu)
+xxx <- seq(1, 100)
+yyy <- fmu(xxx) / (tau * gnu(xxx))
+all.equal(yyy, 1 / xxx)
+max(yyy)
+@
+Now rejection sampling simulates $X \sim 1 + \text{Poisson}(\mu)$
+and $U \sim \text{Uniform}(0, 1)$
+and accepts this $X$ if $U < 1 / X$.
+
+The probability it fails to do so is
+<<second-accept>>=
+1 - sum(1 / xxx * gnu(xxx))
+@
+Perfect balance!  Woof!
+

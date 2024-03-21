@@ -1,0 +1,931 @@
+
+\hyphenation{life-span}
+
+\section{Introduction}
+
+This article introduces a class of statistical models
+we call `aster models'.
+They were invented for life history analysis
+of plants and animals and are best introduced by an example
+about perennial plants
+observed over several years.  For each individual planted,
+at each census, we record
+whether or not it is alive, whether or not it flowers, and its number of
+flower heads.  These data are complicated, especially when recorded
+for several years, but simple conditional models may
+suffice.  We consider mortality status, dead or alive, to be Bernoulli
+given the preceding mortality status.  Similarly, flowering status
+given mortality status is also Bernoulli.
+Given flowering, the number of flower heads
+may have a zero-truncated Poisson distribution \citep{martin}.
+Figure~\ref{fig:graph} % (page~\pageref{fig:graph})
+shows the graphical model for a single individual.
+% The full graph consists of many copies of this graph, one for each individual.
+\begin{figure}
+\begin{center}
+\setlength{\unitlength}{0.4 in}
+\begin{picture}(4,5)(-3,-5)
+\put(0,0){\makebox(0,0){$1$}}
+\put(-1,-1){\makebox(0,0){$M_1$}}
+\put(-2,-2){\makebox(0,0){$M_2$}}
+\put(-3,-3){\makebox(0,0){$M_3$}}
+\put(0,-2){\makebox(0,0){$F_1$}}
+\put(-1,-3){\makebox(0,0){$F_2$}}
+\put(-2,-4){\makebox(0,0){$F_3$}}
+\put(1,-3){\makebox(0,0){$H_1$}}
+\put(0,-4){\makebox(0,0){$H_2$}}
+\put(-1,-5){\makebox(0,0){$H_3$}}
+% \multiput(-0.75,-0.75)(-1,-1){3}{\vector(1,1){0.5}}
+% \multiput(-0.25,-1.75)(1,-1){2}{\vector(-1,1){0.5}}
+% \multiput(-1.25,-2.75)(1,-1){2}{\vector(-1,1){0.5}}
+% \multiput(-2.25,-3.75)(1,-1){2}{\vector(-1,1){0.5}}
+\multiput(-0.25,-0.25)(-1,-1){3}{\vector(-1,-1){0.5}}
+\multiput(-0.75,-1.25)(1,-1){2}{\vector(1,-1){0.5}}
+\multiput(-1.75,-2.25)(1,-1){2}{\vector(1,-1){0.5}}
+\multiput(-2.75,-3.25)(1,-1){2}{\vector(1,-1){0.5}}
+\end{picture}
+\end{center}
+\caption{Graph for \emph{Echinacea} aster data.
+Arrows go from parent nodes to child nodes.
+Nodes are labelled by their associated variables.
+The only root node is associated with the constant variable $1$.
+$M_j$ is the mortality status in year $2001 + j$.
+$F_j$ is the flowering status in year $2001 + j$.
+$H_j$ is the flower head count in year $2001 + j$.
+The $M_j$ and $F_j$ are Bernoulli conditional on their parent
+variables being one, and zero otherwise.
+The $H_j$ are zero-truncated Poisson
+conditional on their parent
+variables being one, and zero otherwise.}
+\label{fig:graph}
+\end{figure}
+This aster model generalises both
+discrete time Cox regression \citep{cox,breslow-diss,breslow}
+and generalised linear models \citep{man}.
+Aster models apply to any similar conditional modelling.
+We could, for example, add other variables, such as seed count
+modelled conditional on flower head count.
+
+% The most important advantage of these models is the simplest one.
+A simultaneous analysis that models the joint distribution of
+all the variables in a life history analysis
+can answer questions that cannot be addressed through separate
+analyses of each variable conditional on the others.
+Joint analysis also deals with structural zeros in the data;
+for example, a dead individual remains dead and cannot flower,
+so in Fig.~\ref{fig:graph} any arrow that leads from a variable that is zero
+to another variable implies that the other variable
+must also be zero.
+Such zeros
+present intractable missing data problems in separate analyses
+of individual variables.  Aster models have no problem with structural
+zeros; likelihood inference automatically handles them correctly.
+
+Aster models are simple graphical models
+\citep[\S~3.2.3]{lauritzen}
+in which the joint density is a product of conditionals as in
+equation \eqref{eq:product} below.  No knowledge of graphical
+model theory is needed to understand aster models.
+One innovative aspect of aster models is the interplay between two
+parameterisations described
+in \S\S~\ref{sec:CEF} and~\ref{sec:FEF} below.
+The `conditional canonical parameterisation'
+arises when each conditional distribution in the product
+is an exponential family and we
+use the canonical parameterisation for each.
+The `unconditional canonical parameterisation'
+arises from observing that the joint model is a full flat exponential family
+\citep[Ch.~8]{barndorff} and using the canonical parameters for that
+family, defined by equation \eqref{eq:new} below.
+
+\section{Aster Models}
+
+\subsection{Factorisation and graphical model}
+
+Variables in an aster model are denoted by $X_j$, where $j$ runs over the nodes
+of a graph.
+A general aster model is a chain graph model \citep[pp.~7, 53]{lauritzen}
+having both arrows, corresponding to directed edges, and lines, corresponding
+to undirected edges.
+Figure~\ref{fig:graph} is special, having only arrows.
+Arrows go from parent to child, lines between neighbours.
+Nodes that are not children are called root nodes.
+Those that are not parents are called terminal nodes.
+
+Let $F$ and $J$ denote root and non-root nodes.  Aster models have very
+special chain graph structure determined by a partition $\groupset$ of $J$ and
+a function $p : \groupset \to J \cup F$.
+For each $G \in \groupset$ there is
+an arrow from $p(G)$ to each element of $G$ and a line
+between each pair of elements of $G$.
+For any set $S$, let $\boldX_S$ denote the
+vector whose components are $X_j$, $j \in S$.
+The graph determines a factorisation
+\begin{equation} \label{eq:product}
+   \myPr(\boldX_J | \boldX_F)
+   =
+   \prod_{G \in \groupset} \myPr \{ \boldX_G | X_{p(G)} \};
+\end{equation}
+compare equation~3.23 in \citet{lauritzen}.
+
+Elements of $\groupset$ are called
+chain components
+because they are connectivity components of the chain graph
+\citep[pp.~6--7]{lauritzen}.
+Since Fig.~\ref{fig:graph} has no undirected edge,
+each node is a chain component by itself.
+Allowing nontrivial chain components
+allows the elements of $\boldX_G$ to be conditionally dependent
+given $X_{p(G)}$ with merely notational changes to the theory.
+In our example in \S~\ref{sec:example}
+the graph consists of many copies of Fig.~\ref{fig:graph}, one for each
+individual plant.  Individuals have no explicit representation.
+For any set $S$, let $p^{-1}(S)$ denote the set of $G$ such that $p(G) \in S$.
+Then each subgraph consisting of one $G \in p^{-1}(F)$, its descendants,
+children, children of children, etc., and arrows and lines connecting them,
+corresponds to one individual.
+If we make each such $G$ have a distinct root element $p(G)$, then
+the set of descendants of each root node corresponds to one individual.
+Although all individuals in our example have the same subgraph, this is
+not required.
+
+\subsection{Conditional exponential families} \label{sec:CEF}
+
+We take each of the conditional distributions in \eqref{eq:product}
+to be an exponential family having canonical statistic $\boldX_G$ 
+that is the sum of $X_{p(G)}$
+independent and identically distributed random vectors,
+possibly a different such family for each $G$.
+Conditionally, $X_{p(G)} = 0$ implies that $\boldX_G = \boldzero_G$ almost surely.
+If $j \neq p(G)$ for any $G$, then the
+values of $X_j$ are unrestricted.
+If the distribution of $\boldX_G$ given $X_{p(G)}$ is infinitely
+divisible, such as Poisson or normal, for each $G \in p^{-1}(\{j\})$,
+then $X_j$ must be nonnegative and real-valued.
+Otherwise, $X_j$ must be nonnegative and integer-valued.
+
+The loglikelihood for the whole family has the form
+\begin{equation} \label{eq:logl-zero}
+   \sum_{G \in \groupset}
+   \left[ \sum_{j \in G} X_j \theta_j - X_{p(G)} \psi_G(\boldtheta_G) \right]
+   =
+   \sum_{j \in J} X_j \theta_j
+   -
+   \sum_{G \in \groupset} X_{p(G)} \psi_G(\boldtheta_G),
+\end{equation}
+where
+$\boldtheta_G$ is the canonical parameter vector for the $G$th
+conditional family, having components $\theta_j$, $j \in G$,
+and $\psi_G$ is the cumulant function for that family
+\citep[pp.~105, 139, 150]{barndorff} that satisfies
+\begin{align}
+   E_{\boldtheta_G} \{ \boldX_G | X_{p(G)} \}
+   & =
+   X_{p(G)} \nabla \psi_G(\boldtheta_G)
+   \label{eq:bartlett-1}
+   \\
+   \var_{\boldtheta_G} \{ \boldX_G | X_{p(G)} \}
+   & =
+   X_{p(G)} \nabla^2 \psi_G(\boldtheta_G)
+   \label{eq:bartlett-2},
+\end{align}
+where $\var_\boldtheta(\boldX)$ is
+the variance-covariance matrix of $\boldX$
+and $\nabla^2 \psi(\boldtheta)$ is
+the matrix of second partial derivatives of $\psi$
+\citep[p.~150]{barndorff}.
+
+\subsection{Unconditional exponential families} \label{sec:FEF}
+
+Collecting terms with the same $X_j$ in \eqref{eq:logl-zero}, we obtain
+\begin{equation*} % \label{eq:star}
+   \sum_{j \in J} X_j \left[
+   \theta_j
+   -
+   \sum_{G \in p^{-1}(\{j\})} \psi_G(\boldtheta_G)
+   \right]
+   -
+   \sum_{G \in p^{-1}(F)} X_{p(G)} \psi_G(\boldtheta_G)
+\end{equation*}
+and see that
+\begin{equation} \label{eq:new}
+   \varphi_j = \theta_j - \sum_{G \in p^{-1}(\{j\})} \psi_G(\boldtheta_G),
+   \qquad j \in J,
+\end{equation}
+are the canonical parameters of an unconditional exponential family with canonical
+statistics $X_j$.  We now write $\boldX$ instead of $\boldX_J$, $\boldvarphi$ instead
+of $\boldvarphi_J$, and so forth,
+and let $\inner{ \boldX, \boldvarphi }$ denote the inner product $\sum_j X_j \varphi_j$.
+Then we can write the loglikelihood of this unconditional family as
+\begin{equation} \label{eq:logl-new}
+   l(\boldvarphi) = \inner{ \boldX, \boldvarphi } - \psi(\boldvarphi),
+\end{equation}
+where the cumulant function of this family is
+\begin{equation} \label{eq:cumulant-new}
+   \psi(\boldvarphi) = \sum_{G \in p^{-1}(F)} X_{p(G)} \psi_G(\boldtheta_G).
+\end{equation}
+All of the $X_{p(G)}$ in \eqref{eq:cumulant-new}
+are at root nodes, and hence are nonrandom,
+so that $\psi$ is a deterministic function.  Also
+the right-hand side
+of \eqref{eq:cumulant-new} is a function
+of $\boldvarphi$ by the logic of exponential families
+\citep[pp.~105 ff.]{barndorff}.
+
+The system of equations \eqref{eq:new} can be solved for the $\theta_j$
+in terms of the $\varphi_j$ in one pass through the equations in any order
+that finds $\theta_j$ for children before parents.  Thus \eqref{eq:new}
+determines an invertible change of parameter.
+
+\subsection{Canonical affine models} \label{sec:sufficient}
+
+One of the desirable aspects of exponential
+family canonical parameter affine models defined by reparameterisation of the form
+\begin{equation} \label{eq:M-beta}
+   \boldvarphi = a + \boldM \boldbeta,
+\end{equation}
+where $\bolda$ is a known vector, called the origin,
+and $\boldM$ is a known matrix, called the model matrix, is that,
+because
+$\inner{\boldX, \boldM \boldbeta} = \inner{\boldM^T \boldX, \boldbeta}$,
+the result is a new exponential family
+with canonical statistic
+\begin{equation} \label{eq:sufficient}
+   \boldY = \boldM^T \boldX
+\end{equation}
+and canonical parameter $\boldbeta$.
+The dimension of this new family will be the dimension of $\boldbeta$,
+if
+% the original family was identifiable and
+$\boldM$ has full rank.
+
+% If $\boldX$ is a matrix interpreted as a vector, then $\boldM$ is an
+% array representing a linear operator $\real^K \to \real^{I \times J}$.
+% So \eqref{eq:model-unconditional} means
+% \begin{equation} \label{eq:M-beta}
+%    \varphi_{i j} = \sum_{k \in K} m_{i j k} \beta_k,
+% \end{equation}
+% and $\boldY = \boldM^T \boldX$ means
+% \begin{equation} \label{eq:sufficient}
+%    Y_k
+%    =
+%    \sum_{i \in I} \sum_{j \in J} X_{i j} m_{i j k}.
+% \end{equation}
+
+As is well known \citep[p.~111]{barndorff}, the canonical statistic
+of an exponential family is minimal sufficient.
+% (if the parameterisation is identifiable).
+Since we have both conditional and unconditional
+families in play, we stress that this well-known result is about
+unconditional families.
+A dimension reduction to a low-dimensional sufficient statistic
+like \eqref{eq:sufficient} does not occur when the conditional canonical
+parameters $\boldtheta$ are modelled affinely,
+and this suggests that affine models for the
+unconditional parameterisation may be scientifically more interesting
+despite their more complicated structure.
+
+\subsection{Mean-value parameters}
+
+Conditional mean values
+\begin{equation} \label{eq:mvp-cond}
+   \xi_j
+   =
+   E_{\boldtheta_G} \{ X_j | X_{p(G)} \}
+   =
+   X_{p(G)} \frac{\partial \psi_G(\boldtheta_G)}{\partial \theta_j},
+   \qquad j \in G,
+\end{equation}
+are not parameters because they contain random data $X_{p(G)}$,
+although they play the role of mean-value parameters when
+we condition on $X_{p(G)}$, treating it as constant.
+By standard exponential family theory \citep[p.~121]{barndorff},
+$\nabla \psi_G$ % OOPS! : \boldtheta_G \mapsto \boldxi_G$
+is an invertible change of parameter.
+
+Unconditional mean-value parameters are the unconditional expectations
+\begin{equation} \label{eq:mvp}
+   \boldtau
+   =
+   E_\boldvarphi \{ \boldX \}
+   =
+   \nabla \psi(\boldvarphi).
+\end{equation}
+By standard theory, $\nabla \psi : \boldvarphi \mapsto \boldtau$
+is an invertible change of parameter.
+The unconditional expectation in \eqref{eq:mvp} can be calculated
+using the iterated expectation theorem
+\begin{equation} \label{eq:mvp-exp}
+   E_\boldvarphi \{ X_j \}
+   =
+   E_\boldvarphi \{ X_{p(G)} \}
+   \frac{\partial \psi_G(\boldtheta_G)}{\partial \theta_j},
+   \qquad j \in G,
+\end{equation}
+where $\boldtheta$ is determined from $\boldvarphi$ by solving
+\eqref{eq:new}.
+The system of equations \eqref{eq:mvp-exp} can produce the $\tau_j$
+in one pass through the equations in any order
+that finds $\tau_j$ for parents before children.
+
+\section{Likelihood Inference}
+
+\subsection{Conditional models} \label{sec:CEFth}
+
+% \subsubsection{Score}
+
+The score $\nabla l(\boldtheta)$ for conditional canonical parameters
+is particularly simple, having components
+\begin{equation} \label{eq:score-saturated-conditional}
+   \frac{\partial l(\boldtheta)}{\partial \theta_j}
+   =
+   X_j - X_{p(G)} \frac{\psi_G(\boldtheta_G)}{\partial \theta_j},
+   \qquad j \in G,
+\end{equation}
+and, if these parameters are modelled affinely as in
+\eqref{eq:M-beta} but with $\boldvarphi$ replaced by $\boldtheta$,
+then
+\begin{equation} \label{eq:score}
+   \nabla l(\boldbeta)
+   =
+   \nabla l(\boldtheta) \boldM.
+\end{equation}
+
+The observed Fisher information matrix for $\boldtheta$, which is the matrix
+$- \nabla^2 l(\boldtheta)$, is block diagonal with
+\begin{equation} \label{eq:cond-obs-fish-diag}
+   - \frac{\partial^2 l(\boldtheta)}{\partial \theta_i \partial \theta_j}
+   =
+   X_{p(G)} \frac{\partial^2 \psi_G(\boldtheta_G)}{\partial \theta_i \partial \theta_j},
+   \qquad i, j \in G,
+\end{equation}
+the only nonzero entries.
+The expected Fisher information matrix for $\boldtheta$ is the unconditional expectation
+of the observed Fisher information matrix, calculated using
+\eqref{eq:cond-obs-fish-diag} and \eqref{eq:mvp-exp}.
+If $I(\boldtheta)$ denotes either the observed or the expected Fisher information matrix
+for $\boldtheta$ and similarly for other parameters, then
+\begin{equation} \label{eq:cond-obs-fish}
+   I(\boldbeta)
+   =
+   \boldM^T I(\boldtheta) \boldM.
+\end{equation}
+
+\subsection{Unconditional models} \label{sec:FEFth}
+
+% \subsubsection{Score}
+
+The score $\nabla l(\boldvarphi)$ for unconditional canonical parameters is,
+as in every unconditional exponential family, `observed minus expected':
+$$
+   \frac{\partial l(\boldvarphi)}{\partial \varphi_j}
+   =
+   X_j - E_\boldvarphi \{ X_j \},
+$$
+the unconditional expectation on the right-hand side being evaluated
+by using \eqref{eq:mvp-exp}.
+If these parameters are modelled affinely as in
+\eqref{eq:M-beta},
+then we have \eqref{eq:score} with $\boldtheta$ replaced by $\boldvarphi$.
+Note that \eqref{eq:score-saturated-conditional} is not
+`observed minus conditionally expected' if considered as a vector equation
+because the conditioning would differ amongst components.
+
+\ifthenelse{\boolean{submit}}{}{\begin{sloppypar}}
+Second derivatives with respect to unconditional canonical
+parameters of an exponential family are nonrandom, and hence
+observed and expected Fisher information matrices $I(\boldvarphi)$ are equal,
+given by either of the
+expressions $\nabla^2 \psi(\boldvarphi)$ and $\var_\boldvarphi(\boldX)$.
+Fix $\boldtheta$ and $\boldvarphi$ related by \eqref{eq:new}.
+For $i, j \in G$, the iterated covariance formula gives
+\begin{equation} \label{eq:fish-food}
+   \cov_\boldvarphi \{ X_i, X_j \}
+   =
+   \frac{\partial^2 \psi_G(\boldtheta_G)}{\partial \theta_i \partial \theta_j}
+   E_\boldvarphi \bigl\{ X_{p(G)} \bigr\}
+   +
+   \frac{\partial \psi_G(\boldtheta_G)}{\partial \theta_i}
+   \frac{\partial \psi_G(\boldtheta_G)}{\partial \theta_j}
+   \var_\boldvarphi \bigl\{ X_{p(G)} \bigr\}.
+\end{equation}
+Otherwise we may assume that $j \in G$ and $i$ is not a descendant of $j$ so that
+$\cov_\boldvarphi \{ X_i, X_j | X_{p(G)} \} = 0$
+because $X_{j}$ is conditionally independent given $X_{p(G)}$ of
+all variables except itself and its descendants.
+Then the iterated covariance formula gives
+\begin{equation} \label{eq:fish-hook}
+   \cov_\boldvarphi \{ X_i, X_j \}
+   =
+   \frac{\partial \psi_G(\boldtheta_G)}{\partial \theta_j}
+   \cov_\boldvarphi \bigl\{ X_i, X_{p(G)} \bigr\}.
+\end{equation}
+Expectations having been calculated using \eqref{eq:mvp-exp},
+variances, the case $i = j$ in \eqref{eq:fish-food}, are calculated
+in one pass through \eqref{eq:fish-food} in any order that deals with parents
+before children.  Then another pass using \eqref{eq:fish-food} and \eqref{eq:fish-hook} gives covariances.
+The information matrix for $\boldbeta$ is given by
+\eqref{eq:cond-obs-fish} with $\boldtheta$ replaced by $\boldvarphi$.
+\ifthenelse{\boolean{submit}}{}{\end{sloppypar}}
+
+\subsection{Prediction} \label{sec:predict}
+
+By `prediction', we only mean evaluation of a function of estimated
+parameters, what the \texttt{predict} function in R does for
+generalised linear models.  In aster models we have five different
+parameterisations of interest, $\boldbeta$, $\boldtheta$, $\boldvarphi$,
+$\boldxi$ and $\boldtau$.  The Fisher information matrix for $\boldbeta$, already
+described, handles predictions of $\boldbeta$, so
+this section is about `predicting' the remaining four.
+
+One often predicts for new
+individuals having different covariate values from the observed individuals.
+Then the model matrix $\boldMtwiddle$ used for the prediction is different from
+that used for calculating $\boldbetahat$ and the Fisher
+information matrix $I(\boldbetahat)$, either observed or expected.
+
+Let $\boldeta$ be the affine predictor, i.~e.,
+$\boldeta = \boldtheta$ for conditional models and
+$\boldeta = \boldvarphi$ for unconditional models,
+let $\boldzeta$ be any one of $\boldtheta$, $\boldvarphi$,
+$\boldxi$ and $\boldtau$, and let $f : \boldeta \mapsto \boldzeta$.
+Suppose we wish to predict
+\begin{equation} \label{eq:todo}
+    g(\boldbeta)
+    =
+    h(\boldzeta)
+    =
+    h\bigl\{ f(\boldMtwiddle \boldbeta) \bigr\}.
+\end{equation}
+Then, by the chain rule, \eqref{eq:todo} has derivative
+\begin{equation} \label{eq:todo-chain}
+    \nabla g(\boldbeta)
+    =
+    \nabla h(\boldzeta) \nabla f(\boldeta)
+    \boldMtwiddle,
+\end{equation}
+and, by the `usual' asymptotics of maximum likelihood and the delta method,
+the asymptotic distribution of
+the prediction $h(\boldzetahat) = g(\boldbetahat)$ is
+$$
+   N\bigl[g(\boldbeta),
+   \{\nabla g(\boldbetahat)\} I(\boldbetahat)^{-1} \{\nabla g(\boldbetahat)\}^T
+   \bigr],
+$$
+where $\nabla g(\boldbetahat)$ is given by \eqref{eq:todo-chain}
+with $\boldetahat = \boldMtwiddle \boldbetahat$ plugged in for $\boldeta$
+and $\boldzetahat = f(\boldetahat)$
+plugged in for $\boldzeta$.
+We write `predictions' in this complicated form to
+separate the parts of the specification,
+the functions $h$ and $\nabla h$ and the model matrix $\boldMtwiddle$,
+that change from application to application from the part
+$\nabla f$ that does not change and can
+be dealt with by computer; see
+\ifthenelse{\boolean{techrept}}
+{Appendix~\ref{ch:predict}}
+{Appendix~\ref{tr:ch:predict} of
+the technical report at \url{http://www.stat.umn.edu/geyer/aster}}
+for details.
+
+To predict mean-value parameters one
+must specify new `response' data $X_j$ as well as new `covariate'
+data in $\boldMtwiddle$.
+Unconditional mean-value parameters $\boldtau$ depend on
+$X_j$, $j \in F$, whereas
+conditional mean-value parameters $\boldxi$ depend on
+$X_j$, $j \in J \cup F$.
+It is often interesting, however, to predict $\boldxi$ for hypothetical
+individuals with $X_j = 1$ for all $j$, thus obtaining conditional mean
+values per unit sample size.
+
+\section{Software} \label{sec:soft}
+
+We have released an R
+\citep{rcore} package \texttt{aster} that fits, tests, predicts
+and simulates aster
+models.  It uses the R formula mini-language, originally developed for
+\textsc{genstat} and S \citep{war,cha} so that model fitting is much like
+that for linear or
+generalised linear models.  The R function \texttt{summary.aster}
+provides regression coefficients with standard errors, $z$ statistics
+and $p$-values; \texttt{anova.aster} provides likelihood ratio tests
+for model comparison; \texttt{predict.aster} provides
+the predictions with standard errors described in \S~\ref{sec:predict};
+\texttt{raster} generates random aster model data for
+simulation studies or parametric bootstrap calculations.
+The package is available from CRAN (\url{http://www.cran.r-project.org})
+and is open source.
+
+The current version of the package limits
+the general model described in this article in several ways.
+In predictions, only linear $h$ are allowed in \eqref{eq:todo},
+but this can be worked around.
+For general $h$, observe that $h(\boldzetahat)$ and $\boldA^T \boldzetahat$,
+where $\boldA = \nabla h(\boldzeta)$, have the same standard errors.
+Thus, obtain $h(\boldzetahat)$ by one call to \verb@predict.aster@
+and the standard errors for $\boldA^T \boldzetahat$,
+where $\boldA = \nabla h(\boldzetahat)$ by a second call.
+In models, the only conditional families currently implemented are
+Bernoulli, Poisson, $k$-truncated Poisson, negative binomial
+and $k$-truncated negative binomial, but
+adding another one-parameter exponential family would require only
+implementation of its $\psi$, $\psi'$ and $\psi''$ functions
+and its random variate generator.
+Multiparameter conditional families, chain components, are not yet implemented.
+Allowing terminal nodes that are two-parameter normal
+or allowing child nodes that are multinomial given a common parent
+would require more extensive changes to the package.
+
+\section{Example} \label{sec:example}
+
+Data were collected on 570 individuals of \emph{Echinacea angustifolia},
+each having the data structure shown in Fig.~\ref{fig:graph}.
+These plants were sampled as seeds from seven remnant populations 
+that are surviving fragments of the tall-grass prairie that a century
+ago covered
+western Minnesota and other parts of the Great Plains of North America.
+The plants were experimentally randomised 
+at the time of planting into a field within 6.5 km of all populations
+of origin.  The dataset contains three predictor variables:
+\verb@ewloc@ and \verb@nsloc@ give
+east-west and north-south positions of individuals
+and \verb@pop@ gives their remnant population of origin.
+To use the R formula mini-language we need to create
+more variables: \verb@resp@ is a vector comprising
+the response variables, the $M_j$, $F_j$ and $H_j$;
+\verb@level@ is categorical naming the
+type of response variable, with values $M$, $F$ and $H$;
+\verb@year@ is categorical giving the year;
+\verb@varb@ is the interaction of \verb@level@ and \verb@year@;
+and \verb@hdct@ is short for $\texttt{level} = H$.
+
+We fitted many models; see
+\ifthenelse{\boolean{techrept}}
+{Appendix~\ref{ch:coneflr}}
+{Appendix~\ref{tr:ch:coneflr} of
+the technical report at \url{http://www.stat.umn.edu/geyer/aster}}
+for details.
+Scientific interest focuses on the model comparison
+shown in Table~\ref{tab:anova}. % (page~\pageref{tab:anova}).
+\begin{table}
+\caption{Tests for model comparison.  The model formulae are given above
+and the analysis of deviance below; deviance is double the loglikelihood.}
+\label{tab:anova}
+\newcommand{\Z}{\hphantom{0}}
+\begin{center}
+\begin{tabular}{l}
+Model 1: \verb@resp ~ varb + level:(nsloc + ewloc)@ \\
+Model 2: \verb@resp ~ varb + level:(nsloc + ewloc) + hdct * pop - pop@ \\
+Model 3: \verb@resp ~ varb + level:(nsloc + ewloc) + hdct * pop@ \\
+Model 4: \verb@resp ~ varb + level:(nsloc + ewloc) + level * pop@
+\end{tabular}
+\end{center}
+\begin{minipage}[t]{\textwidth}
+\begin{center}
+\begin{tabular}{cccccc}
+  Model  & Model & Model    & Test  & Test     & Test \\
+  Number & d.~f. & Deviance & d.~f. & Deviance & $p$-value \\
+\hline
+1  &    15 & 2728.72 &    &       &                \\
+2  &    21 & 2712.54 & 6  & 16.18 &     0.013\Z\Z  \\
+3  &    27 & 2684.86 & 6  & 27.67 &     0.00011    \\
+4  &    33 & 2674.70 & 6  & 10.17 &     0.12\Z\Z\Z
+\end{tabular}
+\end{center}
+d.~f., degrees of freedom.
+\end{minipage}
+\end{table}
+The models are nested.  The affine predictor for Model~4 can be written
+\begin{equation} \label{eq:linpred}
+    \varphi_j = \mu_{L_j, Y_j} + \alpha_{L_j} U_j + \beta_{L_j} V_j
+    + \gamma_{L_j, P_j},
+\end{equation}
+where $L_j$, $Y_j$, $U_j$, $V_j$ and $P_j$ are \verb@level@, \verb@year@,
+\verb@ewloc@, \verb@nsloc@ and \verb@pop@, respectively,
+and the alphas, betas and gammas are regression coefficients.
+Model~3 is the submodel of Model~4 that imposes the constraint
+$\gamma_{M, P} = \gamma_{F, P}$, for all populations $P$.
+Model~2 is the submodel of Model~3 that imposes the constraint
+$\gamma_{M, P} = \gamma_{F, P} = 0$, for all $P$.
+Model~1 is the submodel of Model~2 that imposes the constraint
+$\gamma_{L, P} = 0$, for all $L$ and $P$.
+
+All models contain the graph node effect, \verb@varb@ or $\mu_{L_j, Y_j}$,
+and the quantitative spatial effect, \verb@level:(nsloc + ewloc)@
+or $\alpha_{L_j} U_j + \beta_{L_j} V_j$, which was chosen by
+comparing many models; for details see
+\ifthenelse{\boolean{techrept}}
+{Appendix~\ref{ch:coneflr}.}
+{the technical report.}
+We explain here only differences amongst models, which involve only
+categorical predictors.
+In an unconditional aster model, which these are, such terms
+require the maximum likelihood estimates of mean-value parameters for each category,
+summed over all individuals in the category, to match their observed
+values: `observed equals expected'.
+Model~4 makes observed equal expected
+for total head count $\sum_j H_j$,
+for total flowering $\sum_j F_j$, and
+for total survival $\sum_j M_j$
+within each population.
+Model~3 makes observed equal expected
+for total head count $\sum_j H_j$ and
+for total non-head count $\sum_j (M_j + F_j)$
+within each population.
+Model~2 makes observed equal expected
+for total head count $\sum_j H_j$
+within each population.
+
+From purely statistical considerations, Model~3 is the best of these
+four nested models.  Model~4 does not fit significantly better.
+Model~2 fits significantly worse.
+It is difficult to interpret Model~3 scientifically,
+because
+`non-head count' $\sum_j (M_j + F_j)$ is unnatural, in effect scoring 0 for dead,
+1 for alive without flowers or 2 for alive with flowers.
+
+Model~2 is the model of primary scientific interest.
+Evolutionary biologists are fundamentally interested in fitness,
+but it is notoriously diffcult to measure;
+see \citet{beatty}, \citet{keller} and \citet{paul}.
+The fitness of an individual may be defined as its
+lifetime contribution of progeny to the next generation.
+For these
+data the most direct surrogate measure for fitness is
+total head count $\sum_j H_j$.
+The currently available data represent a small fraction of this plant's
+lifespan.  To obtain more complete measures of fitness, we are continuing
+these experiments and collecting these data for successive years.
+
+Biologists call all our measured variables,
+the $M_j$, $F_j$ and $H_j$, `components of fitness'.
+Since $M_j$ and $F_j$ contribute to fitness only through $H_j$,
+in an aster model the unconditional expectation of $H_j$,
+its unconditional mean-value parameter, completely accounts
+for the contributions
+of $M_j$ and $F_j$.  Strictly speaking, this is not quite true, since
+we do not have $H_j$ measured over the whole life span, so the last $M_j$
+contains the information about future reproduction,
+but it becomes more true as more data are collected in future years.
+Moreover, we have no data about life span and do not wish to inject
+subjective opinion about future flower head count into the analysis.
+
+The statistical point of this is that
+the $M_j$ and $F_j$
+are in the model only to produce the correct stochastic structure.
+If we could directly model the marginal distribution of the
+$H_j$, but we cannot, we would not need the other variables.
+They are `nuisance variables' that must be in the
+model but are of no interest in this particular analysis;
+the mean-value
+parameters for those variables are nuisance parameters.
+% Statisticians seem not to have studied this kind of nuisance variable
+% (there is an established usage meaning `confounded with treatment effect'
+% that is not what we mean).
+Model~3 is the best according to the likelihood
+ratio test, but does it fit the variables of interest better than Model~2?
+We do not know of an established methodology for addressing this issue, so
+we propose looking at confidence intervals for the mean-value parameters
+for total flower head count
+shown in Fig.~\ref{fig:plot}. % (page~\pageref{fig:plot}).
+\begin{figure}
+\begin{center}
+  \includegraphics[width=4.5in,keepaspectratio]{coneflr-fig-app}
+\end{center}
+\caption{Confidence intervals for total head count.  Shown are 95\% non-simultaneous
+confidence intervals for the
+unconditional expectation of total flower head count, all three years,
+for individuals from different
+populations and central spatial location.
+Solid bars are based on Model~2 in Table~\ref{tab:anova},
+and dashed bars are based on Model~3 in Table~\ref{tab:anova}.}
+\label{fig:plot}
+\end{figure}
+Although we have no formal test to propose, we claim that it is obvious
+that Model~3 is no better than Model~2 at `predicting' the best surrogate
+of expected fitness.  We take this as justification for using Model~2 in
+scientific discussion and infer from it significant differences
+among the populations in flower head count and, thus, fitness.
+
+It being difficult to interpret Model~3 scientifically, Model~4 is
+the next larger readily interpretable model.
+Model~4 does fit significantly better than Model~2, $P = 0.00016$, which
+implies differences among populations
+in mortality and flowering (the $M_j$ and $F_j$) that may be of scientific
+interest even though they make no direct contribution to fitness,
+since Model~2 already fully accounts for their contributions through $H_j$.
+
+Note that we would have obtained very different results had we used
+a conditional model, not shown, see
+\ifthenelse{\boolean{techrept}}
+{Section~\ref{sec:conditional}.}
+{\S~\ref{tr:sec:conditional} of the technical report.}
+The parameters of interest are unconditional expectations
+of total flower head count.  This alone suggests an unconditional
+model.  Furthermore, we see in \eqref{eq:new} that unconditional
+aster models `mix levels' passing information up from children to parents.
+This is why Model~2 in our example was successful in predicting total head
+count while only modelling \verb@pop@ effects at head count nodes.
+Since a conditional aster model does not mix levels in this way,
+it must model all levels and so usually needs many more parameters
+than an unconditional model.
+
+\section{Discussion}
+
+The key idea of aster models, as we see it, is the usefulness of
+what we have called unconditional aster models, which have
+low-dimensional sufficient statistics \eqref{eq:sufficient}.
+Following \citet{gat}, who argued in favour of exponential family
+models with sufficient statistics chosen to be
+scientifically interpretable, an idea they attributed to \citet{jaynes},
+we emphasise the value of these models in analyses of life histories
+and overall fitness.
+
+We do not insist, however, the R package \verb@aster@ is even-handed
+with respect to conditional and unconditional models and conditional
+and unconditional parameters.  Users may use whatever seems best to them.
+Any joint analysis is better than any separate
+analyses of different variables.
+We have, however, one warning.
+In an unconditional aster model,
+as in all exponential family models, the map from canonical
+parameters to mean-value parameters is monotone;
+with sufficient statistic vector $\boldY$ given by \eqref{eq:sufficient}
+having components $Y_k$ we have
+\begin{equation}
+\label{eq:modelfoo}
+   - \frac{\partial^2 l(\boldbeta)}{\partial \beta_k^2}
+   =
+   \frac{\partial E_\boldbeta \{ Y_k \}}{\partial \beta_k}
+   >
+   0.
+\end{equation}
+This gives regression coefficients
+their simple interpretation: an increase in $\beta_k$ causes an increase
+in $E_\beta \{ Y_k \}$, other betas being held constant.
+The analogue of \eqref{eq:modelfoo} for a conditional model is
+\begin{equation}
+\label{eq:modelgoo}
+   - \frac{\partial^2 l(\boldbeta)}{\partial \beta_k^2}
+   =
+   \frac{\partial}{\partial \beta_k}
+   \sum_{G \in \groupset}
+   \sum_{j \in G}
+   E_\boldbeta \{ X_j | X_{p(G)} \}
+   m_{j k} > 0,
+\end{equation}
+where $m_{j k}$ are components of $\boldM$.
+Because we cannot move the sums in \eqref{eq:modelgoo}
+inside the conditional expectation,
+there is no corresponding simple interpretation of regression coefficients.
+Conditional aster models are therefore algebraically simple but
+statistically complicated.
+Unconditional aster models are algebraically complicated but statistically
+simple.  They can be simply explained as flat
+exponential families having the desired sufficient statistics.  They are
+the aster models that behave according to the intuitions derived
+from linear and generalised linear models.
+
+We saw in our example that aster models allowed us to model fitness
+successfully.
+In medical applications, Darwinian fitness is rarely interesting,
+but aster models may allow data on mortality or survival to be analyzed
+in combination with other data, such as quality of life measures.
+
+\section*{Acknowledgements}
+
+Our key equation \eqref{eq:new} was derived about
+1980 when R.~G.~S.\ was a graduate student and C.~J.~G.\ not yet
+a graduate student.  R.~G.~S.'s Ph.~D.\ adviser Janis Antonovics
+provided some funding for development, from a now forgotten source, but
+which we thank nevertheless.
+High quality life history data, generated recently by S.~W., Julie Etterson,
+David Heiser and Stacey Halpern, and work of Helen Hangelbroek,
+supported by the U.~S.\ National Science
+\ifthenelse{\boolean{submit}}
+{Foundation,}
+{Foundation (DMS-0083468),}
+about what in hindsight we would call
+a conditional aster model analysis of mortality data,
+motivated implementation of these ideas. 
+Were it not for Janis's enthusiastic encouragement back then,
+we might not have been able to do this now.  We should also acknowledge
+the R team.  Without R we would never have made software as usable and
+powerful as the \verb@aster@ package.  We also thank Robert Gentleman
+for pointing out the medical implications.
+
+%%%% Note: Biometrika used to have a policy against grant numbers.
+%%%% They may cut it.  Just a warning.  They may have changed the policy.
+
+\begin{thebibliography}{}
+
+\bibitem[Barndorff-Nielsen(1978)]{barndorff}
+\textsc{Barndorff-Nielsen, O.~E.} (1978).
+\newblock \emph{Information and Exponential Families}.
+\newblock Chichester: John Wiley.
+
+\bibitem[Beatty(1992)]{beatty}
+\textsc{Beatty, J.} (1992).
+\newblock Fitness: Theoretical contexts.
+\newblock In \emph{Keywords in Evolutionary Biology}, Ed. E.~F. Keller
+    and E.~A. Lloyd, pp. 115--9.
+\newblock Cambridge, MA: Harvard University Press.
+
+\bibitem[Breslow(1972)]{breslow-diss}
+\textsc{Breslow, N.} (1972).
+\newblock Discussion of the paper by Cox (1972).
+\newblock \emph{J. R. Statist. Soc.} B
+    \textbf{34}, 216--7.
+
+\bibitem[Breslow(1974)]{breslow}
+\textsc{Breslow, N.} (1974).
+\newblock Covariance analysis of censored survival data. 
+\newblock \emph{Biometrics}, \textbf{30}, 89-99.
+
+\bibitem[Chambers \& Hastie(1992)]{cha}
+\textsc{Chambers, J.~M. \& Hastie, T.~J.} (1992).
+\newblock Statistical models.
+\newblock In \emph{Statistical Models in S}, Ed. J.~M. Chambers
+    and T.~J. Hastie, pp. 13--44.
+\newblock Pacific Grove, CA: Wadsworth \& Brooks/Cole.
+
+\bibitem[Cox(1972)]{cox}
+\textsc{Cox, D.~R.} (1972).
+\newblock Regression models and life-tables (with Discussion).
+\newblock \emph{J. R. Statist. Soc.} B
+    \textbf{34}, 187--220.
+
+\bibitem[Geyer \& Thompson(1992)]{gat}
+\textsc{Geyer, C.~J. \& Thompson, E.~A.} (1992).
+\newblock Constrained Monte Carlo maximum likelihood for dependent data
+    (with Discussion).
+\newblock \emph{J. R. Statist. Soc.} B \textbf{54} 657--99.
+
+\bibitem[Jaynes(1978)]{jaynes}
+\textsc{Jaynes, E.~T.} (1978).
+\newblock Where do we stand on maximum entropy?
+\newblock In \emph{The Maximum Entropy Formalism}, Ed. R.~D. Levine and
+    M. Tribus, pp. 15–-118.
+\newblock Cambridge, MA: MIT Press.
+
+\bibitem[Keller(1992)]{keller}
+\textsc{Keller, E.~F.} (1992).
+\newblock Fitness: Reproductive ambiguities.
+\newblock In \emph{Keywords in Evolutionary Biology}, Ed. E.~F. Keller
+    and E.~A. Lloyd, pp. 120--1.
+\newblock Cambridge, MA: Harvard University Press.
+
+\bibitem[Lauritzen(1996)]{lauritzen}
+\textsc{Lauritzen, S.~L.} (1996).
+\newblock \emph{Graphical Models}.
+\newblock New York: Oxford University Press.
+
+\bibitem[Martin, et al.(2005)Martin, Wintle, Rhodes, Kuhnert, Field, Low-Choy,
+    Tyre \& Possingham]{martin}
+\textsc{Martin, T.~G.,
+Wintle, B.~A.,
+Rhodes, J.~R.,
+Kuhnert, P.~M.,
+Field, S.~A.,
+Low-Choy, S.~J.,
+Tyre, A.~J.
+\&
+Possingham, H.~P.}
+(2005).
+\newblock Zero tolerance ecology: improving ecological inference
+    by modelling the source of zero observations.
+\newblock \emph{Ecol. Lett.} \textbf{8} 1235--46.
+
+% \bibitem[McCullagh(1980)]{pmcc}
+% \textsc{McCullagh, P.} (1980).
+% \newblock Regression models for ordinal data (with Discussion).
+% \newblock \emph{J. R. Statist. Soc.} B \textbf{42} 109--42. 
+
+\bibitem[McCullagh \& Nelder(1989)]{man}
+\textsc{McCullagh, P. \& Nelder, J.~A.} (1989).
+\newblock \emph{Generalized Linear Models}, 2nd ed.
+\newblock London: Chapman and Hall.
+
+\bibitem[Paul(1992)]{paul}
+\textsc{Paul, D.} (1992).
+\newblock Fitness: Historical perspective.
+\newblock In \emph{Keywords in Evolutionary Biology}, Ed. E.~F. Keller
+    and E.~A. Lloyd, pp. 112--4.
+\newblock Cambridge, MA: Harvard University Press.
+
+\bibitem[R Development Core Team(2004)]{rcore}
+\textsc{R Development Core Team} (2004).
+\newblock R: A language and environment for statistical computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \url{http://www.R-project.org}.
+
+\bibitem[Wilkinson \& Rogers(1973)]{war}
+\textsc{Wilkinson, G.~N. \& Rogers, C.~E.} (1973).
+\newblock Symbolic description of factorial models for analysis of variance.
+\newblock \emph{Appl. Statist.} \textbf{22}, 392--9.
+
+\end{thebibliography}
+
+% \begin{center} \LARGE REVISED DOWN TO HERE \end{center}
+
